@@ -32,6 +32,8 @@ On this image, the following colors were used:
 
 We're currently working on a tile editor that should make it MUCH easier to
 generate the hexadecimal string, but it's currently a WIP.
+
+Once a pixel is updated, the website should update within about 5-10 minutes.  If for any reason it doesn't work, feel free to contact me at ken@devopslibrary.com.
 ```
 // PixelMap.io
 pragma solidity ^0.4.2;
