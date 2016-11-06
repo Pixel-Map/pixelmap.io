@@ -23,7 +23,7 @@ This tile is stored as the following one-line string:
 ```
 
 However, if you break the string apart into 16 lines, it looks like the following:
-![StarHex](https://raw.githubusercontent.com/Pixel-Map/pixelmap.io/master/images/starhex.png "Starhex")
+![StarHex](https://raw.githubusercontent.com/Pixel-Map/pixelmap.io/master/images/starhex.png "Starhex" =250x)
 
 The 3 digit color codes can be easily referenced here: [https://en.wikipedia.org/wiki/Web_colors#Web-safe_colors](https://en.wikipedia.org/wiki/Web_colors#Web-safe_colors)
 On this image, the following colors were used:
