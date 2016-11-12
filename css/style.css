@@ -1,0 +1,70 @@
+html {
+  background-color: #ffefbd;
+}
+#background img {
+  border: 8px solid transparent;
+  border-image: url("../images/border.png") 20 20;
+  width: 1312px;
+  margin-left: auto;
+  margin-right: auto;
+  opacity: 0;
+  position: absolute;
+  left: 0;
+  right: 0;
+}
+#canvas {
+  margin-left: 0px;
+  margin-right: 0px;
+  width: 100%;
+  min-width: 100%;
+  padding-left: 0px;
+  padding-right: 0px;
+  padding-top: 15px;
+  background-color: #ffefbd;
+  border: 3px solid black;
+  padding-bottom: 15px;
+}
+header {
+  background-color: #c6c6c6;
+  height: 60px;
+  width: 100%;
+  text-align: center;
+  padding-top: 5px;
+}
+#logo img {
+  border: 8px solid transparent;
+  border-image: url("../images/border2.png") 20 20;
+  padding: 4px;
+  background-color: #bbffff;
+  float: left;
+}
+#logo {
+  padding-left: 25px;
+}
+#whitepaper {
+  padding-right: 25px;
+  padding-left: 25px;
+}
+#whitepaper img {
+  border: 8px solid transparent;
+  border-image: url("../images/border2.png") 20 20;
+  padding: 4px;
+  background-color: #ffddff;
+  float: right;
+}
+#about {
+  padding-right: 25px;
+  margin-right: 10px;
+}
+#about img {
+  border: 8px solid transparent;
+  border-image: url("../images/border2.png") 20 20;
+  padding: 4px;
+  background-color: #ffddff;
+  float: right;
+}
+#canvas img {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}

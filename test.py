@@ -1,12 +1,42 @@
+#!/usr/bin/env python
 import json
-from web3 import Web3, KeepAliveRPCProvider, IPCProvider
-from PIL import Image
+import redis
+import ConfigParser
+import gevent
+import random
+from web3 import Web3, KeepAliveRPCProvider
 
-web3 = Web3(KeepAliveRPCProvider(host='localhost', port='8545'))
-print(web3.isConnected())
-abi = json.loads('[{"constant":true,"inputs":[{"name":"","type":"uint256"}],"name":"owners","outputs":[{"name":"","type":"address"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"x","type":"uint256"},{"name":"y","type":"uint256"}],"name":"buyTile","outputs":[],"payable":true,"type":"function"},{"constant":false,"inputs":[{"name":"x","type":"uint256"},{"name":"y","type":"uint256"}],"name":"getPos","outputs":[{"name":"","type":"uint256"}],"payable":false,"type":"function"},{"constant":true,"inputs":[{"name":"","type":"uint256"}],"name":"urls","outputs":[{"name":"","type":"string"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"x","type":"uint256"},{"name":"y","type":"uint256"}],"name":"getTile","outputs":[{"name":"","type":"address"},{"name":"","type":"string"},{"name":"","type":"string"}],"payable":false,"type":"function"},{"constant":true,"inputs":[{"name":"","type":"uint256"}],"name":"images","outputs":[{"name":"","type":"string"}],"payable":false,"type":"function"},{"constant":true,"inputs":[{"name":"","type":"uint256"}],"name":"prices","outputs":[{"name":"","type":"uint256"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"x","type":"uint256"},{"name":"y","type":"uint256"},{"name":"image","type":"string"},{"name":"url","type":"string"},{"name":"price","type":"uint256"}],"name":"setPixel","outputs":[],"payable":false,"type":"function"},{"inputs":[],"type":"constructor"}]')
+# Load INI Configuration
+configParser = ConfigParser.RawConfigParser()
+configParser.read('config.ini')
+redis_server = configParser.get('DEFAULT', 'redis')
+geth_server = configParser.get('DEFAULT', 'geth')
+contract_address = configParser.get('DEFAULT', 'contract')
+abi_data = configParser.get('DEFAULT', 'abi')
+default_tile = configParser.get('DEFAULT', 'defaultTile')
+default_url = configParser.get('DEFAULT', 'defaultURL')
 
-contract = web3.eth.contract(
-    abi, address="0xfA43A0C1255572c1f38704b420b635baea92FA29")
+# Connect to Servers
+redis_server = redis.StrictRedis(host=redis_server, port=6379, db=0)
+web3 = Web3(KeepAliveRPCProvider(host=geth_server, port='8545'))
 
-print contract.call().getTile(1, 1)
+# Load Contract
+abi = json.loads(abi_data)
+contract = web3.eth.contract(abi, address=contract_address)
+
+print "Connected to Web3: ", web3.isConnected()
+
+
+def new_transaction_callback(transaction_hash):
+    print "Transaction Spotted! Updating!"
+    print transaction_hash['args']['x']
+    print transaction_hash['args']['y']
+
+filter = contract.on('TileUpdated', {}, new_transaction_callback)
+print("Watching patiently for transactions...")
+
+while True:
+    gevent.sleep(random.random())
+
+
+filter.stop_watching(130)

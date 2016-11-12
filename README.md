@@ -35,7 +35,6 @@ generate the hexadecimal string, but it's currently a WIP.
 
 Once a pixel is updated, the website should update within about 5-10 minutes.  If for any reason it doesn't work, feel free to contact me at ken@devopslibrary.com.
 ```
-// PixelMap.io
 pragma solidity ^0.4.2;
 contract PixelMap {
     mapping (uint => address) public owners;
@@ -43,6 +42,8 @@ contract PixelMap {
     mapping (uint => string) public urls;
     mapping (uint => uint) public prices;
     address creator;
+    event TileUpdated(uint x, uint y, string image, string url, uint price, address owner);
+    event OwnerUpdated(uint x, uint y, address owner);
 
     // Constructor
     function PixelMap() {
@@ -62,17 +63,18 @@ contract PixelMap {
     // Purchase an unclaimed Tile for 10 Eth.
     function buyTile(uint x, uint y) payable {
         uint location = getPos(x, y);
-        uint price = 10000000000000000000;
+        uint price = 2000000000000000000;
         if (owners[location] == msg.sender) {
             throw; // You already own this pixel silly!
         }
         // If Unowned by the Bank
         if (owners[location] == 0x0) {
-            if (msg.value == 10000000000000000000) {
+            if (msg.value == 2000000000000000000) {
                 // Send to Creator
-                if (creator.send(10000000000000000000)) {
+                if (creator.send(2000000000000000000)) {
                     owners[location] = msg.sender;
                     prices[location] = 0; // Set Price to 0.  0 is not for sale.
+                    OwnerUpdated(x, y, msg.sender);
                 }
                 else {throw;}
             }
@@ -87,8 +89,10 @@ contract PixelMap {
                 else {
                     if (msg.value == price) {
                         if (owners[location].send(price)) {
-                            owners[location] = msg.sender; // Set New Owner
+                            // Set New Owner
+                            owners[location] = msg.sender;
                             prices[location] = 0; // Set Price to 0.
+                            OwnerUpdated(x, y, msg.sender);
                         }
                         else {throw;}
                     }
@@ -101,10 +105,12 @@ contract PixelMap {
     function setTile(uint x, uint y, string image, string url, uint price) {
         uint location = getPos(x, y);
         if (owners[location] != msg.sender) {throw;} // Pixel not owned by you!
+        if (bytes(image).length != 768) {throw;} // Incorrect String Length Provided!
         else {
             images[location] = image;
             urls[location] = url;
             prices[location] = price;
+            TileUpdated(x, y, image, url, price, msg.sender);
         }
     }
 }
