@@ -7,4 +7,5 @@ apt-get install ethereum python-pip -y
 pip install web3 pillow redis configparser
 geth --testnet --rpc --rpcaddr 0.0.0.0 -rpccorsdomain "*" --rpcapi "admin,db,eth,debug,miner,net,shh,txpool,personal,web3"
 # parity --testnet --geth ui
-parity.exe --jsonrpc-hosts all --testnet ui
+#parity.exe --jsonrpc-hosts all --testnet ui
+parity.exe --chain morden --jsonrpc-hosts all ui

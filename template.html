@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	<title>PixelMap.io -- Own a piece of Blockchain History!</title>
+	<script type="text/javascript" src="scripts/jquery-3.1.1.min.js"></script>
+	<script src="https://code.jquery.com/jquery-migrate-3.0.0.js"></script>
+	<script type="text/javascript" src="scripts/jquery.maphilight.min.js"></script>
+	<script type="text/javascript" src="scripts/highlighter.js"></script>
+	<script type="text/javascript" src="scripts/bootstrap.min.js"></script>
+	<script type="text/javascript" src="scripts/buy_tile.js"></script>
+	<script type="text/javascript" src="scripts/modal.js"></script>
+	<link rel="stylesheet" type="text/css" href="css/style.css">
+	<link rel="stylesheet" type="text/css" href="css/bootstrap.css">
+</head>
+<body>
+<div id="wrapper">
+	<div id="menu">
+		<div class="map" style="">
+			<a href="https://github.com/Pixel-Map/pixelmap.io/blob/master/README.md" alt="What is PixelMap.io?">
+				<img src='images/logo.png' height='32px' width='32px' class="darken" />
+			</a>
+		</div>
+		<div class="map" style="margin-top: 7px;">
+			<a href="https://github.com/Pixel-Map/pixelmap.io/blob/master/README.md" alt="Edit Tiles">
+				<img src='images/edit.png' height='32px' width='32px' class="darken" />
+			</a>
+		</div>
+	</div>
+	<div>
+		<img class="map" src="images/background.png" width="1296" height="784" usemap="#pixelmap" style="opacity: 0; z-index: 1;">
+	</div>
+</div>
+    <div id="edit-modal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                    <h4 class="modal-title" id="myModalLabel">This tile is for sale!</h4>
+                </div>
+                <div class="modal-body">
+                    Wow! <b>Tile: <span class="edit-content" id="the_id"></span></b> sure is in a nice spot!  Would you like to adopt the little guy so you can change
+										the tile to something more... you?  2&Xi;TH and he's all yours!  Plus, you can always sell him for whatever you'd like later!
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="sendEther();">Purchase Tile</button>
+                </div>
+            </div>
+        </div>
+    </div>
+<map name="pixelmap">
+	{% for tile in tiles %}
+		{% if tile['owner'] == '0x0000000000000000000000000000000000000000' %}
+				<area href="#buyTile" data-toggle="modal" id="{{ tile['x'] }}x{{ tile['y'] }}" data-target="#edit-modal" shape="rect" coords="{{ tile['x'] }},{{ tile['y'] }},{{ tile['x'] + 16 }},{{ tile['y'] + 16 }}" alt="For Sale!" />
+		{% else %}
+				<area href="http://{{ tile['url'] }}" shape="rect" coords="{{ tile['x'] }},{{ tile['y'] }},{{ tile['x'] + 16 }},{{ tile['y'] + 16 }}" alt="pixelmap.io"/>
+		{% endif %}
+  {% endfor %}
+</map>
+</body>
+</html>

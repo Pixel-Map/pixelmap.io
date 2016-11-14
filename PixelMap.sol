@@ -5,8 +5,7 @@ contract PixelMap {
     mapping (uint => string) public urls;
     mapping (uint => uint) public prices;
     address creator;
-    event TileUpdated(uint x, uint y, string image, string url, uint price, address owner);
-    event OwnerUpdated(uint x, uint y, address owner);
+    event TileUpdated(uint x, uint y);
 
     // Constructor
     function PixelMap() {
@@ -18,50 +17,37 @@ contract PixelMap {
     }
 
     // Get Tile information at X,Y position.
-    function getTile(uint x, uint y) returns (address, string, string) {
+    function getTile(uint x, uint y) returns (address, string, string, uint) {
         uint location = getPos(x, y);
-        return (owners[location], urls[location], images[location]);
+        return (owners[location], urls[location], images[location], prices[location]);
     }
 
     // Purchase an unclaimed Tile for 10 Eth.
     function buyTile(uint x, uint y) payable {
         uint location = getPos(x, y);
-        uint price = 2000000000000000000;
+        uint price;
+        address owner;
+
         if (owners[location] == msg.sender) {
             throw; // You already own this pixel silly!
         }
         // If Unowned by the Bank
         if (owners[location] == 0x0) {
-            if (msg.value == 2000000000000000000) {
-                // Send to Creator
-                if (creator.send(2000000000000000000)) {
-                    owners[location] = msg.sender;
-                    prices[location] = 0; // Set Price to 0.  0 is not for sale.
-                    OwnerUpdated(x, y, msg.sender);
-                }
-                else {throw;}
-            }
-            else {
-                throw; // 10 Eth not supplied
-            }
+            price = 2000000000000000000;
+            owner = creator;
         }
-        else {
-            if (owners[location] != 0x0) {
-                price = prices[location];
-                if (price == 0) {throw;} // Tile not for sale!
-                else {
-                    if (msg.value == price) {
-                        if (owners[location].send(price)) {
-                            // Set New Owner
-                            owners[location] = msg.sender;
-                            prices[location] = 0; // Set Price to 0.
-                            OwnerUpdated(x, y, msg.sender);
-                        }
-                        else {throw;}
-                    }
-                }
-            }
+
+        // If the pixel isn't for sale, don't sell it!
+        if (price == 0) {
+            throw;
         }
+
+        if (owner.send(price)) {
+            owners[location] = msg.sender;
+            prices[location] = 0; // Set Price to 0.
+            TileUpdated(x, y);
+        }
+        else {throw;}
     }
 
     // Set an already owned Tile to whatever you'd like.
@@ -73,7 +59,7 @@ contract PixelMap {
             images[location] = image;
             urls[location] = url;
             prices[location] = price;
-            TileUpdated(x, y, image, url, price, msg.sender);
+            TileUpdated(x, y);
         }
     }
 }

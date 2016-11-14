@@ -2,7 +2,7 @@
 from PIL import Image
 from functions import (chunk_str, get_position, double_mult, hex_to_rgb,
                        connect_redis, get_contract, get_default_url,
-                       get_default_tile)
+                       get_default_tile, get_for_sale_tile)
 
 
 def render_tile(x, y):
@@ -15,15 +15,16 @@ def render_tile(x, y):
     owner = tile[0]
     url = tile[1]
     image = tile[2]
+    price = tile[3]
     tile_name = str(x) + "x" + str(y)
     print "Rendering " + tile_name + "..."
-
     # Defaults if data not set.
     if not url:
         url = get_default_url()
     if not image:
-        image = get_default_tile()
-
+        image = get_default_tile(owner)
+    if (price != 0):
+        image = get_for_sale_tile()
     # Update Redis Data
     redis_server.hmset(tile_name, {'owner': owner, 'url': url})
 
