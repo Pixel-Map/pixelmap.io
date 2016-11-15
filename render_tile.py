@@ -5,18 +5,18 @@ from functions import (chunk_str, get_position, double_mult, hex_to_rgb,
                        get_default_tile, get_for_sale_tile)
 
 
-def render_tile(x, y):
+def render_tile(location):
     # Connect to Redis and Blockchain
     redis_server = connect_redis()
     contract = get_contract()
 
     # Get Tile Data
-    tile = contract.call().getTile(x, y)
+    tile = contract.call().getTile(location)
     owner = tile[0]
-    url = tile[1]
-    image = tile[2]
+    url = tile[2]
+    image = tile[1]
     price = tile[3]
-    tile_name = str(x) + "x" + str(y)
+    tile_name = str(location)
     print "Rendering " + tile_name + "..."
     # Defaults if data not set.
     if not url:

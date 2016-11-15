@@ -75,9 +75,9 @@ def render_full_image():
     # create a new black image
     full_image = Image.new('RGB', (1296, 784), "black")
     full_image.load()  # create the pixel map
-    for x in range(81):    # for every pixel:
-        for y in range(49):
-            file_name = str(x) + "x" + str(y)
-            image = Image.open('tiles/' + file_name + ".png")
-            full_image.paste(image, (x * 16, y * 16))
+    for i in range(3969):
+        image = Image.open('tiles/' + str(i) + ".png")
+        y = i / 81
+        x = i % 81
+        full_image.paste(image, (x * 16, y * 16))
     full_image.save("images/background.png")

@@ -15,8 +15,6 @@ contract PixelMap {
 
     // Get Tile information at X,Y position.
     function getTile(uint location) returns (address, string, string, uint) {
-        if (location > 3969) {throw;}
-        if (location < 0) {throw;}
         return (tiles[location].owner,
                 tiles[location].image,
                 tiles[location].url,
@@ -25,6 +23,7 @@ contract PixelMap {
 
     // Purchase an unclaimed Tile for 2 Eth.
     function buyTile(uint location) payable {
+        if (location > 3969) {throw;}
         uint price = tiles[location].price;
         address owner;
 
