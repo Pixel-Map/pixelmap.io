@@ -1,9 +1,15 @@
 html {
     background-color: #000;
-    background-image: url("../images/bg4.jpg");
+    background-image: url("../images/bg3.png");
     background-size: cover;
 }
+::-webkit-scrollbar {
+    width: 12px;
+}
 
+::-webkit-scrollbar-track {
+    display: none;
+}
 #wrapper {
     min-width: 1390px;
     width: 1390px;

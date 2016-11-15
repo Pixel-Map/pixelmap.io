@@ -19,10 +19,9 @@ print "Starting Listener"
 
 
 def new_transaction_callback(transaction_hash):
-    x = transaction_hash['args']['x']
-    y = transaction_hash['args']['y']
-    print "Transaction Spotted! Updating: " + str(x) + "x" + str(y)
-    render_tile(x=x, y=y)
+    location = transaction_hash['args']['location']
+    print "Transaction Spotted! Updating: " + str(location)
+    render_tile(location)
     render_full_image()
     render_html()
 

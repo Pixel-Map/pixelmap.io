@@ -10,9 +10,8 @@ def render_html():
 
     # Get Data from Redis
     keys = []
-    for x in range(81):
-        for y in range(49):
-            keys.append(str(x) + "x" + str(y))
+    for i in range(3969):
+            keys.append(str(i))
     print "Connecting to Redis"
     pipe = connect_redis().pipeline()
     for key in keys:
@@ -22,14 +21,15 @@ def render_html():
 
     # Construct Array of Dicts
     tiles = []
-    for x in range(81):
-        for y in range(49):
-            owner = values[x * 49 + y]['owner']
-            url = values[x * 49 + y]['url']
-            tiles.append({'x': x * 16,
-                          'y': y * 16,
-                          'owner': owner,
-                          'url': url})
+    for i in range(3969):
+        owner = values[i]['owner']
+        url = values[i]['url']
+        y = i / 81
+        x = i % 81
+        tiles.append({'x': x * 16,
+                      'y': y * 16,
+                      'owner': owner,
+                      'url': url})
 
     templateVars = {"title": "Test Example",
                     "description": "A simple inquiry of function.",
