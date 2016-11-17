@@ -37,7 +37,9 @@ contract PixelMap {
             price = 2000000000000000000;
             owner = creator;
         }
-
+        else {
+            owner = tiles[location].owner;
+        }
         // If the tile isn't for sale, don't sell it!
         if (price == 0) {
             throw;
@@ -47,7 +49,7 @@ contract PixelMap {
         if (msg.value != price) {
             throw;
         }
-        if (msg.sender.send(price)) {
+        if (owner.send(price)) {
             tiles[location].owner = msg.sender;
             tiles[location].price = 0; // Set Price to 0.
             TileUpdated(location);
