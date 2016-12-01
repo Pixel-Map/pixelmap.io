@@ -10,6 +10,23 @@ In many ways, **PixelMap.io** is similar to the MillionDollarHomepage.  There ar
 * In the event that PixelMap.io itself were to ever go down, the data, owner, and URLs for every single pixel remains on the Blockchain, and any site could easily replicate and display the overall image.  Essentially, the backend and database of the PixelMap.io is invincible as long as the Blockchain exists.  Additionally, we are looking into using Golem and/or IPFS to fully distribute the frontend as well.
 * The project is completely Open Source, which means anyone can view the code, audit the Solidity contract, or even set up more frontends if they'd like.  For instance, if someone wanted to set up an easier-to-use tile editor for PixelMap.io, they could, as all of the data is stored safely on the Ethereum blockchain.
 
+### Running PixelMap.io
+We've created a Dockerfile to make it as easy as possible to spin up your own Pixelmap.io server (for learning purposes, making improvements, etc.)
+To get started, just install Docker, then run:
+
+```docker run -p 80:80 -d --name pixelmap pixelmap/pixelmap```
+
+The pixelmap.io server itself is configured using just a tiny cloud config script.  Select the Ubuntu 16.04 AMI and use the following Cloud Config, and you'll have a brand
+new pixelmap server up within minutes! :).
+
+```
+#cloud-config
+hostname: "pixelmap"
+runcmd:
+  - curl -sSL https://get.docker.com/ | sh
+  - /usr/bin/docker run -p 80:80 -d --name pixelmap pixelmap/pixelmap
+```
+
 ### PixelMap.io Solidity Contract
 
 All pixel data for PixelMap.io is stored in 1 Tile Struct, consisting of 4 mapping variables, one for storing the owner, image, url, and price, for every single tile.  Each tile is initially unowned, and is purchasable for 2 Ethereum.  Once purchased, (using the buyTile function), the owner is set, and the price of the tile is set to 0.  A tile with a price of 0 cannot be purchased, and the price can only be changed by the owner of the tile.  The setTile function allows an owner to update the image, URL, and price of any tiles that they own.  If the price is set to a number above 0, then it essentially is up for sale, with the sale price going to the original owner.
