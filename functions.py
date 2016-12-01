@@ -6,7 +6,7 @@ from PIL import Image
 
 # Load INI Configuration
 configParser = ConfigParser.RawConfigParser()
-configParser.read('config.ini')
+configParser.read('/var/www/html/config.ini')
 geth_server = configParser.get('DEFAULT', 'geth')
 contract_address = configParser.get('DEFAULT', 'contract')
 abi_data = configParser.get('DEFAULT', 'abi')
@@ -59,9 +59,12 @@ def connect_web3():
 
 
 def get_contract():
-    web3 = connect_web3()
-    abi = json.loads(abi_data)
-    contract = web3.eth.contract(abi, address=contract_address)
+    try:
+        web3 = connect_web3()
+        abi = json.loads(abi_data)
+        contract = web3.eth.contract(abi, address=contract_address)
+    except:
+        print 'Not connected!'
     return contract
 
 

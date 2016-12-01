@@ -3,6 +3,7 @@ from PIL import Image
 from functions import (chunk_str, get_position, double_mult, hex_to_rgb,
                        connect_redis, get_contract, get_default_url,
                        get_default_tile, get_for_sale_tile)
+import time
 
 
 def render_tile(location):
@@ -11,7 +12,21 @@ def render_tile(location):
     contract = get_contract()
 
     # Get Tile Data
-    tile = contract.call().getTile(location)
+    try:
+        tile = contract.call().getTile(location)
+    except:
+        print "Can't connect to Parity, or !synced to block #2641527. Waiting \
+        5 seconds..."
+        tile = False
+    while not tile:
+        try:
+            tile = contract.call().getTile(location)
+        except:
+            time.sleep(5)
+            print "Can't connect to Parity, or !synced to block #2641527. \
+            Waiting 5 seconds..."
+            tile = False
+
     owner = tile[0]
     url = tile[2]
     image = tile[1]
