@@ -16,8 +16,7 @@ To get started, just install Docker, then run:
 
 ```docker run -p 80:80 -d --name pixelmap pixelmap/pixelmap```
 
-The pixelmap.io server itself is configured using just a tiny cloud config script.  Select the Ubuntu 16.04 AMI and use the following Cloud Config, and you'll have a brand
-new pixelmap server up within minutes! :).
+The real pixelmap.io server itself is hosted on AWS and configured using just a tiny cloud config script & this Dockerfile.  If you'd like to host an identical clone, just select the Ubuntu 16.04 AMI and use the following Cloud Config, and you'll have a brand new pixelmap server up within minutes! :).
 
 ```
 #cloud-config
