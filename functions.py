@@ -1,12 +1,12 @@
-import ConfigParser
-from web3 import Web3, KeepAliveRPCProvider
+import configparser
+from web3 import Web3
 import redis
 import json
 from PIL import Image
 
 # Load INI Configuration
-configParser = ConfigParser.RawConfigParser()
-configParser.read('/var/www/html/config.ini')
+configParser = configparser.RawConfigParser()
+configParser.read('config.ini')
 geth_server = configParser.get('DEFAULT', 'geth')
 contract_address = configParser.get('DEFAULT', 'contract')
 abi_data = configParser.get('DEFAULT', 'abi')
@@ -53,20 +53,17 @@ def hex_to_rgb(value):
     return tuple(int(value[i:i + lv // 3], 16) for i in range(0, lv, lv // 3))
 
 
-def connect_web3():
-    web3 = Web3(KeepAliveRPCProvider(host=geth_server, port='8545'))
-    return web3
-
-
 def get_contract():
+    contract = ""
     try:
-        web3 = connect_web3()
+        web3 = Web3(Web3.HTTPProvider(geth_server))
         abi = json.loads(abi_data)
-        contract = web3.eth.contract(abi, address=contract_address)
-    except:
-        print 'Not connected!'
-    return contract
+        contract = web3.eth.contract(address=contract_address, abi=abi)
+    except Exception as e:
+        print(e)
+        print('Not connected!')
 
+    return contract
 
 def connect_redis():
     redis_server = configParser.get('DEFAULT', 'redis')
@@ -82,5 +79,10 @@ def render_full_image():
         image = Image.open('tiles/' + str(i) + ".png")
         y = i / 81
         x = i % 81
-        full_image.paste(image, (x * 16, y * 16))
+        full_image.paste(image, (int(x) * 16, int(y) * 16))
     full_image.save("images/background.png")
+
+
+def check_hex(s):
+    return not any(((ch < '0' or ch > '9') and
+                (ch < 'A' or ch > 'F')) for ch in s)
