@@ -1,4 +1,5 @@
 import jinja2
+
 from functions import connect_redis
 
 
@@ -11,7 +12,7 @@ def render_html():
     # Get Data from Redis
     keys = []
     for i in range(3969):
-            keys.append(str(i))
+        keys.append(str(i))
     print("Connecting to Redis")
     pipe = connect_redis().pipeline()
     for key in keys:
@@ -26,15 +27,13 @@ def render_html():
         url = values[i].get("url")
         y = i / 81
         x = i % 81
-        tiles.append({'x': x * 16,
-                      'y': y * 16,
-                      'owner': owner,
-                      'url': url})
+        tiles.append({"x": x * 16, "y": y * 16, "owner": owner, "url": url})
 
-    templateVars = {"title": "Test Example",
-                    "description": "A simple inquiry of function.",
-                    "tiles": tiles
-                    }
+    templateVars = {
+        "title": "Test Example",
+        "description": "A simple inquiry of function.",
+        "tiles": tiles,
+    }
     outputText = template.render(templateVars)
 
     f = open("index.html", "w")  # opens file with name of "test.txt"

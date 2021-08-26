@@ -1,10 +1,12 @@
 #!/usr/bin/env python
-from functions import (get_contract, render_full_image)
-import gevent
 import random
-from render_tile import render_tile
-from render_html import render_html
+
+import gevent
+
+from functions import get_contract, render_full_image
 from render_all_tiles import render_all_tiles
+from render_html import render_html
+from render_tile import render_tile
 
 # Connect to Servers
 contract = get_contract()
@@ -20,7 +22,7 @@ print("Starting Listener")
 
 
 def new_transaction_callback(transaction_hash):
-    location = transaction_hash['args']['location']
+    location = transaction_hash["args"]["location"]
     print("Transaction Spotted! Updating: " + str(location))
     render_tile(location)
     render_full_image()

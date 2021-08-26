@@ -1,10 +1,20 @@
 #!/usr/bin/env python
-from PIL import Image
-from functions import (chunk_str, get_position, double_mult, hex_to_rgb,
-                       connect_redis, get_contract, get_default_url,
-                       get_default_tile, get_for_sale_tile, check_hex)
-import time
 import json
+import time
+
+from PIL import Image
+
+from functions import (
+    chunk_str,
+    connect_redis,
+    double_mult,
+    get_contract,
+    get_default_tile,
+    get_default_url,
+    get_for_sale_tile,
+    get_position,
+    hex_to_rgb,
+)
 
 
 def render_tile(location):
@@ -17,15 +27,20 @@ def render_tile(location):
         tile = contract.functions.tiles(location).call()
     except Exception as e:
         print(e)
-        print("Can't connect to Parity, or !synced to block #2641527. Waiting 5 seconds...")
+        print(
+            "Can't connect to Parity, or !synced to block #2641527. Waiting 5 seconds..."
+        )
         tile = False
     while not tile:
         try:
             tile = contract.functions.tiles(location).call()
-        except:
+        except Exception as e:
             time.sleep(5)
-            print("Can't connect to Parity, or !synced to block #2641527. \
-            Waiting 5 seconds...")
+            print(
+                "Can't connect to Parity, or !synced to block #2641527. \
+            Waiting 5 seconds..."
+            )
+            print(e)
             tile = False
 
     owner = tile[0]
@@ -41,17 +56,17 @@ def render_tile(location):
         image = get_default_tile(owner)
     if not len(image) == 768:
         image = get_default_tile(owner)
-    if (price != 0):
+    if price != 0:
         image = get_for_sale_tile()
     # Update Redis Data
-    redis_server.hmset(tile_name, {'owner': owner, 'url': url})
+    redis_server.hmset(tile_name, {"owner": owner, "url": url})
     # Render Image from Image Data.  Every 3 char. represents 1 pixel.
     rgb_image_data = []
     for pixel in chunk_str(image, 3):
         rgb_image_data.append(hex_to_rgb(double_mult(pixel)))
 
     # Start with Black Image
-    rendered_image = Image.new('RGB', (16, 16), "black")
+    rendered_image = Image.new("RGB", (16, 16), "black")
     pixels = rendered_image.load()
 
     # For every pixel in image:
@@ -61,18 +76,18 @@ def render_tile(location):
             pixels[i, j] = (pixel[0], pixel[1], pixel[2])
 
     # Save Tile
-    rendered_image.save('tiles/' + tile_name + ".png")
+    rendered_image.save("tiles/" + tile_name + ".png")
 
     # Make big tile for OpenSea
     big_tile = rendered_image.resize((350, 350), Image.NEAREST)
-    big_tile.save('large_tiles/' + tile_name + ".png")
+    big_tile.save("large_tiles/" + tile_name + ".png")
 
     data = {
-      "description": "Official PixelMap (2016) Wrapper",
-      "external_url": url,
-      "image": f"https://pixelmap.mypinata.cloud/ipfs/QmXDfXWqsX32f4zw1gTXwGxqS7iBLuuxNohEj7srD2BKTj/{tile_name}.png",
-      "name": f"Tile #{tile_name}"
+        "description": "Official PixelMap (2016) Wrapper",
+        "external_url": url,
+        "image": f"https://pixelmap.mypinata.cloud/ipfs/QmXDfXWqsX32f4zw1gTXwGxqS7iBLuuxNohEj7srD2BKTj/{tile_name}.png",
+        "name": f"Tile #{tile_name}",
     }
 
-    with open(f'large_tiles/{tile_name}.json', 'w') as outfile:
+    with open(f"large_tiles/{tile_name}.json", "w") as outfile:
         json.dump(data, outfile, indent=4)
