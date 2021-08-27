@@ -1,5 +1,6 @@
 /tiles
-./idea
+.DS_Store
+.idea
 /large_tiles
 ### Python ###
 # Byte-compiled / optimized / DLL files
