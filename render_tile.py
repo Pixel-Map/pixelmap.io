@@ -54,10 +54,12 @@ def render_tile(location):
         url = get_default_url()
     if not image:
         image = get_default_tile(owner)
+    image = image.strip()
     if not len(image) == 768:
         image = get_default_tile(owner)
     if price != 0:
         image = get_for_sale_tile()
+    
     # Update Redis Data
     redis_server.hmset(tile_name, {"owner": owner, "url": url})
     # Render Image from Image Data.  Every 3 char. represents 1 pixel.
