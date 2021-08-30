@@ -1,5 +1,6 @@
 html {
     background-color: #000;
+    background-image: url("../images/bg4.jpg");
     background-size: cover;
 }
 
@@ -7,9 +8,10 @@ html {
     width: 12px;
 }
 
-::-webkit-scrollbar-track {1
+::-webkit-scrollbar-track {
     display: none;
 }
+
 #wrapper {
     min-width: 1390px;
     width: 1390px;
