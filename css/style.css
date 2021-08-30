@@ -3,7 +3,6 @@ html {
     background-image: url("../images/bg4.jpg");
     background-size: cover;
 }
-
 ::-webkit-scrollbar {
     width: 12px;
 }
@@ -11,13 +10,9 @@ html {
 ::-webkit-scrollbar-track {
     display: none;
 }
-
 #wrapper {
     min-width: 1390px;
     width: 1390px;
-    margin-left: auto; 
-    margin-right: auto; 
-    margin-top: 32px; 
 }
 
 .map {
@@ -30,7 +25,6 @@ html {
     width: 1296px;
     margin-left: auto;
     margin-right: auto;
-    margin-top: auto; 
 }
 
 .canvas {
