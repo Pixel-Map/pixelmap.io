@@ -1,6 +1,5 @@
 html {
     background-color: #000;
-    background-image: url("../images/bg4.jpg");
     background-size: cover;
 }
 ::-webkit-scrollbar {
@@ -13,6 +12,9 @@ html {
 #wrapper {
     min-width: 1390px;
     width: 1390px;
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 32px;
 }
 
 .map {
