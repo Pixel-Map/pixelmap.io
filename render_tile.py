@@ -87,7 +87,7 @@ def render_tile(location):
     data = {
         "description": "Official PixelMap (2016) Wrapper",
         "external_url": url,
-        "image": f"https://s3.us-east-1.amazonaws.com/pixelmap.io/{tile_name}.png",
+        "image": f"https://pixelmap.io/large_tiles/{tile_name}.png",
         "name": f"Tile #{tile_name}",
     }
 
