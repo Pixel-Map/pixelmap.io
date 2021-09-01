@@ -1,3 +1,7 @@
+!metadata/.gitkeep
+!tiles/.gitkeep
+!large_tiles/.gitkeep
+/metadata
 /tiles
 .DS_Store
 .idea
