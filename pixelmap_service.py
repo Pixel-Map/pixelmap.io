@@ -28,11 +28,3 @@ def new_transaction_callback(transaction_hash):
     render_full_image()
     render_html()
 
-
-filter = contract.events.TileUpdated
-print("Watching patiently for transactions...")
-
-while True:
-    gevent.sleep(random.random())
-
-filter.stop_watching(130)
