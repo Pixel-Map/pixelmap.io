@@ -1,0 +1,42 @@
+@font-face {
+  font-family: 'vcr_osd_monoregular';
+  src: url('../public/assets/fonts/vcr_osd_mono.woff') format('woff2'),
+       url('../public/assets/fonts/vcr_osd_mono.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@import "./nes.min.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #__next {
+  @apply relative w-full h-full;
+}
+
+.img-pixel {
+  image-rendering: auto;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
+}
+
+.bg-blur {
+  backdrop-filter: blur(8px)
+}
+
+.grid-background {
+  background-size: 100% 100%;
+  background-image:
+    linear-gradient(to right, grey 1px, transparent 1px),
+    linear-gradient(to bottom, grey 1px, transparent 1px);
+}
+
+.pixel-image {
+  image-rendering: pixelated;
+}
+
+.min-h-80 {
+  min-height: 80vh;
+}

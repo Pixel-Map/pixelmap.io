@@ -1,0 +1,7 @@
+AWS_BUCKET_NAME: "pixelmap.io"
+AWS_ID: # Pass in via CLI!
+AWS_SECRET: # Pass in via CLI!
+CONTRACT_ADDRESS: "0x015a06a433353f8db634df4eddf0c109882a15ab"
+CONTRACT_WRAPPER_ADDRESS: "0x050dc61dfb867e0fe3cf2948362b6c0f3faf790b"
+DOMAIN: "pixelmap.io"
+WEB3_URL: "wss://mainnet.infura.io/ws/v3/1e060d0190124285a48e3fe7165e3282"

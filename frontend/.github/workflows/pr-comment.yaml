@@ -1,0 +1,18 @@
+name: Comment PR Preview
+
+on:
+  pull_request:
+    branches:
+      - main
+jobs:
+  comment-preview-link:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: mshick/add-pr-comment@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          message: |
+            ## [🏗 Preview Build](https://pr-${{ github.event.number }}.d1610nz5pgp0mp.amplifyapp.com/)
+            ⏲ I just popped it in the oven, give it a few mins and it'll be ready!
+          allow-repeats: false
