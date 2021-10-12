@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "chart.fullname" . }}
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "chart.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "chart.selectorLabels" . | nindent 8 }}
+    spec:
+      volumes:
+        - name: backend-storage
+          persistentVolumeClaim:
+            claimName: {{ .Release.Namespace }}-backend-claim
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image }}"
+          env:
+          - name: AWS_BUCKET_NAME
+            value: "{{ .Values.AWS_BUCKET_NAME }}"
+          - name: AWS_ID
+            value: "{{ .Values.AWS_ID }}"
+          - name: AWS_SECRET
+            value: "{{ .Values.AWS_SECRET }}"
+          - name: WEB3_URL
+            value: "{{ .Values.WEB3_URL }}"
+          - name: CONTRACT_ADDRESS
+            value: "{{ .Values.CONTRACT_ADDRESS }}"
+          - name: CONTRACT_WRAPPER_ADDRESS
+            value: "{{ .Values.CONTRACT_WRAPPER_ADDRESS }}"
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 3001
+              protocol: TCP
+          volumeMounts:
+            - mountPath: "/app/cache"
+              name: backend-storage
+          livenessProbe:
+            httpGet:
+              path: /tiledata
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /tiledata
+              port: http
+            initialDelaySeconds: 240

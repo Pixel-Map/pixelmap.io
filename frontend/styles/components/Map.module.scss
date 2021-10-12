@@ -1,0 +1,17 @@
+.tileMap {
+  @apply relative w-map h-map transform bg-white shadow-2xl mx-auto border-8 border-green-600 rounded-md;
+  box-sizing: content-box;
+  background-clip: padding-box;
+  background: #fff url('/assets/images/tileOriginal.png');
+  border-image: url('/assets/images/border.png') 20 20;
+  background-position: 0 0;
+  background-size: 16px 16px;
+  background-repeat: repeat;
+}
+
+.tileMap2016 {
+  border-color: transparent;
+  border-image: url('/assets/images/border.png') 20 20;
+  background-image: url('/assets/images/tileOriginal.png');
+}
+
