@@ -1,0 +1,35 @@
+version: '3.9'
+services:
+  frontend:
+    build: ./frontend
+    ports:
+      - '3000:3000'
+    depends_on:
+      - backend
+    environment:
+      NEXT_PUBLIC_API_ENDPOINT: "http://localhost:3001"
+  backend:
+    build: ./backend
+    ports:
+      - '3001:3001'
+    depends_on:
+      - localstack
+    environment:
+      AWS_BUCKET_NAME: "pixelmap"
+      AWS_ID: "test"
+      AWS_SECRET: "test"
+      CONTRACT_ADDRESS: "0x015a06a433353f8db634df4eddf0c109882a15ab"
+      WEB3_URL: "wss://mainnet.infura.io/ws/v3/yourkeyhere"
+      CONTRACT_WRAPPER_ADDRESS: "0x050dc61dfb867e0fe3cf2948362b6c0f3faf790b"
+      USE_LOCAL: "true" # Use localstack endpoint instead of real AWS S3
+    volumes:
+      - ./backend/cache:/app/cache
+  localstack:
+    image: localstack/localstack:latest
+    environment:
+      - AWS_DEFAULT_REGION=us-east-1
+      - SERVICES=s3
+    ports:
+      - '4566-4583:4566-4583'
+    volumes:
+      - "./backend/localstack:/docker-entrypoint-initaws.d"

@@ -13,10 +13,32 @@ const { createCanvas } = require('canvas')
 const base91 = require('node-base91');
 const pako = require('pako');
 
-require('dotenv').config();
-
 const app = express()
 const port = 3001
+
+// Environment Variable validation
+require('dotenv').config();
+const joi = require("joi");
+const envVarsSchema = joi
+    .object()
+    .keys({
+      AWS_BUCKET_NAME: joi.string().required().description("AWS Bucket to render tiles and metadata"),
+      AWS_ID: joi.string().required().description("AWS API ID for authenticating to S3"),
+      AWS_SECRET: joi.string().required().description("AWS API Secret Key for authenticating to S3"),
+      WEB3_URL: joi.string().required().description("URL to Web3 provider (WSS)"),
+      CONTRACT_ADDRESS: joi.string().required().description("Original Contract Address"),
+      CONTRACT_WRAPPER_ADDRESS: joi.string().required().description("Wrapper Contract Address"),
+      USE_LOCAL: joi.bool().default(false)
+    })
+    .unknown().allow(false);
+
+const { value: envVars, error } = envVarsSchema
+    .prefs({ errors: { label: "key" } })
+    .validate(process.env);
+
+if (error) {
+  throw new Error(`Config validation error: ${error.message}`);
+}
 
 app.use(cors());
 app.use(compression());
@@ -36,7 +58,9 @@ const BUCKET_NAME = process.env.AWS_BUCKET_NAME
 
 const s3 = new AWS.S3({
   accessKeyId: process.env.AWS_ID,
-  secretAccessKey: process.env.AWS_SECRET
+  secretAccessKey: process.env.AWS_SECRET,
+  endpoint: new AWS.Endpoint(process.env.USE_LOCAL ? 'http://localstack:4566' : undefined),
+  s3ForcePathStyle: true
 });
 
 let tiles = cache.loadCache();
@@ -407,19 +431,19 @@ async function updateTileMetaAndImage(tile,i){
 
     await image.resize(512,512,'nearestNeighbor').quality(100).write("cache/"+i+".png")
 
-    // upload to aws - plugin does not support await need a bit time for IO
-    setTimeout(async function(){
-      const fileContent = fs.readFileSync("cache/"+i+".png");
-      const params = {
-        Bucket: BUCKET_NAME,
-        Key: "large_tiles/" + i +".png", // File name you want to save as in S3
-        Body: fileContent,
-        ACL:'public-read'
-      };
-      await s3.upload(params,function () {
-        console.log(`File uploaded successfully. ${data.Location} to ${BUCKET_NAME}`);
-      })
-    },100)
+    // upload to localstack - plugin does not support await need a bit time for IO
+    const fileContent = fs.readFileSync("cache/"+i+".png");
+    const params = {
+      Bucket: BUCKET_NAME,
+      Key: "large_tiles/" + i +".png", // File name you want to save as in S3
+      Body: fileContent,
+      ACL:'public-read',
+
+    };
+    await s3.upload(params,function () {
+      console.log(`Tile image data uploaded successfully. ${data.Location} to ${BUCKET_NAME}`);
+    })
+
     tileMetaData.image = "https://s3.us-east-1.amazonaws.com/" + BUCKET_NAME + "/large_tiles/"+i+".png"
     await fs.writeFileSync("cache/"+i+".json",JSON.stringify(tileMetaData));
   }
@@ -430,7 +454,7 @@ async function updateTileMetaAndImage(tile,i){
     // await fs.writeFileSync("cache/"+i+".json",JSON.stringify(tileMetaData));
   }
 
-  // upload to aws
+  // upload to localstack
   let fileContent = '';
   if (fs.existsSync("cache/"+i+".json")) {
     //file exists
@@ -449,7 +473,7 @@ async function updateTileMetaAndImage(tile,i){
       console.log(err)
     }
     else {
-      console.log(`File uploaded successfully. ${data.Location} to ${BUCKET_NAME}`);
+      console.log(`Metadata uploaded successfully. ${data.Location} to ${BUCKET_NAME}`);
     }
   });
 

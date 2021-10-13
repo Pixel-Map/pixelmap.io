@@ -1,8 +1,4 @@
-# Jetbrains
-/.idea/
-
 # dependencies
-/node_modules
 /.pnp
 .pnp.js
 
@@ -12,13 +8,6 @@
 # next.js
 /.next/
 /out/
-.env.local
-
-# production
-/build
-
-# misc
-.DS_Store
 
 # debug
 npm-debug.log*
