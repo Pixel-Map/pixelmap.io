@@ -1,8 +1,0 @@
-node_modules
-.idea
-.env
-.DS_STORE
-cache/tiles.json
-cache/tiles.png
-cache/*.json
-cache/*.png
