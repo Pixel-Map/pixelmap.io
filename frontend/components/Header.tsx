@@ -11,6 +11,7 @@ import logo from '../public/assets/images/logo.png';
 const navigation = [
   { name: 'Wrapper', link: '/wrap' },
   { name: 'Discord', href: 'https://discord.gg/pixelmap', target: "_blank" },
+  { name: 'About', link: '/about' },
 ]
 
 export default function Header() {
