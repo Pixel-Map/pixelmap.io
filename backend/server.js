@@ -59,7 +59,7 @@ const BUCKET_NAME = process.env.AWS_BUCKET_NAME
 const s3 = new AWS.S3({
   accessKeyId: process.env.AWS_ID,
   secretAccessKey: process.env.AWS_SECRET,
-  endpoint: new AWS.Endpoint(process.env.USE_LOCAL ? 'http://localstack:4566' : undefined),
+  endpoint: process.env.USE_LOCAL ? new AWS.Endpoint('http://localstack:4566') : undefined,
   s3ForcePathStyle: true
 });
 
