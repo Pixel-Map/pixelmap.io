@@ -31,7 +31,7 @@ All pixel data for PixelMap.io is stored in 1 Tile Struct, consisting of 4 mappi
 
 Each 16x16 tile image is stored as a 768 character hexadecimal string.  The color of each pixel is determined by a 3 character short hexadecimal color, which means the 768 char string is the exact size needed to store 256 pixels, starting from left to right.  As an example, let's look at storing the following image on PixelMap.io.
 
-![Star Tile](https://raw.githubusercontent.com/Pixel-Map/pixelmap.io/master/images/star.png "Star Tile Example")
+![Star Tile](docs/star.png "Star Tile Example")
 
 This tile is stored as the following one-line string:
 ```
@@ -39,12 +39,12 @@ This tile is stored as the following one-line string:
 ```
 
 However, if you break the string apart into 16 lines, it looks like the following:
-![StarHex](https://raw.githubusercontent.com/Pixel-Map/pixelmap.io/master/images/starhex.png "Starhex")
+![StarHex](docs/starhex.png "Starhex")
 
 The 3 digit color codes can be easily referenced here: [https://en.wikipedia.org/wiki/Web_colors#Web-safe_colors](https://en.wikipedia.org/wiki/Web_colors#Web-safe_colors)
 On this image, the following colors were used:
 
-![Colors](https://raw.githubusercontent.com/Pixel-Map/pixelmap.io/master/images/colors.png "Star Used Colors")
+![Colors](docs/colors.png "Star Used Colors")
 
 We're currently working on a tile editor that should make it MUCH easier to
 generate the hexadecimal string, but it's currently a WIP.
