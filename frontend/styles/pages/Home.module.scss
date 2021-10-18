@@ -1,13 +1,13 @@
 .bgDay {
   @apply bg-gray-900;
-  background: url('/assets/images/bg.jpeg') no-repeat center;
+  background: url('/assets/images/bg.png') no-repeat center;
   background-size: cover;
   background-attachment: fixed;
 }
 
 .bgNight {
   @apply bg-gray-900;
-  background: url('/assets/images/bgNight.jpeg') no-repeat center;
+  background: url('/assets/images/bgNight.png') no-repeat center;
   background-size: cover;
   background-attachment: fixed;
 }

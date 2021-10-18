@@ -48,7 +48,7 @@ export default function Header() {
                   return (
                     <Link key={item.name} href={item.link}>
                       <a
-                        className="text-sm font-semibold text-gray-300 hover:text-white transition duration-150"
+                        className=" text-sm font-semibold text-white hover:text-white transition duration-150"
                       >
                         {item.name}
                       </a>
@@ -59,7 +59,7 @@ export default function Header() {
                     <a
                       key={item.name}
                       href={item.href}
-                      className="text-sm font-semibold text-gray-300 hover:text-white transition duration-150"
+                      className="text-sm font-bold text-white hover:text-white transition duration-150"
                       target={item.target}
                     >
                       {item.name}
@@ -69,7 +69,7 @@ export default function Header() {
               </div>
               { account &&
                 <Link href="/edit">
-                  <a className="ml-auto text-sm font-semibold text-gray-300 hover:text-white transition duration-150">Edit tiles</a>
+                  <a className="ml-auto text-sm font-bold text-white hover:text-white transition duration-150">Edit tiles</a>
                 </Link>
               }
 
