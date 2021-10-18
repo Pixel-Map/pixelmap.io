@@ -48,7 +48,7 @@ export default function Header() {
                   return (
                     <Link key={item.name} href={item.link}>
                       <a
-                        className=" text-sm font-semibold text-white hover:text-white transition duration-150"
+                        className="inline-flex items-center px-4 py-1 border border-white shadow-sm text-sm font-semibold rounded-full text-white bg-blur hover:opacity-80 transition duration-150"
                       >
                         {item.name}
                       </a>
@@ -59,7 +59,7 @@ export default function Header() {
                     <a
                       key={item.name}
                       href={item.href}
-                      className="text-sm font-bold text-white hover:text-white transition duration-150"
+                      className="inline-flex items-center px-4 py-1 border border-white shadow-sm text-sm font-semibold rounded-full text-white bg-blur hover:opacity-80 transition duration-150"
                       target={item.target}
                     >
                       {item.name}
