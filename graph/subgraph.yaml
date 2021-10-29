@@ -1,0 +1,25 @@
+specVersion: 0.0.2
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum/contract
+    name: PixelMap
+    network: mainnet
+    source:
+      address: "0x015A06a433353f8db634dF4eDdF0C109882A15AB"
+      abi: PixelMap
+      startBlock: 2641527
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.5
+      language: wasm/assemblyscript
+      entities:
+        - TileUpdated
+      abis:
+        - name: PixelMap
+          file: ../contracts/PixelMap.json
+      eventHandlers:
+        - event: TileUpdated(uint256)
+          handler: handleTileUpdated
+      file: ./src/mapping.ts
+

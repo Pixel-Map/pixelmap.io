@@ -8,6 +8,7 @@
 node_modules/
 coverage/
 build/
+generated/
 cache/
 
 # dependencies

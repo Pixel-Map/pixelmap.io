@@ -1,0 +1,18 @@
+type Tile @entity {
+  id: ID!
+  location: BigInt!
+  url: String!
+  image: String!
+  price: BigInt!
+  historicalTileData: [TileData!]!
+  wrapped: Boolean!
+  lastUpdated: BigInt!
+}
+
+type TileData @entity {
+  id: ID!
+  url: String!
+  image: String!
+  timestamp: BigInt!
+}
+
