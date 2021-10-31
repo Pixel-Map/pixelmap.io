@@ -1,8 +1,8 @@
-const fs = require('graceful-fs');
+import fs from 'graceful-fs';
 const cache_path = './cache/tiles.json';
 
 //Cache preparation
-function loadCache() {
+export function loadCache() {
   let results = [];
 
   try {
@@ -23,7 +23,7 @@ function loadCache() {
   return results;
 }
 
-function resetCache() {
+export function resetCache() {
   let data = [];
 
   for( let i = 0; i <= 3969; i++ ) {
@@ -50,7 +50,7 @@ function resetCache() {
   return data;
 }
 
-function updateCache(tiles) {
+export function updateCache(tiles) {
   let parsed = JSON.stringify(tiles, null, 2);
 
   try {
@@ -60,8 +60,6 @@ function updateCache(tiles) {
   }
 }
 
-function cachePath() {
+export function cachePath() {
   return cache_path;
 }
-
-module.exports = { loadCache, resetCache, updateCache, cachePath };

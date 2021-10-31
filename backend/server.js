@@ -1,24 +1,26 @@
-const express = require('express');
-const Web3 = require('web3');
-const cors = require('cors');
-const compression = require('compression');
-const fetch = require('node-fetch');
-const fs = require('graceful-fs');
-const path = require('path');
-const cache = require("./utils/cache");
-const Jimp = require('jimp');
-const BigNumber = require('bignumber.js');
-const AWS = require('aws-sdk');
-const { createCanvas } = require('canvas')
-const base91 = require('node-base91');
-const pako = require('pako');
+import express from 'express';
+import ethers from 'ethers';
+import cors from 'cors';
+import compression from 'compression';
+import fetch from 'node-fetch';
+import fs from 'graceful-fs';
+import path from 'path';
+import Jimp from 'jimp';
+import BigNumber from 'bignumber.js';
+import AWS from 'aws-sdk';
+import pkg from 'canvas';
+const { createCanvas, loadImage } = pkg;
+import base91 from 'node-base91';
+import pako from 'pako';
+import joi from "joi";
+import * as cache from "./utils/cache.js";
 
+const __dirname = path.resolve();
 const app = express()
 const port = 3001
 
 // Environment Variable validation
-require('dotenv').config();
-const joi = require("joi");
+import { config } from 'dotenv';
 const envVarsSchema = joi
     .object()
     .keys({
@@ -43,14 +45,21 @@ if (error) {
 app.use(cors());
 app.use(compression());
 
-let abi = require("./abi/pixelabi.json");
-let abi_wrapper = require("./abi/wrapperpixelabi.json");
-const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS;
-const CONTRACT_WRAPPER_ADDRESS = process.env.CONTRACT_WRAPPER_ADDRESS;
+import { readFile } from 'fs/promises';
+const abi = JSON.parse(
+  await readFile(
+    new URL('./abi/pixelabi.json', import.meta.url)
+  )
+);
+const abi_wrapper = JSON.parse(
+  await readFile(
+    new URL('./abi/wrapperpixelabi.json', import.meta.url)
+  )
+);
 
-let web3 = new Web3(envVars.WEB3_URL);
-let contract = new web3.eth.Contract(abi, CONTRACT_ADDRESS);
-let contract_wrapper = new web3.eth.Contract(abi_wrapper, CONTRACT_WRAPPER_ADDRESS);
+const provider = new ethers.providers.WebSocketProvider(envVars.WEB3_URL, "mainnet");
+const contract = new ethers.Contract(envVars.CONTRACT_ADDRESS, abi, provider);
+const contract_wrapper = new ethers.Contract(envVars.CONTRACT_WRAPPER_ADDRESS, abi_wrapper, provider);
 
 // AWS
 const BUCKET_NAME = process.env.AWS_BUCKET_NAME
@@ -75,7 +84,7 @@ let openseaPriceInterval;
 
 
 app.get("/openseafloor", async(req, res) => {
-  fetch(`https://api.opensea.io/api/v1/events?asset_contract_address=${CONTRACT_WRAPPER_ADDRESS}&event_type=successful&only_opensea=false&offset=0&limit=20`).then(res => res.json())
+  fetch(`https://api.opensea.io/api/v1/events?asset_contract_address=${envVars.CONTRACT_WRAPPER_ADDRESS}&event_type=successful&only_opensea=false&offset=0&limit=20`).then(res => res.json())
     .then((json) => {
       // do something with JSON
 
@@ -152,20 +161,25 @@ app.get('/tilemap', (req, res) => {
 });
 
 async function tileProcessor( tile, index ) {
-  let owner = tile[0].toLowerCase();
-  let image = tile[1];
-  let url = tile[2];
-  let price = tile[3];
+  let owner = tile.owner.toLowerCase();
+  let image = tile.image;
+  let url = tile.url;
+  let price = ethers.utils.formatEther(tile.price);
   let wrapped = false;
 
 
   await updateTileMetaAndImage(tile,index)
 
   let wrapper_tile;
-  if (owner === CONTRACT_WRAPPER_ADDRESS) {
+  if (owner === envVars.CONTRACT_WRAPPER_ADDRESS) {
     wrapped = true;
-    wrapper_tile = await contract_wrapper.methods.ownerOf(index).call();
+    wrapper_tile = await contract_wrapper.ownerOf(index);
     owner = wrapper_tile
+  }
+
+  let ensName = await provider.lookupAddress(owner);
+  if (ensName != null) {
+    owner = ensName
   }
 
   price = new BigNumber(price);
@@ -200,7 +214,7 @@ async function getOpenseaPrices() {
       console.log(`Opensea update offset: ${id}`);
 
       let params = {
-        "asset_contract_address": CONTRACT_WRAPPER_ADDRESS,
+        "asset_contract_address": envVars.CONTRACT_WRAPPER_ADDRESS,
         "side": 1, //sell side
         "include_bundled": false,
         "include_invalid": false,
@@ -241,61 +255,22 @@ async function getOpenseaPrices() {
   }
 }
 
-contract.events.TileUpdated(async (x,y) => {
-  console.log("Received Updated Tile!")
-  if(y.returnValues && y.returnValues[0]) {
-    let tileId = parseInt(y.returnValues["location"]);
-
-    await contract.methods.getTile(tileId).call().then(async (tile) => {
-      await tileProcessor(tile, tileId);
-      cache.updateCache(tiles);
-    })
-  }
-});
-
-contract_wrapper.events.Transfer(async (x,y) => {
-  console.log("Tile Transferred!")
-  if(y.returnValues && y.returnValues[0]) {
-
-    let tileId = parseInt(y.returnValues["tokenId"]);
-
-    await contract.methods.getTile(tileId).call().then(async (tile) => {
-
-      // Change owner because of wrapper
-      tile[0] = y.returnValues["to"];
-
-      await tileProcessor(tile, tileId);
-      cache.updateCache(tiles);
-    })
-  }
-});
-
 async function updateData(){
   if( runningContractUpdate === true ) return;
   let tenMinutesAgo = Date.now() - (10 * 60000)
   runningContractUpdate = true;
 
   for(let i = 0; i <= 3969; i++){
-    if (tiles[i].lastUpdated !== "" && tiles[i].lastUpdated >= tenMinutesAgo) {
-      console.log("Tile: " + i + " was updated in the last 10 minutes, skipping!")
-    }
-    else {
-      try {
-        let tile = await contract.methods.getTile(i).call();
-        console.log('Progress: .' + i + '.\r');
+    try {
+      let tile = await contract.tiles(i);
+      console.log('Progress: .' + i + '.\r');
 
-        await tileProcessor(tile, i);
-        cache.updateCache(tiles);
+      await tileProcessor(tile, i);
+      cache.updateCache(tiles);
 
-      } catch (e) {
-        console.log(e);
-        //console.log("ERR")
-
-        web3 = new Web3(envVars.WEB3_URL);
-        contract = new web3.eth.Contract(abi, CONTRACT_ADDRESS);
-        contract_wrapper = new web3.eth.Contract(abi_wrapper, CONTRACT_WRAPPER_ADDRESS);
-        i--;
-      }
+    } catch (e) {
+      console.log(e);
+      i--;
     }
   }
 
