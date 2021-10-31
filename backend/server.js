@@ -45,11 +45,10 @@ app.use(compression());
 
 let abi = require("./abi/pixelabi.json");
 let abi_wrapper = require("./abi/wrapperpixelabi.json");
-const WEB3_URL = process.env.WEB3_URL;
 const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS;
 const CONTRACT_WRAPPER_ADDRESS = process.env.CONTRACT_WRAPPER_ADDRESS;
 
-let web3 = new Web3(WEB3_URL);
+let web3 = new Web3(envVars.WEB3_URL);
 let contract = new web3.eth.Contract(abi, CONTRACT_ADDRESS);
 let contract_wrapper = new web3.eth.Contract(abi_wrapper, CONTRACT_WRAPPER_ADDRESS);
 
@@ -69,7 +68,6 @@ let sorted_forsale = [];
 let runningContractUpdate = false;
 
 let tileImageInterval;
-let contractInterval;
 let openseaPriceInterval;
 
 //Endpoints
@@ -163,7 +161,8 @@ async function tileProcessor( tile, index ) {
 
   await updateTileMetaAndImage(tile,index)
 
-  if(owner == CONTRACT_WRAPPER_ADDRESS) {
+  let wrapper_tile;
+  if (owner === CONTRACT_WRAPPER_ADDRESS) {
     wrapped = true;
     wrapper_tile = await contract_wrapper.methods.ownerOf(index).call();
     owner = wrapper_tile
@@ -278,7 +277,6 @@ async function updateData(){
 
   for(let i = 0; i <= 3969; i++){
     if (tiles[i].lastUpdated !== "" && tiles[i].lastUpdated >= tenMinutesAgo) {
-      let tile = tiles[i];
       console.log("Tile: " + i + " was updated in the last 10 minutes, skipping!")
     }
     else {
@@ -293,7 +291,7 @@ async function updateData(){
         console.log(e);
         //console.log("ERR")
 
-        web3 = new Web3(WEB3_URL);
+        web3 = new Web3(envVars.WEB3_URL);
         contract = new web3.eth.Contract(abi, CONTRACT_ADDRESS);
         contract_wrapper = new web3.eth.Contract(abi_wrapper, CONTRACT_WRAPPER_ADDRESS);
         i--;
@@ -309,8 +307,7 @@ async function updateData(){
 // Sort Data for Lowest Price API
 function sortData(){
   let entries = Object.entries(forSale);
-  let sorted = entries.sort((a, b) => a[1] - b[1]);
-  sorted_forsale = sorted;
+  sorted_forsale = entries.sort((a, b) => a[1] - b[1]);
   //console.log(sorted);
   //console.log("Done");
 }
@@ -319,8 +316,8 @@ function sortData(){
 function decompressTileCode(tileCodeString) {
   if( typeof tileCodeString === 'string' ) {
     if( tileCodeString.startsWith("b#") ) {
-      const unzip = pako.inflate( base91.decode(tileCodeString.substr(2)), { to: 'string'} ); // Using substring to remove the b#
-      return unzip;
+      // Using substring to remove the b#
+      return pako.inflate(base91.decode(tileCodeString.substr(2)), {to: 'string'});
     } else {
       return tileCodeString;
     }
@@ -334,7 +331,7 @@ function decompressTileCode(tileCodeString) {
 // background control on frontend.
 
 function createMapImage() {
-  if( !tiles || tiles.length != 3970 ) return; //only create map if tiles array is complete
+  if( !tiles || tiles.length !== 3970 ) return; //only create map if tiles array is complete
 
   const width = 81 * 16; //81 tiles across
   const height = 49 * 16; //49 tiles down
@@ -356,7 +353,7 @@ function createMapImage() {
       col = 0;
     }
 
-    if( hex.length == 768 ) {
+    if( hex.length === 768 ) {
 
       hex = hex.match(/.{1,3}/g);
 
@@ -417,8 +414,8 @@ async function updateTileMetaAndImage(tile,i){
 
     let image =  await new Jimp(16, 16)
 
-    for (var x = 0; x <= 15; x++) {
-      for (var y = 0; y <= 15; y++) {
+    for (let x = 0; x <= 15; x++) {
+      for (let y = 0; y <= 15; y++) {
 
         let index = counter;
         let hexstr = imgdataarr[index];
