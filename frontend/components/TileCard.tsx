@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import Link from 'next/link'
 import { TileAsset } from '../types/TileAsset';
 
-import { shortenHex, formatPrice, openseaLink, cleanUrl } from "../utils/misc";
+import { shortenIfHex, formatPrice, openseaLink, cleanUrl } from "../utils/misc";
 import TileImage from './TileImage';
 
 interface TileCardProps {
@@ -27,7 +27,7 @@ export default function TileCard({tile, large}: TileCardProps) {
           </h3>
 
           <p className={"text-sm text-gray-700"}>
-            Owner: <Link href={`/owner/${tile.owner}`}>{shortenHex(tile.owner, 6)}</Link>
+            Owner: <Link href={`/owner/${tile.owner}`}>{shortenIfHex(tile.owner, 12)}</Link>
           </p>
           
           <div className="truncate">

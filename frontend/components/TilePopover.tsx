@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { usePopperTooltip } from 'react-popper-tooltip';
-import { shortenHex, formatPrice, openseaLink, cleanUrl } from "../utils/misc";
+import { shortenIfHex, formatPrice, openseaLink, cleanUrl } from "../utils/misc";
 import TileCard from './TileCard';
 
 import { XIcon } from '@heroicons/react/outline'

@@ -3,7 +3,10 @@ import { formatUnits, parseUnits } from "@ethersproject/units";
 import { parse } from "path";
 import { TileAsset } from '../types/TileAsset';
 
-export function shortenHex(hex: string, length = 4) {
+export function shortenIfHex(hex: string, length = 12) {
+  if (hex.length < length) {
+    return hex
+  }
   return `${hex.substring(0, length + 2)}…${hex.substring(
     hex.length - length
   )}`;

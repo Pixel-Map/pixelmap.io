@@ -4,7 +4,7 @@ import { UserRejectedRequestError } from "@web3-react/injected-connector";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { injected } from "../utils/web3Connectors";
 import useENSName from "../hooks/useENSName";
-import { formatEtherscanLink, shortenHex } from "../utils/misc";
+import { formatEtherscanLink, shortenIfHex } from "../utils/misc";
 
 type Props = {
   triedToEagerConnect: boolean;
@@ -94,7 +94,7 @@ const Account = ({ triedToEagerConnect }: Props) => {
         className: "nes-btn py-1 is-primary text-sm font-semibold transition duration-150"
       }}
     >
-      {ENSName || `${shortenHex(account, 4)}`}
+      {ENSName || `${shortenIfHex(account, 12)}`}
     </a>
   );
 };

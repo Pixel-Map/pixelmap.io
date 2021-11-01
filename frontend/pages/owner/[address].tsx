@@ -9,7 +9,7 @@ import { TileAsset } from '../../types/TileAsset';
 import Loader from '../../components/Loader';
 
 import TileImage from '../../components/TileImage';
-import { shortenHex, formatPrice } from "../../utils/misc";
+import { shortenIfHex, formatPrice } from "../../utils/misc";
 
 const Owner = () => {
   const router = useRouter()
@@ -56,7 +56,7 @@ const Owner = () => {
 
     { tiles && !fetching &&
       <main className="w-full max-w-7xl mx-auto mt-12 sm:mt-24 min-h-80 px-3">
-        <h1 className="text-3xl font-bold mb-4 text-white">{shortenHex(address || '')} Tiles</h1>
+        <h1 className="text-3xl font-bold mb-4 text-white">{shortenIfHex(address || '')} Tiles</h1>
         <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
         { ownedTiles.map( (ownedTile: TileAsset, index: number) => (
           <Link href={`/tile/${ownedTile.id}`} key={index} passHref={true}>
