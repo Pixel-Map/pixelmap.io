@@ -1,44 +1,28 @@
 {{- $fullName := include "chart.fullname" . -}}
 {{- $svcPort := .Values.service.port -}}
 {{- if and .Values.ingress.className (not (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion)) }}
-  {{- if not (hasKey .Values.ingress.annotations "kubernetes.io/ingress.class") }}
-  {{- $_ := set .Values.ingress.annotations "kubernetes.io/ingress.class" .Values.ingress.className}}
-  {{- end }}
+{{- if not (hasKey .Values.ingress.annotations "kubernetes.io/ingress.class") }}
+{{- $_ := set .Values.ingress.annotations "kubernetes.io/ingress.class" .Values.ingress.className}}
 {{- end }}
-{{- if semverCompare ">=1.19-0" .Capabilities.KubeVersion.GitVersion -}}
+{{- end }}
 apiVersion: networking.k8s.io/v1
-{{- else if semverCompare ">=1.14-0" .Capabilities.KubeVersion.GitVersion -}}
-apiVersion: networking.k8s.io/v1beta1
-{{- else -}}
-apiVersion: extensions/v1beta1
-{{- end }}
 kind: Ingress
 metadata:
   name: {{ $fullName }}
   labels:
-    {{- include "chart.labels" . | nindent 4 }}
+    {{- include "chart.labels" $ | nindent 4 }}
   annotations:
     kubernetes.io/ingress.class: alb
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/success-codes: "200"
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS":443}]'
-    external-dns.alpha.kubernetes.io/hostname: www.{{ .Values.domain }}
+    external-dns.alpha.kubernetes.io/hostname: www.{{ join ",www." .Values.DOMAINS }}
     alb.ingress.kubernetes.io/ssl-redirect: '443'
 spec:
-  {{- if and .Values.ingress.className (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion) }}
-  ingressClassName: {{ .Values.ingress.className }}
-  {{- end }}
-  {{- if .Values.ingress.tls }}
-  tls:
-    {{- range .Values.ingress.tls }}
-    - hosts:
-      - api.{{ .Values.domain }}
-      secretName: {{ .secretName }}
-    {{- end }}
-  {{- end }}
   rules:
-    - host: www.{{ .Values.domain}}
+  {{- range $idx, $domain := .Values.DOMAINS }}
+    - host: www.{{ $domain }}
       http:
         paths:
           - path: /*
@@ -53,7 +37,7 @@ spec:
               serviceName: {{ $fullName }}
               servicePort: {{ $svcPort }}
               {{- end }}
-    - host: {{ .Values.domain}}
+    - host: {{ $domain }}
       http:
         paths:
           - path: /*
@@ -68,3 +52,5 @@ spec:
               serviceName: {{ $fullName }}
               servicePort: {{ $svcPort }}
               {{- end }}
+  {{- end }}
+

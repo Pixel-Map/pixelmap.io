@@ -19,10 +19,11 @@ metadata:
     alb.ingress.kubernetes.io/success-codes: "200"
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS":443}]'
     alb.ingress.kubernetes.io/healthcheck-path: '/tiledata'
-    external-dns.alpha.kubernetes.io/hostname: api.{{ .Values.DOMAIN }}
+    external-dns.alpha.kubernetes.io/hostname: {{ join "," .Values.URLS }}
 spec:
   rules:
-    - host: api.{{ .Values.DOMAIN }}
+    {{- range .Values.URLS }}
+    - host: {{ . }}
       http:
         paths:
           - path: /*
@@ -37,3 +38,4 @@ spec:
               serviceName: {{ $fullName }}
               servicePort: {{ $svcPort }}
               {{- end }}
+    {{- end }}
