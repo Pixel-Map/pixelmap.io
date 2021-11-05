@@ -54,7 +54,7 @@ export default function TileCard({tile, large}: TileCardProps) {
           </Link>
           <div>
             { tile.wrapped &&
-            <a className="nes-btn is-primary font-bold  md:px-5.5 py-1 md:py-2.5" target="_blank" href={openseaLink(tile.id)} rel="noreferrer">
+            <a className="nes-btn is-primary font-bold" target="_blank" href={openseaLink(tile.id)} rel="noreferrer">
               {tile.openseaPrice != "0" ? 'Buy for ' + formatPrice(tile) : 'View on OpenSea'}
             </a>
             }

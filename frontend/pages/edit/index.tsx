@@ -18,6 +18,7 @@ import WrappedContractABI from '../../abi/wrapperpixelabi.json';
 
 import { PIXELMAP_CONTRACT, WRAPPED_PIXELMAP_CONTRACT } from '../../constants/addresses';
 import getConfig from "next/config";
+import Layout from "../../components/Layout";
 
 function Edit() {
   const [tiles, setTiles] = useState<TileAsset[]>([]);
@@ -99,33 +100,33 @@ function Edit() {
       <Head>
         <title>Edit Tiles | PixelMap.io</title>
       </Head>
+      <Layout>
+        <main className="w-full max-w-2xl mx-auto mt-12 sm:mt-24 min-h-80 px-3">
+          <h1 className="text-3xl font-bold mb-4 text-white">Edit your tiles</h1>
+          <div className="">
+            { ownedTiles.map( (ownedTile: TileAsset, index: number) => (
+              <EditTile
+                tile={ownedTile}
+                index={index}
+                handleImageEditor={openImageEditor}
+                handleLinkChange={handleLinkChange}
+                handlePriceChange={handlePriceChange}
+                handleSave={handleSave}
+                key={ownedTile.id}
+              />
+            ))}
 
-      <main className="w-full max-w-2xl mx-auto mt-12 sm:mt-24 min-h-80 px-3">
-        <h1 className="text-3xl font-bold mb-4 text-white">Edit your tiles</h1>
-        <div className="">
-          { ownedTiles.map( (ownedTile: TileAsset, index: number) => (
-            <EditTile 
-              tile={ownedTile}
-              index={index} 
-              handleImageEditor={openImageEditor}
-              handleLinkChange={handleLinkChange}
-              handlePriceChange={handlePriceChange}
-              handleSave={handleSave}
-              key={ownedTile.id}
-            /> 
-          ))}
-            
-          
-        </div>
-        
-        <ImageEditorModal 
-          isOpen={isOpenImageEditor} 
-          setIsOpen={(val: boolean) => setIsOpenImageEditor(val)} 
-          tile={imageEditorTile} 
-          changeImage={handleImageChange} 
-        />
-      </main>
 
+          </div>
+
+          <ImageEditorModal
+            isOpen={isOpenImageEditor}
+            setIsOpen={(val: boolean) => setIsOpenImageEditor(val)}
+            tile={imageEditorTile}
+            changeImage={handleImageChange}
+          />
+        </main>
+      </Layout>
     </>
   )
 }

@@ -1,4 +1,4 @@
-IMAGE: 389059433654.dkr.ecr.us-east-1.amazonaws.com/frontend:1.0.5
+IMAGE: 389059433654.dkr.ecr.us-east-1.amazonaws.com/frontend:1.0.7
 API_ENDPOINT: https://api.pixelmap.io
 DOMAINS:
   - "pixelmap.io"

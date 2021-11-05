@@ -7,6 +7,7 @@ import { fetchSingleTile } from '../../utils/api';
 import { TileAsset } from '../../types/TileAsset';
 import Loader from '../../components/Loader';
 import TileCard from '../../components/TileCard';
+import Layout from "../../components/Layout";
 
 const Tile = () => {
   const [tile, setTile] = useState<TileAsset>();
@@ -46,12 +47,13 @@ const Tile = () => {
           <title>Tile #{tile.id} - PixelMap.io</title>
           <link rel="icon" href="/favicon.ico" />
         </Head>
-
-        <div className="min-h-80">
-          <div className="w-full max-w-2xl mx-auto nes-container bg-white p-0 relative my-6 lg:my-16">
-            <TileCard tile={tile} large />
+        <Layout>
+          <div className="min-h-80">
+            <div className="w-full max-w-2xl mx-auto nes-container bg-white p-0 relative my-6 lg:my-16">
+              <TileCard tile={tile} large />
+            </div>
           </div>
-        </div>
+        </Layout>
       </>
       }
     </>

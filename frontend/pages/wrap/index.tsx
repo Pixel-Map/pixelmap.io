@@ -17,6 +17,7 @@ import ContractABI from '../../abi/pixelabi.json';
 import WrappedContractABI from '../../abi/wrapperpixelabi.json';
 
 import { PIXELMAP_CONTRACT, WRAPPED_PIXELMAP_CONTRACT } from '../../constants/addresses';
+import Layout from "../../components/Layout";
 
 function Wrap() {
   const [tiles, setTiles] = useState<TileAsset[]>([]);
@@ -122,40 +123,42 @@ function Wrap() {
         <title>Wrap Tiles | PixelMap.io</title>
       </Head>
 
-      <main className="w-full max-w-2xl mx-auto mt-12 sm:mt-24 min-h-80 px-3">
-        <h1 className="text-3xl font-bold mb-4 text-white">Wrap your tiles</h1>
-        
-        <div className="nes-container is-dark">
-          <div className="text-white font-medium prose ">
-            <p>The PixelMap smart contract was deployed in 2016 - way before NFTs were a thing, and way before ERC721 existed.</p>
-            <p>By following these steps carefully, you can successfully wrap your PixelMap tile so that you can do the wonderful things ERC721 provides - transfer to different wallets, swap your tile with other people, and trade them on any NFT marketplace!</p>
-          </div>
-        </div>
+      <Layout>
+        <main className="w-full max-w-2xl mx-auto mt-12 sm:mt-24 min-h-80 px-3">
+          <h1 className="text-3xl font-bold mb-4 text-white">Wrap your tiles</h1>
 
-        { account && 
-          <div className="mt-4">
-            { ownedTiles.map( (ownedTile: TileAsset, index: number) => (
-              <WrapTile 
-                key={index}
-                tile={ownedTile}
-                index={index} 
-                handlePriceChange={handlePriceChange}
-                handleSave={handleSave}
-                handleWrap={handleWrap}
-                handleRefresh={handleRefresh}
-              /> 
-            ))}
+          <div className="nes-container is-dark">
+            <div className="text-white font-medium prose ">
+              <p>The PixelMap smart contract was deployed in 2016 - way before NFTs were a thing, and way before ERC721 existed.</p>
+              <p>By following these steps carefully, you can successfully wrap your PixelMap tile so that you can do the wonderful things ERC721 provides - transfer to different wallets, swap your tile with other people, and trade them on any NFT marketplace!</p>
+            </div>
           </div>
-        }
 
-        { !account &&
-          <div className="nes-container mt-4 bg-yellow-300 text-center">
+          { account &&
+            <div className="mt-4">
+              { ownedTiles.map( (ownedTile: TileAsset, index: number) => (
+                <WrapTile
+                  key={index}
+                  tile={ownedTile}
+                  index={index}
+                  handlePriceChange={handlePriceChange}
+                  handleSave={handleSave}
+                  handleWrap={handleWrap}
+                  handleRefresh={handleRefresh}
+                />
+              ))}
+            </div>
+          }
 
-            <h3 className="font-bold text-lg md:text-xl mb-4">Connect your account to wrap your tiles.</h3>
-            <Account triedToEagerConnect={triedToEagerConnect} />
-          </div>
-        }
-      </main>
+          { !account &&
+            <div className="nes-container mt-4 bg-yellow-300 text-center">
+
+              <h3 className="font-bold text-lg md:text-xl mb-4">Connect your account to wrap your tiles.</h3>
+              <Account triedToEagerConnect={triedToEagerConnect} />
+            </div>
+          }
+        </main>
+      </Layout>
 
     </>
   )
