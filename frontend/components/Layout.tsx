@@ -1,5 +1,4 @@
 import { useContext } from 'react';
-import { ThemeContext, ThemeSetting } from '../components/ThemeContext';
 
 import Header from '../components/Header';
 import Footer from '../components/Footer';
@@ -7,7 +6,6 @@ import Footer from '../components/Footer';
 import styles from '../styles/pages/Home.module.scss';
 
 export default function Layout({ children }) {
-  const { theme } = useContext(ThemeContext)
   const hours = new Date().getHours();
   const isDayTime = hours > 7 && hours < 20;
 

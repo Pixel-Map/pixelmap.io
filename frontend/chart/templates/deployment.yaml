@@ -24,10 +24,10 @@ spec:
         - name: {{ .Chart.Name }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.image }}"
+          image: "{{ .Values.IMAGE }}"
           env:
           - name: NEXT_PUBLIC_API_ENDPOINT
-            value: "https://api.{{ .Values.domain }}"
+            value: "{{ .Values.API_ENDPOINT }}"
           imagePullPolicy: Always
           ports:
             - name: http
@@ -41,7 +41,7 @@ spec:
             httpGet:
               path: /
               port: http
-            initialDelaySeconds: 60
+            initialDelaySeconds: 15
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       {{- with .Values.nodeSelector }}

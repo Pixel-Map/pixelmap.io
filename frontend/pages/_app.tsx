@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 
 import { Web3ReactProvider } from '@web3-react/core';
-import { ThemeProvider } from '../components/ThemeContext';
 
 import getLibrary from '../utils/getLibrary';
 import Layout from '../components/Layout'
@@ -12,11 +11,9 @@ function App({ Component, pageProps }) {
 
   return (
     <Web3ReactProvider getLibrary={getLibrary}>
-      <ThemeProvider>
-        <Layout>
-          <Component {...pageProps} />
-        </Layout>
-      </ThemeProvider>
+      <Layout>
+        <Component {...pageProps} />
+      </Layout>
     </Web3ReactProvider>
   )
 }
