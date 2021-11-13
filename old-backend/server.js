@@ -15,6 +15,8 @@ import pako from "pako";
 import joi from "joi";
 import * as cache from "./utils/cache.js";
 import retry from "async-retry";
+import Timeout from 'await-timeout';
+
 
 const __dirname = path.resolve();
 const app = express();
@@ -283,9 +285,16 @@ async function updateData() {
     try {
       let tile = await retry(
         async (bail) => {
-          // if anything throws, we retry
-          let tile = await contract.tiles(i);
-          return tile;
+          const timer = new Timeout();
+          try {
+            return await Promise.race([
+              await contract.tiles(i),
+              timer.set(1000, 'Timeout!')
+            ]);
+          } finally {
+            timer.clear();
+          }
+
         },
         {
           retries: 5,

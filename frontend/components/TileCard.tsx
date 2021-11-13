@@ -13,6 +13,7 @@ interface TileCardProps {
 }
 
 export default function TileCard({tile, large}: TileCardProps) {
+  const ownerName = tile.ens ? tile.ens : shortenIfHex(tile.owner, 12);
 
   return (
     <>
@@ -28,7 +29,7 @@ export default function TileCard({tile, large}: TileCardProps) {
           </h3>
 
           <p className={"text-sm text-gray-700"}>
-            Owner: <Link href={`/owner/${tile.owner}`}>{shortenIfHex(tile.owner, 12)}</Link>
+            Owner: <Link href={`/owner/${tile.owner}`}>{ownerName}</Link>
           </p>
 
           <div className="truncate">

@@ -9,4 +9,5 @@ export interface TileAsset {
   newPrice?: string,
   updating?: string,
   errorMessage? :string
+  ens?: string;
 }

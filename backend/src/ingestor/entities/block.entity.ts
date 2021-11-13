@@ -6,5 +6,8 @@ export class Block {
   id: number;
 
   @Column()
-  currentBlock: number;
+  currentDownloadedBlock: number;
+
+  @Column()
+  currentIngestedBlock: number;
 }
