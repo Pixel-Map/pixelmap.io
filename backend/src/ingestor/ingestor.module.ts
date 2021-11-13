@@ -7,11 +7,20 @@ import { DataHistory } from './entities/dataHistory.entity';
 import { PurchaseHistory } from './entities/purchaseHistory.entity';
 import { WrappingHistory } from './entities/wrappingHistory.entity';
 import { TransferHistory } from './entities/transferHistory.entity';
+import { PixelMapEvent } from './entities/pixelMapEvent.entity';
 
 @Module({
   imports: [
     IngestorModule,
-    TypeOrmModule.forFeature([Block, Tile, DataHistory, PurchaseHistory, WrappingHistory, TransferHistory]),
+    TypeOrmModule.forFeature([
+      Block,
+      Tile,
+      DataHistory,
+      PurchaseHistory,
+      WrappingHistory,
+      TransferHistory,
+      PixelMapEvent,
+    ]),
   ],
   providers: [IngestorService],
 })

@@ -14,6 +14,7 @@ import { PurchaseHistory } from './entities/purchaseHistory.entity';
 import { WrappingHistory } from './entities/wrappingHistory.entity';
 import { exit } from '@nestjs/cli/actions';
 import { TransferHistory } from './entities/transferHistory.entity';
+import { PixelMapEvent } from './entities/pixelMapEvent.entity';
 
 @Injectable()
 export class IngestorService {
@@ -22,9 +23,12 @@ export class IngestorService {
   private pixelMap: ethers.Contract;
   private pixelMapWrapper: ethers.Contract;
   private wyvernExchange: ethers.Contract; // OpenSea contract
+  private BLOCKS_TO_PROCESS_AT_TIME = 1000;
   constructor(
     @InjectRepository(Block)
     private blockRepository: Repository<Block>,
+    @InjectRepository(PixelMapEvent)
+    private pixelMapEvent: Repository<PixelMapEvent>,
     @InjectRepository(Tile)
     private tile: Repository<Tile>,
     @InjectRepository(DataHistory)
@@ -42,17 +46,17 @@ export class IngestorService {
     this.initializeEthersJS();
     await this.initializeData();
     const lastSavedBlock = await this.blockRepository.findOne();
-    let lastIngestedBlock = lastSavedBlock.currentBlock;
-    let endBlock = lastIngestedBlock + 10;
+    let lastDownloadedBlock = lastSavedBlock.currentDownloadedBlock;
+    let endBlock = lastDownloadedBlock + this.BLOCKS_TO_PROCESS_AT_TIME;
     const mostRecentBlockNumber = await this.provider.getBlockNumber();
 
     while (endBlock < mostRecentBlockNumber) {
-      this.logger.log('Processing blocks: ' + lastIngestedBlock + ' - ' + endBlock);
+      this.logger.log('Processing blocks: ' + lastDownloadedBlock + ' - ' + endBlock);
       try {
         const events = await this.provider.send('eth_getLogs', [
           {
             address: [this.pixelMap.address, this.pixelMapWrapper.address],
-            fromBlock: ethers.BigNumber.from(lastIngestedBlock).toHexString(),
+            fromBlock: ethers.BigNumber.from(lastDownloadedBlock).toHexString(),
             toBlock: ethers.BigNumber.from(endBlock).toHexString(),
             topics: [
               [
@@ -69,15 +73,14 @@ export class IngestorService {
         await this.blockRepository.save(
           this.blockRepository.create({
             id: 1,
-            currentBlock: endBlock,
+            currentDownloadedBlock: endBlock,
           }),
         );
-        lastIngestedBlock = endBlock;
-        endBlock = lastIngestedBlock + 10;
+        lastDownloadedBlock = endBlock;
+        endBlock = lastDownloadedBlock + this.BLOCKS_TO_PROCESS_AT_TIME;
       } catch (error) {
         this.logger.warn('Error while ingesting.  Retrying');
         this.logger.warn(error);
-        exit();
       }
     }
   }
@@ -89,7 +92,7 @@ export class IngestorService {
     const lastIngestedBlock = await this.blockRepository.findOne();
     if (lastIngestedBlock == undefined) {
       this.logger.log('Starting fresh, start of contract! (2641527)');
-      await this.blockRepository.save({ id: 1, currentBlock: 2641527 });
+      await this.blockRepository.save({ id: 1, currentDownloadedBlock: 2641527, currentIngestedBlock: 0 });
       for (let i = 0; i < 3970; i++) {
         await this.tile.save({
           id: i,
@@ -230,50 +233,60 @@ export class IngestorService {
       // for is serial, forEach is parallel (i.e. asynchronous)
       const event = events[i];
       const transaction = await this.provider.getTransaction(event.transactionHash);
-      console.log(event);
-      console.log(transaction);
-
-      const decodedTransaction = await this.decodeTransaction(event, transaction);
-      const fullBlock = await this.getFullBlock(transaction.blockNumber);
-      const tile = await this.getTile(decodedTransaction, event);
-      // console.log(event);
-      // console.log(transaction);
-      // console.log(decodedTransaction);
-      switch (decodedTransaction.name) {
-        case 'setTile':
-          await this.processSetTile(tile, event, transaction, decodedTransaction, fullBlock);
-          break;
-        case 'setTileData':
-          await this.processSetTile(tile, event, transaction, decodedTransaction, fullBlock);
-          break;
-        case 'buyTile':
-          await this.processPurchasedTile(tile, event, transaction, decodedTransaction, fullBlock);
-          break;
-        case 'wrap':
-          await this.processWrappedTile(tile, event, transaction, decodedTransaction, fullBlock);
-          break;
-        case 'unwrap':
-          await this.processUnwrappedTile(tile, event, transaction, decodedTransaction, fullBlock);
-          break;
-        case 'atomicMatch_': // Sold via OpenSea WyvernExchange Contract
-          await this.processPurchasedTile(tile, event, transaction, decodedTransaction, fullBlock);
-          break;
-        case 'transferFrom':
-          await this.processTransferredTile(tile, event, transaction, decodedTransaction, fullBlock);
-          break;
-        case 'safeTransferFrom':
-          await this.processTransferredTile(tile, event, transaction, decodedTransaction, fullBlock);
-          break;
-        default:
-          this.logger.error('Failed to account for the following event:');
-          console.log('Event: ');
-          console.log(event);
-          console.log('Transaction:');
-          console.log(transaction);
-          console.log('Decoded Transaction');
-          console.log(decodedTransaction);
-          exit();
+      this.logger.log('Saving event at block: ' + transaction.blockNumber);
+      if (await this.pixelMapEvent.findOne({ txHash: event.transactionHash, logIndex: event.logIndex })) {
+        this.logger.warn('Already indexed this event, skipping!');
+        return;
+      } else {
+        const pixelMapEvent = new PixelMapEvent();
+        pixelMapEvent.eventData = event;
+        pixelMapEvent.txHash = event.transactionHash;
+        pixelMapEvent.logIndex = event.logIndex;
+        pixelMapEvent.txData = transaction;
+        await this.pixelMapEvent.save(pixelMapEvent);
       }
+
+      // const decodedTransaction = await this.decodeTransaction(event, transaction);
+      // const fullBlock = await this.getFullBlock(transaction.blockNumber);
+      // const tile = await this.getTile(decodedTransaction, event);
+      // // console.log(event);
+      // // console.log(transaction);
+      // // console.log(decodedTransaction);
+      // switch (decodedTransaction.name) {
+      //   case 'setTile':
+      //     await this.processSetTile(tile, event, transaction, decodedTransaction, fullBlock);
+      //     break;
+      //   case 'setTileData':
+      //     await this.processSetTile(tile, event, transaction, decodedTransaction, fullBlock);
+      //     break;
+      //   case 'buyTile':
+      //     await this.processPurchasedTile(tile, event, transaction, decodedTransaction, fullBlock);
+      //     break;
+      //   case 'wrap':
+      //     await this.processWrappedTile(tile, event, transaction, decodedTransaction, fullBlock);
+      //     break;
+      //   case 'unwrap':
+      //     await this.processUnwrappedTile(tile, event, transaction, decodedTransaction, fullBlock);
+      //     break;
+      //   case 'atomicMatch_': // Sold via OpenSea WyvernExchange Contract
+      //     await this.processPurchasedTile(tile, event, transaction, decodedTransaction, fullBlock);
+      //     break;
+      //   case 'transferFrom':
+      //     await this.processTransferredTile(tile, event, transaction, decodedTransaction, fullBlock);
+      //     break;
+      //   case 'safeTransferFrom':
+      //     await this.processTransferredTile(tile, event, transaction, decodedTransaction, fullBlock);
+      //     break;
+      //   default:
+      //     this.logger.error('Failed to account for the following event:');
+      //     console.log('Event: ');
+      //     console.log(event);
+      //     console.log('Transaction:');
+      //     console.log(transaction);
+      //     console.log('Decoded Transaction');
+      //     console.log(decodedTransaction);
+      //     exit();
+      // }
     }
   }
 

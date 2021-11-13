@@ -14,7 +14,7 @@ import { TiledataModule } from './tiledata/tiledata.module';
       host: 'localhost',
       port: 5432,
       username: 'postgres',
-      password: 'postgres',
+      password: '',
       database: 'postgres',
       autoLoadEntities: true,
       synchronize: true,
