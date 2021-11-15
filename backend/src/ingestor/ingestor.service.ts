@@ -5,22 +5,19 @@ import { ethers } from 'ethers';
 import { Block } from './entities/block.entity';
 import { Repository } from 'typeorm';
 import { PixelMapEvent } from './entities/pixelMapEvent.entity';
-import * as pixelMapABI from '../../../abi/PixelMap.json';
-import * as pixelMapWrapperABI from '../../../abi/PixelMapWrapper.json';
 import { Tile } from './entities/tile.entity';
 import { DataHistory } from './entities/dataHistory.entity';
 import { PurchaseHistory } from './entities/purchaseHistory.entity';
 import { WrappingHistory } from './entities/wrappingHistory.entity';
 import { TransferHistory } from './entities/transferHistory.entity';
-import { exit } from '@nestjs/cli/actions';
+import { decodeTransaction } from './utils/decodeTransaction';
+import { getEventType } from './utils/getEventType';
+import { initializeEthersJS } from './utils/initializeEthersJS';
 const BLOCKS_TO_PROCESS_AT_TIME = 1;
 
 @Injectable()
 export class IngestorService {
   private readonly logger = new Logger(IngestorService.name);
-  private provider: ethers.providers.JsonRpcProvider;
-  private pixelMap: ethers.Contract;
-  private pixelMapWrapper: ethers.Contract;
   private lastDownloadedBlock;
   private currentlyRunningSync = true;
 
@@ -44,22 +41,9 @@ export class IngestorService {
   /**
    * initializeEthersJS initializes the PixelMap and PixelMapWrapper contracts
    */
-  initializeEthersJS() {
-    this.provider = new ethers.providers.JsonRpcProvider(
-      'https://mainnet.infura.io/v3/1e060d0190124285a48e3fe7165e3282',
-      'mainnet',
-    );
-    this.pixelMap = new ethers.Contract('0x015a06a433353f8db634df4eddf0c109882a15ab', pixelMapABI, this.provider);
-    this.pixelMapWrapper = new ethers.Contract(
-      '0x050dc61dfb867e0fe3cf2948362b6c0f3faf790b',
-      pixelMapWrapperABI,
-      this.provider,
-    );
-  }
 
-  @Cron(new Date(Date.now() + 5000)) // Start 5 seconds after App startup
+  @Cron(new Date(Date.now() + 3000)) // Start 5 seconds after App startup
   async initialStartup() {
-    this.initializeEthersJS();
     let lastBlock = await this.blocks.findOne();
     if (lastBlock == undefined) {
       this.logger.log('Starting fresh, start of contract! (2641527)');
@@ -71,7 +55,7 @@ export class IngestorService {
     }
     this.lastDownloadedBlock = lastBlock.currentDownloadedBlock;
 
-    await this.syncBlocks();
+    // await this.syncBlocks();
     this.currentlyRunningSync = false;
     await this.resyncEveryMinute(); // Let's kick it off once so I don't have to wait a minute.
   }
@@ -83,32 +67,34 @@ export class IngestorService {
     } else {
       this.logger.debug('Syncing again, one moment.');
       this.currentlyRunningSync = true;
-      await this.syncBlocks();
+      // await this.syncBlocks();
       await this.ingestEvents();
       this.currentlyRunningSync = false;
     }
   }
 
   async syncBlocks() {
+    const { provider, pixelMap, pixelMapWrapper } = initializeEthersJS();
+
     let endBlock = this.lastDownloadedBlock + BLOCKS_TO_PROCESS_AT_TIME;
-    const mostRecentBlockNumber = await this.provider.getBlockNumber();
+    const mostRecentBlockNumber = await provider.getBlockNumber();
     this.logger.log('Last downloaded block: ' + this.lastDownloadedBlock);
     this.logger.log('End block: ' + endBlock);
     this.logger.log('Most recent block: ' + mostRecentBlockNumber);
     while (endBlock < mostRecentBlockNumber) {
       this.logger.log('Processing blocks: ' + this.lastDownloadedBlock + ' - ' + endBlock);
       try {
-        const events = await this.provider.send('eth_getLogs', [
+        const events = await provider.send('eth_getLogs', [
           {
-            address: [this.pixelMap.address, this.pixelMapWrapper.address],
+            address: [pixelMap.address, pixelMapWrapper.address],
             fromBlock: ethers.BigNumber.from(this.lastDownloadedBlock).toHexString(),
             toBlock: ethers.BigNumber.from(endBlock).toHexString(),
             topics: [
               [
-                this.pixelMap.filters.TileUpdated().topics[0],
-                this.pixelMapWrapper.filters.Transfer().topics[0],
-                this.pixelMapWrapper.filters.Unwrapped().topics[0],
-                this.pixelMapWrapper.filters.Wrapped().topics[0],
+                pixelMap.filters.TileUpdated().topics[0],
+                pixelMapWrapper.filters.Transfer().topics[0],
+                pixelMapWrapper.filters.Unwrapped().topics[0],
+                pixelMapWrapper.filters.Wrapped().topics[0],
               ],
             ],
           },
@@ -132,9 +118,10 @@ export class IngestorService {
   }
 
   async processEvents(events) {
+    const { provider, pixelMap, pixelMapWrapper } = initializeEthersJS();
     for (let i = 0; i < events.length; i++) {
       const event = events[i];
-      const transaction = await this.provider.getTransaction(event.transactionHash);
+      const transaction = await provider.getTransaction(event.transactionHash);
       this.logger.log('Saving event at block: ' + transaction.blockNumber);
       if (await this.pixelMapEvent.findOne({ txHash: event.transactionHash, logIndex: event.logIndex })) {
         this.logger.warn('Already indexed this event, skipping!');
@@ -158,35 +145,46 @@ export class IngestorService {
       order: { id: 'ASC' },
     });
     for (let i = 0; i < events.length; i++) {
-      await this.ingestEvent(events[i]);
-      lastBlock.currentIngestedBlock = events[i].id;
-      await this.blocks.save(lastBlock);
+      const eventType = await getEventType(events[i]);
+      console.log(i + '/' + events.length + ' == ' + eventType);
+      // await this.ingestEvent(events[i]);
+      // lastBlock.currentIngestedBlock = events[i].id;
+      // await this.blocks.save(lastBlock);
     }
   }
 
   async ingestEvent(event) {
-    const decodedTransaction = await this.decodeTransaction(event);
-    switch (decodedTransaction.name) {
-      case 'setTile':
-        await this.processSetTile(event, decodedTransaction);
-        break;
-      case 'buyTile':
-        await this.processPurchasedTile(event, decodedTransaction);
-        break;
-      default:
-        this.logger.error('Failed to account for the following event:');
-        console.log('Event: ');
-        console.log(event);
-        console.log(decodedTransaction);
-        exit();
+    const { provider, pixelMap, pixelMapWrapper } = initializeEthersJS();
+    // Skip event if it's a transfer to the wrapper, it's just the first step of wrapping.
+    if (
+      event.eventData.topics[0] == pixelMapWrapper.filters.Transfer().topics[0] &&
+      event.txData.to.toLowerCase() == pixelMapWrapper.address.toLowerCase()
+    ) {
+      this.logger.log('Minted ERC-731 token to hold PixelMap tile!');
+      return;
     }
+    const decodedTransaction = await decodeTransaction(event, provider);
+    // switch (decodedTransaction.name) {
+    //   case 'setTile':
+    //     await this.processSetTile(event, decodedTransaction);
+    //     break;
+    //   case 'buyTile':
+    //     await this.processPurchasedTile(event, decodedTransaction);
+    //     break;
+    //   case 'wrap':
+    //     await this.processWrappedTile(event, decodedTransaction);
+    //     break;
+    //   default:
+    //     this.logger.error('Failed to account for the following event:');
+    //     console.log('Event: ');
+    //     console.log(event);
+    //     console.log(decodedTransaction);
+    //     exit();
+    // }
     //   case 'setTileData':
     //     await this.processSetTile(tile, event, transaction, decodedTransaction, fullBlock);
     //     break;
 
-    //   case 'wrap':
-    //     await this.processWrappedTile(tile, event, transaction, decodedTransaction, fullBlock);
-    //     break;
     //   case 'unwrap':
     //     await this.processUnwrappedTile(tile, event, transaction, decodedTransaction, fullBlock);
     //     break;
@@ -203,21 +201,36 @@ export class IngestorService {
     // }
   }
 
-  async decodeTransaction(event) {
-    if (event.eventData.topics.length > 1) {
-      console.log(event.eventData.topics);
-      throw 'Found an event longer than one topic, WTH?';
+  async processWrappedTile(event: PixelMapEvent, decodedTransaction) {
+    this.logger.log('Tile wrapped at block: ' + event.txData.blockNumber);
+    const tile: Tile = await this.getTile(decodedTransaction, event);
+    if (tile.wrappingHistory.some((e) => e.tx === event.txHash)) {
+      this.logger.warn('Already indexed this wrap, skipping!');
+      return;
     }
-    if (event.eventData.topics.pop() == this.pixelMap.filters.TileUpdated().topics[0]) {
-      return this.pixelMap.interface.parseTransaction(event.txData);
-    }
-    throw 'Unable to decode transaction.';
+    const timeStamp = await this.getTimestamp(event.txData.blockNumber);
+    tile.wrapped = true;
+    tile.owner = event.txData.from;
+
+    tile.wrappingHistory.push(
+      new WrappingHistory({
+        wrapped: true,
+        tx: event.txHash,
+        timeStamp: timeStamp,
+        blockNumber: event.txData.blockNumber,
+        updatedBy: event.txData.from,
+      }),
+    );
+    await this.tile.save(tile);
   }
 
-  async processSetTile(event: PixelMapEvent, decodedTransaction: ethers.utils.TransactionDescription) {
+  async processSetTile(event: PixelMapEvent, decodedTransaction) {
     this.logger.log('Tile updated at block: ' + event.txData.blockNumber);
     const tile: Tile = await this.getTile(decodedTransaction, event);
-
+    if (tile.dataHistory.some((e) => e.tx === event.txHash)) {
+      this.logger.warn('Already indexed this update, skipping!');
+      return;
+    }
     // Image for OG or Wrapper
     if (decodedTransaction.args.image != undefined) {
       tile.image = decodedTransaction.args.image;
@@ -279,6 +292,7 @@ export class IngestorService {
   }
 
   async getTile(decodedTransaction, event) {
+    const { provider, pixelMap, pixelMapWrapper } = initializeEthersJS();
     let tileId: number;
     if (decodedTransaction.args.location != undefined) {
       tileId = decodedTransaction.args.location.toNumber();
@@ -288,7 +302,7 @@ export class IngestorService {
       tileId = decodedTransaction.location;
     } else {
       // Most likely OpenSea, let's see if we can find it in the topics.
-      if (event.eventData.topics[0] == this.pixelMapWrapper.interface.getEventTopic('Transfer')) {
+      if (event.eventData.topics[0] == pixelMapWrapper.interface.getEventTopic('Transfer')) {
         tileId = parseInt(event.eventData.topics[3], 16);
       }
     }
@@ -300,7 +314,8 @@ export class IngestorService {
   }
 
   async getTimestamp(blockNumber) {
-    const rawBlock = await this.provider.send('eth_getBlockByNumber', [ethers.utils.hexValue(blockNumber), true]);
-    return new Date(this.provider.formatter.blockWithTransactions(rawBlock).timestamp * 1000);
+    const { provider, pixelMap, pixelMapWrapper } = initializeEthersJS();
+    const rawBlock = await provider.send('eth_getBlockByNumber', [ethers.utils.hexValue(blockNumber), true]);
+    return new Date(provider.formatter.blockWithTransactions(rawBlock).timestamp * 1000);
   }
 }

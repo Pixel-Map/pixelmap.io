@@ -4,6 +4,10 @@ import { Tile } from './tile.entity';
 @Entity()
 @Unique('tile_wrapping_index', ['tile', 'tx'])
 export class WrappingHistory {
+  public constructor(init?: Partial<WrappingHistory>) {
+    Object.assign(this, init);
+  }
+
   @PrimaryGeneratedColumn()
   id: number;
 
