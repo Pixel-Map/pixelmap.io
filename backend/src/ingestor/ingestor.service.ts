@@ -2,19 +2,18 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cron } from '@nestjs/schedule';
 import { ethers } from 'ethers';
-
-import * as pixelMapABI from '../../../abi/PixelMap.json';
-import * as pixelMapWrapperABI from '../../../abi/PixelMapWrapper.json';
-import * as wyvernExchangeABI from '../../../abi/WyvernExchange.json';
 import { Block } from './entities/block.entity';
 import { Repository } from 'typeorm';
+import { PixelMapEvent } from './entities/pixelMapEvent.entity';
+import * as pixelMapABI from '../../../abi/PixelMap.json';
+import * as pixelMapWrapperABI from '../../../abi/PixelMapWrapper.json';
 import { Tile } from './entities/tile.entity';
 import { DataHistory } from './entities/dataHistory.entity';
 import { PurchaseHistory } from './entities/purchaseHistory.entity';
 import { WrappingHistory } from './entities/wrappingHistory.entity';
-import { exit } from '@nestjs/cli/actions';
 import { TransferHistory } from './entities/transferHistory.entity';
-import { PixelMapEvent } from './entities/pixelMapEvent.entity';
+import { exit } from '@nestjs/cli/actions';
+const BLOCKS_TO_PROCESS_AT_TIME = 1;
 
 @Injectable()
 export class IngestorService {
@@ -22,11 +21,12 @@ export class IngestorService {
   private provider: ethers.providers.JsonRpcProvider;
   private pixelMap: ethers.Contract;
   private pixelMapWrapper: ethers.Contract;
-  private wyvernExchange: ethers.Contract; // OpenSea contract
-  private BLOCKS_TO_PROCESS_AT_TIME = 1000;
+  private lastDownloadedBlock;
+  private currentlyRunningSync = true;
+
   constructor(
     @InjectRepository(Block)
-    private blockRepository: Repository<Block>,
+    private blocks: Repository<Block>,
     @InjectRepository(PixelMapEvent)
     private pixelMapEvent: Repository<PixelMapEvent>,
     @InjectRepository(Tile)
@@ -41,22 +41,67 @@ export class IngestorService {
     private transferHistory: Repository<TransferHistory>,
   ) {}
 
-  @Cron(new Date(Date.now() + 5000)) // Start 5 seconds after App startup
-  async listenToBlocks() {
-    this.initializeEthersJS();
-    await this.initializeData();
-    const lastSavedBlock = await this.blockRepository.findOne();
-    let lastDownloadedBlock = lastSavedBlock.currentDownloadedBlock;
-    let endBlock = lastDownloadedBlock + this.BLOCKS_TO_PROCESS_AT_TIME;
-    const mostRecentBlockNumber = await this.provider.getBlockNumber();
+  /**
+   * initializeEthersJS initializes the PixelMap and PixelMapWrapper contracts
+   */
+  initializeEthersJS() {
+    this.provider = new ethers.providers.JsonRpcProvider(
+      'https://mainnet.infura.io/v3/1e060d0190124285a48e3fe7165e3282',
+      'mainnet',
+    );
+    this.pixelMap = new ethers.Contract('0x015a06a433353f8db634df4eddf0c109882a15ab', pixelMapABI, this.provider);
+    this.pixelMapWrapper = new ethers.Contract(
+      '0x050dc61dfb867e0fe3cf2948362b6c0f3faf790b',
+      pixelMapWrapperABI,
+      this.provider,
+    );
+  }
 
+  @Cron(new Date(Date.now() + 5000)) // Start 5 seconds after App startup
+  async initialStartup() {
+    this.initializeEthersJS();
+    let lastBlock = await this.blocks.findOne();
+    if (lastBlock == undefined) {
+      this.logger.log('Starting fresh, start of contract! (2641527)');
+      lastBlock = await this.blocks.save({
+        id: 1,
+        currentDownloadedBlock: 2641527,
+        currentIngestedBlock: 0,
+      });
+    }
+    this.lastDownloadedBlock = lastBlock.currentDownloadedBlock;
+
+    await this.syncBlocks();
+    this.currentlyRunningSync = false;
+    await this.resyncEveryMinute(); // Let's kick it off once so I don't have to wait a minute.
+  }
+
+  @Cron('45 * * * * *')
+  async resyncEveryMinute() {
+    if (this.currentlyRunningSync) {
+      this.logger.log('Already syncing, skipping');
+    } else {
+      this.logger.debug('Syncing again, one moment.');
+      this.currentlyRunningSync = true;
+      await this.syncBlocks();
+      await this.ingestEvents();
+      this.currentlyRunningSync = false;
+    }
+  }
+
+  async syncBlocks() {
+    let endBlock = this.lastDownloadedBlock + BLOCKS_TO_PROCESS_AT_TIME;
+    const mostRecentBlockNumber = await this.provider.getBlockNumber();
+    this.logger.log('Last downloaded block: ' + this.lastDownloadedBlock);
+    this.logger.log('End block: ' + endBlock);
+    this.logger.log('Most recent block: ' + mostRecentBlockNumber);
     while (endBlock < mostRecentBlockNumber) {
-      this.logger.log('Processing blocks: ' + lastDownloadedBlock + ' - ' + endBlock);
+      this.logger.log('Processing blocks: ' + this.lastDownloadedBlock + ' - ' + endBlock);
       try {
         const events = await this.provider.send('eth_getLogs', [
           {
             address: [this.pixelMap.address, this.pixelMapWrapper.address],
-            fromBlock: ethers.BigNumber.from(lastDownloadedBlock).toHexString(),
+            fromBlock: ethers.BigNumber.from(this.lastDownloadedBlock).toHexString(),
             toBlock: ethers.BigNumber.from(endBlock).toHexString(),
             topics: [
               [
@@ -70,167 +115,24 @@ export class IngestorService {
         ]);
 
         await this.processEvents(events);
-        await this.blockRepository.save(
-          this.blockRepository.create({
+        await this.blocks.save(
+          this.blocks.create({
             id: 1,
             currentDownloadedBlock: endBlock,
           }),
         );
-        lastDownloadedBlock = endBlock;
-        endBlock = lastDownloadedBlock + this.BLOCKS_TO_PROCESS_AT_TIME;
+        this.lastDownloadedBlock = endBlock;
+        endBlock = this.lastDownloadedBlock + BLOCKS_TO_PROCESS_AT_TIME;
       } catch (error) {
         this.logger.warn('Error while ingesting.  Retrying');
         this.logger.warn(error);
       }
     }
-  }
-
-  /*
-   * initializeTileData is used to seed the database
-   */
-  async initializeData() {
-    const lastIngestedBlock = await this.blockRepository.findOne();
-    if (lastIngestedBlock == undefined) {
-      this.logger.log('Starting fresh, start of contract! (2641527)');
-      await this.blockRepository.save({ id: 1, currentDownloadedBlock: 2641527, currentIngestedBlock: 0 });
-      for (let i = 0; i < 3970; i++) {
-        await this.tile.save({
-          id: i,
-          price: 2,
-          wrapped: false,
-          image: '',
-          url: '',
-          owner: '0x4f4b7e7edf5ec41235624ce207a6ef352aca7050', // Creator of PixelMap
-          dataHistory: [],
-          wrappingHistory: [],
-          purchaseHistory: [],
-        });
-      }
-      this.logger.log('Initialization complete!');
-    } else {
-      this.logger.log('Initialization already completed, skipping.');
-    }
-  }
-
-  /**
-   * initializeEthersJS initializes the PixelMap and PixelMapWrapper contracts
-   */
-  initializeEthersJS() {
-    this.provider = new ethers.providers.JsonRpcProvider(
-      'https://eth-mainnet.alchemyapi.io/v2/qF8INKOtYcPy3O8qE1rqzA3I8cmpcceM',
-      'mainnet',
-    );
-    this.pixelMap = new ethers.Contract('0x015a06a433353f8db634df4eddf0c109882a15ab', pixelMapABI, this.provider);
-    this.pixelMapWrapper = new ethers.Contract(
-      '0x050dc61dfb867e0fe3cf2948362b6c0f3faf790b',
-      pixelMapWrapperABI,
-      this.provider,
-    );
-    this.wyvernExchange = new ethers.Contract(
-      '0x7be8076f4ea4a4ad08075c2508e481d6c946d12b',
-      wyvernExchangeABI,
-      this.provider,
-    );
-  }
-
-  async decodeTransaction(event, transaction): Promise<ethers.utils.TransactionDescription> {
-    let decodedTransaction;
-    try {
-      if (
-        event.address == this.pixelMap.address &&
-        transaction.to.toLowerCase() != this.pixelMapWrapper.address.toLowerCase()
-      ) {
-        decodedTransaction = this.pixelMap.interface.parseTransaction(transaction);
-      } else {
-        if (transaction.to.toLowerCase() == this.wyvernExchange.address.toLowerCase()) {
-          decodedTransaction = this.wyvernExchange.interface.parseTransaction(transaction);
-        } else {
-          decodedTransaction = this.pixelMapWrapper.interface.parseTransaction(transaction);
-        }
-      }
-      decodedTransaction.from = transaction.from;
-      return decodedTransaction;
-    } catch {
-      this.logger.warn('Failed to parse using normal contracts, trying manually!');
-      return this.manuallyDecodeTransaction(event, transaction);
-    }
-  }
-
-  /*
-   * manuallyDecodeTransactions is used for processing internal transactions (i.e. from a Proxy)
-   * it requires a node with Trace enabled!!
-   */
-  async manuallyDecodeTransaction(event, transaction) {
-    const parsedLog = this.pixelMap.interface.parseLog(event);
-    if (parsedLog.name == 'TileUpdated') {
-      // It's definitely something calling the OG contract, so is it a SetTile or a BuyTile?
-      const tileId = parsedLog.args.location.toNumber();
-      const tilePriorToUpdate = await this.pixelMap.tiles(tileId, { blockTag: event.blockNumber - 1 }).catch();
-      const tileAfterUpdate = await this.pixelMap.tiles(tileId, { blockTag: event.blockNumber }).catch();
-      if (tilePriorToUpdate.owner != tileAfterUpdate.owner) {
-        this.logger.debug('Determined transaction was a buyTile!');
-        const decodedTransaction = {
-          args: [],
-          name: 'buyTile',
-          functionFragment: {
-            constant: true,
-            format: undefined,
-            stateMutability: '',
-            payable: true,
-            type: 'Unknown',
-            name: 'Unknown',
-            inputs: [],
-            _isFragment: true,
-          },
-          signature: 'Unknown',
-          sighash: 'Unknown',
-          value: tilePriorToUpdate.price,
-          from: tileAfterUpdate.owner,
-          location: tileId,
-        };
-
-        return decodedTransaction;
-      } else {
-        this.logger.debug('Determined transaction was a setTile!');
-      }
-    } else {
-      throw 'Have no idea how to deal with this yet';
-    }
-  }
-
-  async getFullBlock(blockNumber) {
-    const rawBlock = await this.provider.send('eth_getBlockByNumber', [ethers.utils.hexValue(blockNumber), true]);
-    return this.provider.formatter.blockWithTransactions(rawBlock);
-  }
-
-  async getTile(decodedTransaction, event) {
-    let tileId: number;
-    if (decodedTransaction.args.location != undefined) {
-      tileId = decodedTransaction.args.location.toNumber();
-    } else if (decodedTransaction.args._locationID != undefined) {
-      tileId = decodedTransaction.args._locationID.toNumber();
-    } else if (decodedTransaction.location != undefined) {
-      tileId = decodedTransaction.location;
-    } else {
-      // Most likely OpenSea, let's see if we can find it in the topics.
-      if (event.topics[0] == this.pixelMapWrapper.interface.getEventTopic('Transfer')) {
-        tileId = parseInt(event.topics[3], 16);
-      }
-    }
-    if (tileId > 3969) {
-      throw 'Invalid tileID!!';
-    }
-    let tile = await this.tile.findOne({ id: tileId });
-    if (tile == undefined) {
-      tile = this.tile.create({ id: tileId });
-      tile.wrapped = false;
-    }
-    return tile;
+    this.logger.debug('Finished syncing.  Will check again soon.');
   }
 
   async processEvents(events) {
     for (let i = 0; i < events.length; i++) {
-      // for is serial, forEach is parallel (i.e. asynchronous)
       const event = events[i];
       const transaction = await this.provider.getTransaction(event.transactionHash);
       this.logger.log('Saving event at block: ' + transaction.blockNumber);
@@ -238,90 +140,84 @@ export class IngestorService {
         this.logger.warn('Already indexed this event, skipping!');
         return;
       } else {
-        const pixelMapEvent = new PixelMapEvent();
-        pixelMapEvent.eventData = event;
-        pixelMapEvent.txHash = event.transactionHash;
-        pixelMapEvent.logIndex = event.logIndex;
-        pixelMapEvent.txData = transaction;
-        await this.pixelMapEvent.save(pixelMapEvent);
+        await this.pixelMapEvent.save({
+          eventData: event,
+          txHash: event.transactionHash,
+          logIndex: event.logIndex,
+          txData: transaction,
+        });
       }
-
-      // const decodedTransaction = await this.decodeTransaction(event, transaction);
-      // const fullBlock = await this.getFullBlock(transaction.blockNumber);
-      // const tile = await this.getTile(decodedTransaction, event);
-      // // console.log(event);
-      // // console.log(transaction);
-      // // console.log(decodedTransaction);
-      // switch (decodedTransaction.name) {
-      //   case 'setTile':
-      //     await this.processSetTile(tile, event, transaction, decodedTransaction, fullBlock);
-      //     break;
-      //   case 'setTileData':
-      //     await this.processSetTile(tile, event, transaction, decodedTransaction, fullBlock);
-      //     break;
-      //   case 'buyTile':
-      //     await this.processPurchasedTile(tile, event, transaction, decodedTransaction, fullBlock);
-      //     break;
-      //   case 'wrap':
-      //     await this.processWrappedTile(tile, event, transaction, decodedTransaction, fullBlock);
-      //     break;
-      //   case 'unwrap':
-      //     await this.processUnwrappedTile(tile, event, transaction, decodedTransaction, fullBlock);
-      //     break;
-      //   case 'atomicMatch_': // Sold via OpenSea WyvernExchange Contract
-      //     await this.processPurchasedTile(tile, event, transaction, decodedTransaction, fullBlock);
-      //     break;
-      //   case 'transferFrom':
-      //     await this.processTransferredTile(tile, event, transaction, decodedTransaction, fullBlock);
-      //     break;
-      //   case 'safeTransferFrom':
-      //     await this.processTransferredTile(tile, event, transaction, decodedTransaction, fullBlock);
-      //     break;
-      //   default:
-      //     this.logger.error('Failed to account for the following event:');
-      //     console.log('Event: ');
-      //     console.log(event);
-      //     console.log('Transaction:');
-      //     console.log(transaction);
-      //     console.log('Decoded Transaction');
-      //     console.log(decodedTransaction);
-      //     exit();
-      // }
     }
   }
 
-  async processPurchasedTile(tile: Tile, event, transaction, decodedTransaction, fullBlock) {
-    this.logger.log('Tile sold at block: ' + transaction.blockNumber);
-    if (tile.purchaseHistory.some((e) => e.tx === event.transactionHash)) {
-      this.logger.warn('Already indexed this purchase, skipping!');
-      return;
+  async ingestEvents() {
+    const lastBlock = await this.blocks.findOne();
+    const lastIngested = lastBlock.currentIngestedBlock;
+    const events = await this.pixelMapEvent.find({
+      skip: lastIngested,
+      order: { id: 'ASC' },
+    });
+    for (let i = 0; i < events.length; i++) {
+      await this.ingestEvent(events[i]);
+      lastBlock.currentIngestedBlock = events[i].id;
+      await this.blocks.save(lastBlock);
     }
-    const purchaseHistory = new PurchaseHistory();
-    purchaseHistory.price = parseFloat(ethers.utils.formatEther(decodedTransaction.value)); // Convert Gwei
-    if (purchaseHistory.price == 0) {
-      console.log(event);
-      console.log(transaction);
-      console.log(decodedTransaction);
-      throw 'Purchase could never be for zero, what?';
-    }
-    purchaseHistory.soldBy = tile.owner;
-    purchaseHistory.purchasedBy = transaction.from;
-    purchaseHistory.tx = event.transactionHash;
-    purchaseHistory.timeStamp = new Date(fullBlock.timestamp * 1000);
-    purchaseHistory.blockNumber = transaction.blockNumber;
-    tile.owner = decodedTransaction.from; // Update AFTER updating purchasedBy!
-    tile.price = 0; // Price is always set to zero following a sale!s
-    tile.purchaseHistory.push(purchaseHistory);
-    // console.log(tile);
-    await this.tile.save(tile);
   }
 
-  async processSetTile(tile: Tile, event, transaction, decodedTransaction, fullBlock) {
-    this.logger.log('Tile updated at block: ' + transaction.blockNumber);
-    if (tile.dataHistory.some((e) => e.tx === event.transactionHash)) {
-      this.logger.warn('Already indexed this data, skipping!');
-      return;
+  async ingestEvent(event) {
+    const decodedTransaction = await this.decodeTransaction(event);
+    switch (decodedTransaction.name) {
+      case 'setTile':
+        await this.processSetTile(event, decodedTransaction);
+        break;
+      case 'buyTile':
+        await this.processPurchasedTile(event, decodedTransaction);
+        break;
+      default:
+        this.logger.error('Failed to account for the following event:');
+        console.log('Event: ');
+        console.log(event);
+        console.log(decodedTransaction);
+        exit();
     }
+    //   case 'setTileData':
+    //     await this.processSetTile(tile, event, transaction, decodedTransaction, fullBlock);
+    //     break;
+
+    //   case 'wrap':
+    //     await this.processWrappedTile(tile, event, transaction, decodedTransaction, fullBlock);
+    //     break;
+    //   case 'unwrap':
+    //     await this.processUnwrappedTile(tile, event, transaction, decodedTransaction, fullBlock);
+    //     break;
+    //   case 'atomicMatch_': // Sold via OpenSea WyvernExchange Contract
+    //     await this.processPurchasedTile(tile, event, transaction, decodedTransaction, fullBlock);
+    //     break;
+    //   case 'transferFrom':
+    //     await this.processTransferredTile(tile, event, transaction, decodedTransaction, fullBlock);
+    //     break;
+    //   case 'safeTransferFrom':
+    //     await this.processTransferredTile(tile, event, transaction, decodedTransaction, fullBlock);
+    //     break;
+
+    // }
+  }
+
+  async decodeTransaction(event) {
+    if (event.eventData.topics.length > 1) {
+      console.log(event.eventData.topics);
+      throw 'Found an event longer than one topic, WTH?';
+    }
+    if (event.eventData.topics.pop() == this.pixelMap.filters.TileUpdated().topics[0]) {
+      return this.pixelMap.interface.parseTransaction(event.txData);
+    }
+    throw 'Unable to decode transaction.';
+  }
+
+  async processSetTile(event: PixelMapEvent, decodedTransaction: ethers.utils.TransactionDescription) {
+    this.logger.log('Tile updated at block: ' + event.txData.blockNumber);
+    const tile: Tile = await this.getTile(decodedTransaction, event);
+
     // Image for OG or Wrapper
     if (decodedTransaction.args.image != undefined) {
       tile.image = decodedTransaction.args.image;
@@ -343,7 +239,7 @@ export class IngestorService {
       tile.url = decodedTransaction.args._url;
     }
 
-    tile.owner = transaction.from;
+    tile.owner = event.txData.from;
 
     const dataHistory = new DataHistory();
     if (decodedTransaction.args.price != undefined) {
@@ -353,65 +249,58 @@ export class IngestorService {
     }
 
     dataHistory.url = tile.url;
-    dataHistory.tx = event.transactionHash;
-    dataHistory.timeStamp = new Date(fullBlock.timestamp * 1000);
-    dataHistory.blockNumber = transaction.blockNumber;
+    dataHistory.tx = event.txHash;
+    dataHistory.timeStamp = await this.getTimestamp(event.txData.blockNumber);
+    dataHistory.blockNumber = event.txData.blockNumber;
     dataHistory.image = tile.image;
-    dataHistory.updatedBy = transaction.from;
+    dataHistory.updatedBy = event.txData.from;
     tile.dataHistory.push(dataHistory);
     await this.tile.save(tile);
   }
 
-  async processWrappedTile(tile: Tile, event, transaction, decodedTransaction, fullBlock) {
-    this.logger.log('Tile wrapped at block: ' + transaction.blockNumber);
-    if (tile.wrappingHistory.some((e) => e.tx === event.transactionHash)) {
-      this.logger.warn('Already indexed this wrapping, skipping!');
-      return;
+  async processPurchasedTile(event: PixelMapEvent, decodedTransaction) {
+    const tile: Tile = await this.getTile(decodedTransaction, event);
+    this.logger.log('Tile sold at block: ' + event.txData.blockNumber);
+    const purchaseHistory = new PurchaseHistory();
+    purchaseHistory.price = parseFloat(ethers.utils.formatEther(decodedTransaction.value)); // Convert Gwei
+    if (purchaseHistory.price <= 0) {
+      throw 'Purchase cannot be 0 or less';
     }
-    tile.wrapped = true;
-    tile.owner = transaction.from;
-    const wrappingHistory = new WrappingHistory();
-    wrappingHistory.wrapped = true;
-    wrappingHistory.tx = event.transactionHash;
-    wrappingHistory.timeStamp = new Date(fullBlock.timestamp * 1000);
-    wrappingHistory.blockNumber = transaction.blockNumber;
-    wrappingHistory.updatedBy = transaction.from;
-    tile.wrappingHistory.push(wrappingHistory);
+    purchaseHistory.soldBy = tile.owner;
+    purchaseHistory.purchasedBy = event.txData.from;
+    purchaseHistory.tx = event.txHash;
+    purchaseHistory.timeStamp = await this.getTimestamp(event.txData.blockNumber);
+    purchaseHistory.blockNumber = event.txData.blockNumber;
+    tile.owner = decodedTransaction.from; // Update AFTER updating purchasedBy!
+    tile.price = 0; // Price is always set to zero following a sale!s
+    tile.purchaseHistory.push(purchaseHistory);
+    // console.log(tile);
     await this.tile.save(tile);
   }
 
-  async processUnwrappedTile(tile: Tile, event, transaction, decodedTransaction, fullBlock) {
-    this.logger.log('Tile unwrapped at block: ' + transaction.blockNumber);
-    if (tile.wrappingHistory.some((e) => e.tx === event.transactionHash)) {
-      this.logger.warn('Already indexed this unwrapping, skipping!');
-      return;
+  async getTile(decodedTransaction, event) {
+    let tileId: number;
+    if (decodedTransaction.args.location != undefined) {
+      tileId = decodedTransaction.args.location.toNumber();
+    } else if (decodedTransaction.args._locationID != undefined) {
+      tileId = decodedTransaction.args._locationID.toNumber();
+    } else if (decodedTransaction.location != undefined) {
+      tileId = decodedTransaction.location;
+    } else {
+      // Most likely OpenSea, let's see if we can find it in the topics.
+      if (event.eventData.topics[0] == this.pixelMapWrapper.interface.getEventTopic('Transfer')) {
+        tileId = parseInt(event.eventData.topics[3], 16);
+      }
     }
-    tile.wrapped = false;
-    tile.owner = transaction.from;
-    const wrappingHistory = new WrappingHistory();
-    wrappingHistory.wrapped = false;
-    wrappingHistory.tx = event.transactionHash;
-    wrappingHistory.timeStamp = new Date(fullBlock.timestamp * 1000);
-    wrappingHistory.blockNumber = transaction.blockNumber;
-    wrappingHistory.updatedBy = transaction.from;
-    tile.wrappingHistory.push(wrappingHistory);
-    await this.tile.save(tile);
+    if (tileId > 3969) {
+      throw 'Invalid tileID!!';
+    }
+
+    return await this.tile.findOne({ id: tileId });
   }
 
-  async processTransferredTile(tile: Tile, event, transaction, decodedTransaction, fullBlock) {
-    this.logger.log('Tile transferred at block: ' + transaction.blockNumber);
-    if (tile.transferHistory.some((e) => e.tx === event.transactionHash)) {
-      this.logger.warn('Already indexed this transfer, skipping!');
-      return;
-    }
-    tile.owner = decodedTransaction.args.to;
-    const transferHistory = new TransferHistory();
-    transferHistory.tx = event.transactionHash;
-    transferHistory.timeStamp = new Date(fullBlock.timestamp * 1000);
-    transferHistory.blockNumber = transaction.blockNumber;
-    transferHistory.transferredFrom = transaction.from;
-    transferHistory.transferredTo = decodedTransaction.args.to;
-    tile.transferHistory.push(transferHistory);
-    await this.tile.save(tile);
+  async getTimestamp(blockNumber) {
+    const rawBlock = await this.provider.send('eth_getBlockByNumber', [ethers.utils.hexValue(blockNumber), true]);
+    return new Date(this.provider.formatter.blockWithTransactions(rawBlock).timestamp * 1000);
   }
 }
