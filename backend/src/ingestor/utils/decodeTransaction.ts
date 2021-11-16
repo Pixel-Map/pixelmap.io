@@ -1,9 +1,9 @@
 import { PixelMapEvent } from '../entities/pixelMapEvent.entity';
 import { ethers } from 'ethers';
-import * as pixelMapABI from '../../../../abi/PixelMap.json';
-import * as pixelMapWrapperABI from '../../../../abi/PixelMapWrapper.json';
+import { initializeEthersJS } from './initializeEthersJS';
+import { EventType, getEventType } from './getEventType';
 
-enum TransactionType {
+export enum TransactionType {
   setTile,
   buyTile,
   wrap,
@@ -25,15 +25,33 @@ export class DecodedPixelMapTransaction {
   timestamp: Date;
 }
 
-export async function decodeTransaction(event: PixelMapEvent, provider): Promise<DecodedPixelMapTransaction> {
-  console.log(event);
-  // // Initialize Contracts
-  // const pixelMap = new ethers.Contract('0x015a06a433353f8db634df4eddf0c109882a15ab', pixelMapABI, provider);
-  // const pixelMapWrapper = new ethers.Contract(
-  //   '0x050dc61dfb867e0fe3cf2948362b6c0f3faf790b',
-  //   pixelMapWrapperABI,
-  //   provider,
-  // );
+export async function decodeTransaction(event: PixelMapEvent): Promise<DecodedPixelMapTransaction> {
+  console.log(JSON.stringify(event));
+  const { provider, pixelMap, pixelMapWrapper } = initializeEthersJS();
+  const eventType = await getEventType(event);
+
+  switch (eventType) {
+    case EventType.TileUpdated:
+      const parsedTransaction = pixelMap.interface.parseTransaction(event.txData);
+      console.log(event);
+      console.log(parsedTransaction);
+    // if (parsedTransaction.name == 'buyTile') {
+    //   return new DecodedPixelMapTransaction({
+    //     location: parsedTransaction.args.location.toNumber(),
+    //     type: TransactionType.buyTile,
+    //     value: parsedTransaction.value.toNumber(),
+    //     from: event.txData.from,
+    //     to: event.to,
+    //     image: parsedTransaction.value.image,
+    //     url: parsedTransaction.value.url,
+    //     timestamp: event.timestamp,
+    //   });
+    // }
+
+    default:
+      throw 'IDK Clown';
+  }
+
   //
   // if (event.eventData.topics.length > 1) {
   //   if (

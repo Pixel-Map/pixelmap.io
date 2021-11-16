@@ -145,8 +145,8 @@ export class IngestorService {
       order: { id: 'ASC' },
     });
     for (let i = 0; i < events.length; i++) {
-      const eventType = await getEventType(events[i]);
-      console.log(i + '/' + events.length + ' == ' + eventType);
+      const decodedEvent = await decodeTransaction(events[i]);
+      console.log(i + '/' + events.length);
       // await this.ingestEvent(events[i]);
       // lastBlock.currentIngestedBlock = events[i].id;
       // await this.blocks.save(lastBlock);
@@ -163,7 +163,7 @@ export class IngestorService {
       this.logger.log('Minted ERC-731 token to hold PixelMap tile!');
       return;
     }
-    const decodedTransaction = await decodeTransaction(event, provider);
+    const decodedTransaction = await decodeTransaction(event);
     // switch (decodedTransaction.name) {
     //   case 'setTile':
     //     await this.processSetTile(event, decodedTransaction);
