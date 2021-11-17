@@ -2,6 +2,7 @@ import { PixelMapEvent } from '../entities/pixelMapEvent.entity';
 import { ethers } from 'ethers';
 import { initializeEthersJS } from './initializeEthersJS';
 import { EventType, getEventType } from './getEventType';
+import { getTimestamp } from './getTimestamp';
 
 export enum TransactionType {
   setTile,
@@ -26,7 +27,7 @@ export class DecodedPixelMapTransaction {
 }
 
 export async function decodeTransaction(event: PixelMapEvent): Promise<DecodedPixelMapTransaction> {
-  console.log(JSON.stringify(event));
+  // console.log(JSON.stringify(event));
   const { provider, pixelMap, pixelMapWrapper } = initializeEthersJS();
   const eventType = await getEventType(event);
 
@@ -35,18 +36,20 @@ export async function decodeTransaction(event: PixelMapEvent): Promise<DecodedPi
       const parsedTransaction = pixelMap.interface.parseTransaction(event.txData);
       console.log(event);
       console.log(parsedTransaction);
-    // if (parsedTransaction.name == 'buyTile') {
-    //   return new DecodedPixelMapTransaction({
-    //     location: parsedTransaction.args.location.toNumber(),
-    //     type: TransactionType.buyTile,
-    //     value: parsedTransaction.value.toNumber(),
-    //     from: event.txData.from,
-    //     to: event.to,
-    //     image: parsedTransaction.value.image,
-    //     url: parsedTransaction.value.url,
-    //     timestamp: event.timestamp,
-    //   });
-    // }
+
+      const timestamp = await getTimestamp(event.txData.blockNumber);
+      if (parsedTransaction.name == 'buyTile') {
+        return new DecodedPixelMapTransaction({
+          location: parsedTransaction.args.location.toNumber(),
+          type: TransactionType.buyTile,
+          value: parseFloat(ethers.utils.formatEther(parsedTransaction.value)),
+          from: event.txData.from.toLowerCase(),
+          // to: event.to,
+          // image: parsedTransaction.value.image,
+          // url: parsedTransaction.value.url,
+          timestamp: timestamp,
+        });
+      }
 
     default:
       throw 'IDK Clown';

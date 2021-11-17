@@ -12,7 +12,7 @@ it('returns a proper buyTile DecodedTransaction when given an OG contract buyTil
       value: 2,
       from: '0xc20daa952d35677eb5dc40b8e0be84920f40ad68',
       to: '0x4f4b7e7edf5ec41235624ce207a6ef352aca7050',
-      timestamp: new Date(),
+      timestamp: new Date('2016-11-17T04:41:08.000Z'),
     }),
   );
 });
