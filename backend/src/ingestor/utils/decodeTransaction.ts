@@ -3,6 +3,8 @@ import { ethers } from 'ethers';
 import { initializeEthersJS } from './initializeEthersJS';
 import { EventType, getEventType } from './getEventType';
 import { getTimestamp } from './getTimestamp';
+import { Repository } from 'typeorm';
+import { Tile } from '../entities/tile.entity';
 
 export enum TransactionType {
   setTile,
@@ -18,7 +20,7 @@ export class DecodedPixelMapTransaction {
   }
   location: number;
   type: TransactionType;
-  value: number;
+  price: number;
   from: string;
   to: string;
   image: string;
@@ -26,7 +28,10 @@ export class DecodedPixelMapTransaction {
   timestamp: Date;
 }
 
-export async function decodeTransaction(event: PixelMapEvent): Promise<DecodedPixelMapTransaction> {
+export async function decodeTransaction(
+  event: PixelMapEvent,
+  tileRepository: Repository<Tile>,
+): Promise<DecodedPixelMapTransaction> {
   // console.log(JSON.stringify(event));
   const { provider, pixelMap, pixelMapWrapper } = initializeEthersJS();
   const eventType = await getEventType(event);
@@ -34,24 +39,36 @@ export async function decodeTransaction(event: PixelMapEvent): Promise<DecodedPi
   switch (eventType) {
     case EventType.TileUpdated:
       const parsedTransaction = pixelMap.interface.parseTransaction(event.txData);
-      console.log(event);
-      console.log(parsedTransaction);
-
+      const tileLocation = parsedTransaction.args.location.toNumber();
+      const currentTileHistory = await tileRepository.findOne({ id: tileLocation });
       const timestamp = await getTimestamp(event.txData.blockNumber);
       if (parsedTransaction.name == 'buyTile') {
+        const previousOwner = currentTileHistory.owner;
         return new DecodedPixelMapTransaction({
-          location: parsedTransaction.args.location.toNumber(),
+          location: tileLocation,
           type: TransactionType.buyTile,
-          value: parseFloat(ethers.utils.formatEther(parsedTransaction.value)),
+          price: parseFloat(ethers.utils.formatEther(parsedTransaction.value)),
           from: event.txData.from.toLowerCase(),
-          // to: event.to,
-          // image: parsedTransaction.value.image,
-          // url: parsedTransaction.value.url,
+          to: previousOwner,
+          timestamp: timestamp,
+        });
+      }
+      if (parsedTransaction.name == 'setTile') {
+        return new DecodedPixelMapTransaction({
+          location: tileLocation,
+          type: TransactionType.setTile,
+          image: parsedTransaction.args.image,
+          url: parsedTransaction.args.url,
+          price: parseFloat(ethers.utils.formatEther(parsedTransaction.args.price)),
+          from: event.txData.from.toLowerCase(),
           timestamp: timestamp,
         });
       }
 
     default:
+      console.log(JSON.stringify(event));
+      console.log(event);
+      console.log(parsedTransaction);
       throw 'IDK Clown';
   }
 
@@ -96,7 +113,7 @@ async function manuallyDecodeTransaction(event: PixelMapEvent, pixelMap, pixelMa
         location: parsedLog.location,
         from: event.txData.from,
         to: event.txData.to,
-        value: event.txData,
+        price: event.txData,
       });
     }
     throw 'HELP';

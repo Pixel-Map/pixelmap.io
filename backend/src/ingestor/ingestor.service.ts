@@ -11,7 +11,6 @@ import { PurchaseHistory } from './entities/purchaseHistory.entity';
 import { WrappingHistory } from './entities/wrappingHistory.entity';
 import { TransferHistory } from './entities/transferHistory.entity';
 import { decodeTransaction } from './utils/decodeTransaction';
-import { getEventType } from './utils/getEventType';
 import { initializeEthersJS } from './utils/initializeEthersJS';
 const BLOCKS_TO_PROCESS_AT_TIME = 1;
 
@@ -145,7 +144,7 @@ export class IngestorService {
       order: { id: 'ASC' },
     });
     for (let i = 0; i < events.length; i++) {
-      const decodedEvent = await decodeTransaction(events[i]);
+      const decodedEvent = await decodeTransaction(events[i], this.tile);
       console.log(i + '/' + events.length);
       // await this.ingestEvent(events[i]);
       // lastBlock.currentIngestedBlock = events[i].id;
@@ -163,7 +162,7 @@ export class IngestorService {
       this.logger.log('Minted ERC-731 token to hold PixelMap tile!');
       return;
     }
-    const decodedTransaction = await decodeTransaction(event);
+    const decodedTransaction = await decodeTransaction(event, this.tile);
     // switch (decodedTransaction.name) {
     //   case 'setTile':
     //     await this.processSetTile(event, decodedTransaction);
