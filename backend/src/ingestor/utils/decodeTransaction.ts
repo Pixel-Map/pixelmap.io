@@ -35,40 +35,78 @@ export async function decodeTransaction(
   // console.log(JSON.stringify(event));
   const { provider, pixelMap, pixelMapWrapper } = initializeEthersJS();
   const eventType = await getEventType(event);
-
+  // console.log(JSON.stringify(event));
+  // console.log(event);
+  const timestamp = await getTimestamp(event.txData.blockNumber);
   switch (eventType) {
     case EventType.TileUpdated:
-      const parsedTransaction = pixelMap.interface.parseTransaction(event.txData);
-      const tileLocation = parsedTransaction.args.location.toNumber();
-      const currentTileHistory = await tileRepository.findOne({ id: tileLocation });
-      const timestamp = await getTimestamp(event.txData.blockNumber);
-      if (parsedTransaction.name == 'buyTile') {
-        const previousOwner = currentTileHistory.owner;
+      if (event.txData.to.toLowerCase() === pixelMapWrapper.address.toLowerCase()) {
+        // If the transfer is TO the PixelMapWrapper, this is a wrap/minting of ERC721.
+        const parsedTransaction = pixelMapWrapper.interface.parseTransaction(event.txData);
+        const tileLocation = parsedTransaction.args._locationID.toNumber();
         return new DecodedPixelMapTransaction({
           location: tileLocation,
-          type: TransactionType.buyTile,
+          type: TransactionType.wrap,
           price: parseFloat(ethers.utils.formatEther(parsedTransaction.value)),
           from: event.txData.from.toLowerCase(),
-          to: previousOwner,
           timestamp: timestamp,
         });
+      } else {
+        const parsedTransaction = pixelMap.interface.parseTransaction(event.txData);
+        const tileLocation = parsedTransaction.args.location.toNumber();
+        if (parsedTransaction.name == 'buyTile') {
+          const currentTileHistory = await tileRepository.findOne({ id: tileLocation });
+          const previousOwner = currentTileHistory.owner;
+          return new DecodedPixelMapTransaction({
+            location: tileLocation,
+            type: TransactionType.buyTile,
+            price: parseFloat(ethers.utils.formatEther(parsedTransaction.value)),
+            from: event.txData.from.toLowerCase(),
+            to: previousOwner,
+            timestamp: timestamp,
+          });
+        }
+
+        if (parsedTransaction.name == 'setTile') {
+          return new DecodedPixelMapTransaction({
+            location: tileLocation,
+            type: TransactionType.setTile,
+            image: parsedTransaction.args.image,
+            url: parsedTransaction.args.url,
+            price: parseFloat(ethers.utils.formatEther(parsedTransaction.args.price)),
+            from: event.txData.from.toLowerCase(),
+            timestamp: timestamp,
+          });
+        }
       }
-      if (parsedTransaction.name == 'setTile') {
+    case EventType.Transfer:
+      if (event.txData.to.toLowerCase() === pixelMapWrapper.address.toLowerCase()) {
+        // If the transfer is TO the PixelMapWrapper, this is a wrap/minting of ERC721.
+        const parsedTransaction = pixelMapWrapper.interface.parseTransaction(event.txData);
+        const tileLocation = parsedTransaction.args._locationID.toNumber();
         return new DecodedPixelMapTransaction({
           location: tileLocation,
-          type: TransactionType.setTile,
-          image: parsedTransaction.args.image,
-          url: parsedTransaction.args.url,
-          price: parseFloat(ethers.utils.formatEther(parsedTransaction.args.price)),
+          type: TransactionType.wrap,
+          price: parseFloat(ethers.utils.formatEther(parsedTransaction.value)),
           from: event.txData.from.toLowerCase(),
           timestamp: timestamp,
         });
       }
+    case EventType.Wrapped:
+      console.log(event);
+      const parsedTransaction = pixelMapWrapper.interface.parseTransaction(event.txData);
+      const tileLocation = parsedTransaction.args._locationID.toNumber();
+      return new DecodedPixelMapTransaction({
+        location: tileLocation,
+        type: TransactionType.wrap,
+        price: parseFloat(ethers.utils.formatEther(parsedTransaction.value)),
+        from: event.txData.from.toLowerCase(),
+        timestamp: timestamp,
+      });
 
     default:
-      console.log(JSON.stringify(event));
-      console.log(event);
-      console.log(parsedTransaction);
+      // console.log(JSON.stringify(event));
+      // console.log(event);
       throw 'IDK Clown';
   }
 
@@ -105,7 +143,7 @@ async function manuallyDecodeTransaction(event: PixelMapEvent, pixelMap, pixelMa
   if (event.eventData.topics[0] == pixelMapWrapper.filters.Transfer().topics[0]) {
     parsedLog = pixelMapWrapper.interface.parseLog(event.eventData);
     const value: number = parseInt(ethers.utils.formatEther(event.txData.value));
-    console.log(event);
+    // console.log(event);
     if (value > 0) {
       // The tile was sold, likely via OpenSea.
       return new DecodedPixelMapTransaction({

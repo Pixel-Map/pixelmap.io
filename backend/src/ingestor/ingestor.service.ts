@@ -147,8 +147,8 @@ export class IngestorService {
       const decodedEvent = await decodeTransaction(events[i], this.tile);
       console.log(i + '/' + events.length);
       // await this.ingestEvent(events[i]);
-      // lastBlock.currentIngestedBlock = events[i].id;
-      // await this.blocks.save(lastBlock);
+      lastBlock.currentIngestedBlock = events[i].id;
+      await this.blocks.save(lastBlock);
     }
   }
 

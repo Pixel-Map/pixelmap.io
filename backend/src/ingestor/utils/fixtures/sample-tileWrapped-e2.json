@@ -1,0 +1,59 @@
+{
+  "id": 7244,
+  "txHash": "0x3feba41d9ccc7c7078e820438d11481bbc4bf3f8b0fd3ab023eea205d14a85f2",
+  "logIndex": "0xa7",
+  "eventData": {
+    "data": "0x",
+    "topics": [
+      "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+      "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "0x0000000000000000000000004aeb32e16dcac00b092596adc6cd4955efdee290",
+      "0x0000000000000000000000000000000000000000000000000000000000000d83"
+    ],
+    "address": "0x050dc61dfb867e0fe3cf2948362b6c0f3faf790b",
+    "removed": false,
+    "logIndex": "0xa7",
+    "blockHash": "0xeccb3c4cc076a4ce678763a2b1a43e6b8e97a00e0adc3d097687d44ff35f6020",
+    "blockNumber": "0xc7f113",
+    "transactionHash": "0x3feba41d9ccc7c7078e820438d11481bbc4bf3f8b0fd3ab023eea205d14a85f2",
+    "transactionIndex": "0x67"
+  },
+  "txData": {
+    "r": "0xbd818ff70a3953cd93b682a9f111e7cdd519b2c98d8aa22a0b4971474e917fcd",
+    "s": "0x2ec1403159e5e67c92197b3964943a720d69eeaf83548f89c495b6cd9bfe5a9a",
+    "v": 1,
+    "to": "0x050dc61dFB867E0fE3Cf2948362b6c0F3fAF790b",
+    "data": "0xea598cb00000000000000000000000000000000000000000000000000000000000000d83",
+    "from": "0x4aEB32e16DcaC00B092596ADc6CD4955EfdEE290",
+    "hash": "0x3feba41d9ccc7c7078e820438d11481bbc4bf3f8b0fd3ab023eea205d14a85f2",
+    "type": 2,
+    "nonce": 162,
+    "value": {
+      "hex": "0x3782dace9d900000",
+      "type": "BigNumber"
+    },
+    "chainId": 1,
+    "creates": null,
+    "gasLimit": {
+      "hex": "0x02d385",
+      "type": "BigNumber"
+    },
+    "gasPrice": {
+      "hex": "0x1185defa59",
+      "type": "BigNumber"
+    },
+    "blockHash": "0xeccb3c4cc076a4ce678763a2b1a43e6b8e97a00e0adc3d097687d44ff35f6020",
+    "accessList": [],
+    "blockNumber": 13103379,
+    "maxFeePerGas": {
+      "hex": "0x1185defa59",
+      "type": "BigNumber"
+    },
+    "confirmations": 506733,
+    "transactionIndex": 103,
+    "maxPriorityFeePerGas": {
+      "hex": "0x0e07cd2459",
+      "type": "BigNumber"
+    }
+  }
+}

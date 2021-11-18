@@ -1,6 +1,11 @@
 import { PixelMapEvent } from '../entities/pixelMapEvent.entity';
 import * as ogSampleBuyTile from './fixtures/og-sample-buyTile.json';
 import * as ogSampleSetTile from './fixtures/og-sample-setTile.json';
+import * as wrappingSample1 from './fixtures/sample-tileWrapped-e1.json';
+import * as wrappingSample2 from './fixtures/sample-tileWrapped-e2.json';
+import * as wrappingSample3 from './fixtures/sample-tileWrapped-e3.json';
+import * as openseaPurchase from './fixtures/opensea-purchase.json';
+
 import { DecodedPixelMapTransaction, decodeTransaction, TransactionType } from './decodeTransaction';
 import { createConnection, getConnection, getRepository } from 'typeorm';
 import { Tile } from '../entities/tile.entity';
@@ -67,6 +72,67 @@ it('returns a proper setTile DecodedTransaction when given an OG contract setTil
       url: 'www.ethereum.org',
       from: '0xc20daa952d35677eb5dc40b8e0be84920f40ad68',
       timestamp: new Date('2016-11-17T04:44:03.000Z'),
+    }),
+  );
+});
+
+it('returns a wrappedTile DecodedTransaction when given the first (1/3) wrapping event', async () => {
+  const event = Object.assign(new PixelMapEvent(), wrappingSample1);
+  const tileRepository = await getRepository(Tile);
+  const decodedTransaction = await decodeTransaction(event, tileRepository);
+  expect(decodedTransaction).toStrictEqual(
+    new DecodedPixelMapTransaction({
+      location: 3459,
+      type: TransactionType.wrap,
+      price: 4,
+      from: '0x4aeb32e16dcac00b092596adc6cd4955efdee290',
+      timestamp: new Date('2021-08-26T21:08:49.000Z'),
+    }),
+  );
+});
+
+it('returns a wrappedTile DecodedTransaction when given the second (2/3) wrapping event', async () => {
+  const event = Object.assign(new PixelMapEvent(), wrappingSample2);
+  const tileRepository = await getRepository(Tile);
+  const decodedTransaction = await decodeTransaction(event, tileRepository);
+  expect(decodedTransaction).toStrictEqual(
+    new DecodedPixelMapTransaction({
+      location: 3459,
+      type: TransactionType.wrap,
+      price: 4,
+      from: '0x4aeb32e16dcac00b092596adc6cd4955efdee290',
+      timestamp: new Date('2021-08-26T21:08:49.000Z'),
+    }),
+  );
+});
+
+it('returns a wrappedTile DecodedTransaction when given the third (3/3) wrapping event', async () => {
+  const event = Object.assign(new PixelMapEvent(), wrappingSample3);
+  const tileRepository = await getRepository(Tile);
+  const decodedTransaction = await decodeTransaction(event, tileRepository);
+  expect(decodedTransaction).toStrictEqual(
+    new DecodedPixelMapTransaction({
+      location: 3459,
+      type: TransactionType.wrap,
+      price: 4,
+      from: '0x4aeb32e16dcac00b092596adc6cd4955efdee290',
+      timestamp: new Date('2021-08-26T21:08:49.000Z'),
+    }),
+  );
+});
+
+it('returns a buyTile DecodedTransaction when given an OpenSea purchase transfer event', async () => {
+  const event = Object.assign(new PixelMapEvent(), openseaPurchase);
+  const tileRepository = await getRepository(Tile);
+  const decodedTransaction = await decodeTransaction(event, tileRepository);
+  expect(decodedTransaction).toStrictEqual(
+    new DecodedPixelMapTransaction({
+      location: 222,
+      type: TransactionType.wrap,
+      price: 6,
+      from: '0x60ceef10f9dd4a5d7874f22f461048ea96f475f6',
+      to: '0x59165f6219936b1E6A970c44F750d588d1F5D558',
+      timestamp: new Date('2021-08-26T21:08:49.000Z'),
     }),
   );
 });
