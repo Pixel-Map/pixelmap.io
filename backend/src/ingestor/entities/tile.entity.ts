@@ -16,6 +16,9 @@ export class ColumnNumericTransformer {
 
 @Entity()
 export class Tile {
+  public constructor(init?: Partial<Tile>) {
+    Object.assign(this, init);
+  }
   @PrimaryColumn()
   id: number;
 

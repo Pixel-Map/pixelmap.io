@@ -14,6 +14,9 @@ export class ColumnNumericTransformer {
 @Entity()
 @Unique('tile_purchase_index', ['tile', 'tx'])
 export class PurchaseHistory {
+  public constructor(init?: Partial<PurchaseHistory>) {
+    Object.assign(this, init);
+  }
   @PrimaryGeneratedColumn()
   id: number;
 

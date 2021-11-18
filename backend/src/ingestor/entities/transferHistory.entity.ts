@@ -4,6 +4,9 @@ import { Tile } from './tile.entity';
 @Entity()
 @Unique('tile_transfer_index', ['tile', 'tx'])
 export class TransferHistory {
+  public constructor(init?: Partial<TransferHistory>) {
+    Object.assign(this, init);
+  }
   @PrimaryGeneratedColumn()
   id: number;
 

@@ -14,6 +14,9 @@ export class ColumnNumericTransformer {
 @Entity()
 @Unique('tile_data_index', ['tile', 'tx'])
 export class DataHistory {
+  public constructor(init?: Partial<DataHistory>) {
+    Object.assign(this, init);
+  }
   @PrimaryGeneratedColumn()
   id: number;
 

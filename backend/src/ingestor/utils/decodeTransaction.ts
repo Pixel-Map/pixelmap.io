@@ -21,39 +21,45 @@ export class DecodedPixelMapTransaction {
   location: number;
   type: TransactionType;
   price: number;
-  from: string;
-  to: string;
+  from: string; // The person paying, typically this is the BUYER of a tile
+  to: string; // The person receiving money, typically this is the SELLER of a tile
   image: string;
   url: string;
   timestamp: Date;
+  txHash: string;
+  blockNumber: number;
 }
 
 export async function decodeTransaction(
   event: PixelMapEvent,
   tileRepository: Repository<Tile>,
 ): Promise<DecodedPixelMapTransaction> {
-  // console.log(JSON.stringify(event));
   const { provider, pixelMap, pixelMapWrapper } = initializeEthersJS();
   const eventType = await getEventType(event);
   // console.log(JSON.stringify(event));
   // console.log(event);
+
+  let parsedTransaction: ethers.utils.TransactionDescription;
+  let tileLocation: number; // Which tile is it?
   const timestamp = await getTimestamp(event.txData.blockNumber);
   switch (eventType) {
     case EventType.TileUpdated:
       if (event.txData.to.toLowerCase() === pixelMapWrapper.address.toLowerCase()) {
         // If the transfer is TO the PixelMapWrapper, this is a wrap/minting of ERC721.
-        const parsedTransaction = pixelMapWrapper.interface.parseTransaction(event.txData);
-        const tileLocation = parsedTransaction.args._locationID.toNumber();
+        parsedTransaction = pixelMapWrapper.interface.parseTransaction(event.txData);
+        tileLocation = parsedTransaction.args._locationID.toNumber();
         return new DecodedPixelMapTransaction({
           location: tileLocation,
           type: TransactionType.wrap,
           price: parseFloat(ethers.utils.formatEther(parsedTransaction.value)),
           from: event.txData.from.toLowerCase(),
           timestamp: timestamp,
+          txHash: event.txHash,
+          blockNumber: event.txData.blockNumber,
         });
       } else {
-        const parsedTransaction = pixelMap.interface.parseTransaction(event.txData);
-        const tileLocation = parsedTransaction.args.location.toNumber();
+        parsedTransaction = pixelMap.interface.parseTransaction(event.txData);
+        tileLocation = parsedTransaction.args.location.toNumber();
         if (parsedTransaction.name == 'buyTile') {
           const currentTileHistory = await tileRepository.findOne({ id: tileLocation });
           const previousOwner = currentTileHistory.owner;
@@ -64,6 +70,8 @@ export async function decodeTransaction(
             from: event.txData.from.toLowerCase(),
             to: previousOwner,
             timestamp: timestamp,
+            txHash: event.txHash,
+            blockNumber: event.txData.blockNumber,
           });
         }
 
@@ -76,32 +84,64 @@ export async function decodeTransaction(
             price: parseFloat(ethers.utils.formatEther(parsedTransaction.args.price)),
             from: event.txData.from.toLowerCase(),
             timestamp: timestamp,
+            txHash: event.txHash,
+            blockNumber: event.txData.blockNumber,
           });
         }
       }
+      break;
     case EventType.Transfer:
+      const price = parseFloat(ethers.utils.formatEther(event.txData.value));
       if (event.txData.to.toLowerCase() === pixelMapWrapper.address.toLowerCase()) {
+        parsedTransaction = pixelMapWrapper.interface.parseTransaction(event.txData);
+        tileLocation = parsedTransaction.args._locationID.toNumber();
         // If the transfer is TO the PixelMapWrapper, this is a wrap/minting of ERC721.
-        const parsedTransaction = pixelMapWrapper.interface.parseTransaction(event.txData);
-        const tileLocation = parsedTransaction.args._locationID.toNumber();
         return new DecodedPixelMapTransaction({
           location: tileLocation,
           type: TransactionType.wrap,
-          price: parseFloat(ethers.utils.formatEther(parsedTransaction.value)),
+          price: price,
           from: event.txData.from.toLowerCase(),
           timestamp: timestamp,
+          txHash: event.txHash,
+          blockNumber: event.txData.blockNumber,
         });
       }
+      const parsedLog = pixelMapWrapper.interface.parseLog(event.eventData);
+      // If not a wrap, is it a sale?
+      if (price > 0) {
+        return new DecodedPixelMapTransaction({
+          location: parsedLog.args.tokenId.toNumber(),
+          type: TransactionType.buyTile,
+          price: price,
+          from: parsedLog.args.to.toLowerCase(),
+          to: parsedLog.args.from.toLowerCase(),
+          timestamp: timestamp,
+          txHash: event.txHash,
+          blockNumber: event.txData.blockNumber,
+        });
+      }
+      // Must have just been a regular transfer!
+      return new DecodedPixelMapTransaction({
+        location: parsedLog.args.tokenId.toNumber(),
+        type: TransactionType.transfer,
+        price: price,
+        from: parsedLog.args.to.toLowerCase(),
+        to: parsedLog.args.from.toLowerCase(),
+        timestamp: timestamp,
+        txHash: event.txHash,
+        blockNumber: event.txData.blockNumber,
+      });
     case EventType.Wrapped:
-      console.log(event);
-      const parsedTransaction = pixelMapWrapper.interface.parseTransaction(event.txData);
-      const tileLocation = parsedTransaction.args._locationID.toNumber();
+      parsedTransaction = pixelMapWrapper.interface.parseTransaction(event.txData);
+      tileLocation = parsedTransaction.args._locationID.toNumber();
       return new DecodedPixelMapTransaction({
         location: tileLocation,
         type: TransactionType.wrap,
         price: parseFloat(ethers.utils.formatEther(parsedTransaction.value)),
         from: event.txData.from.toLowerCase(),
         timestamp: timestamp,
+        txHash: event.txHash,
+        blockNumber: event.txData.blockNumber,
       });
 
     default:
@@ -137,42 +177,42 @@ export async function decodeTransaction(
 
   throw 'Unable to decode transaction.';
 }
-
-async function manuallyDecodeTransaction(event: PixelMapEvent, pixelMap, pixelMapWrapper, provider) {
-  let parsedLog;
-  if (event.eventData.topics[0] == pixelMapWrapper.filters.Transfer().topics[0]) {
-    parsedLog = pixelMapWrapper.interface.parseLog(event.eventData);
-    const value: number = parseInt(ethers.utils.formatEther(event.txData.value));
-    // console.log(event);
-    if (value > 0) {
-      // The tile was sold, likely via OpenSea.
-      return new DecodedPixelMapTransaction({
-        type: TransactionType.buyTile,
-        location: parsedLog.location,
-        from: event.txData.from,
-        to: event.txData.to,
-        price: event.txData,
-      });
-    }
-    throw 'HELP';
-  }
-  return {
-    args: [],
-    name: 'buyTile',
-    functionFragment: {
-      constant: true,
-      format: undefined,
-      stateMutability: '',
-      payable: true,
-      type: 'Unknown',
-      name: 'Unknown',
-      inputs: [],
-      _isFragment: true,
-    },
-    signature: 'Unknown',
-    sighash: 'Unknown',
-    value: 5,
-    from: 'adsadasdas',
-    location: 5,
-  };
-}
+//
+// async function manuallyDecodeTransaction(event: PixelMapEvent, pixelMap, pixelMapWrapper, provider) {
+//   let parsedLog;
+//   if (event.eventData.topics[0] == pixelMapWrapper.filters.Transfer().topics[0]) {
+//     parsedLog = pixelMapWrapper.interface.parseLog(event.eventData);
+//     const value: number = parseInt(ethers.utils.formatEther(event.txData.value));
+//     // console.log(event);
+//     if (value > 0) {
+//       // The tile was sold, likely via OpenSea.
+//       return new DecodedPixelMapTransaction({
+//         type: TransactionType.buyTile,
+//         location: parsedLog.location,
+//         from: event.txData.from,
+//         to: event.txData.to,
+//         price: event.txData,
+//       });
+//     }
+//     throw 'HELP';
+//   }
+//   return {
+//     args: [],
+//     name: 'buyTile',
+//     functionFragment: {
+//       constant: true,
+//       format: undefined,
+//       stateMutability: '',
+//       payable: true,
+//       type: 'Unknown',
+//       name: 'Unknown',
+//       inputs: [],
+//       _isFragment: true,
+//     },
+//     signature: 'Unknown',
+//     sighash: 'Unknown',
+//     value: 5,
+//     from: 'adsadasdas',
+//     location: 5,
+//   };
+// }
