@@ -54,6 +54,8 @@ it('returns a proper buyTile DecodedTransaction when given an OG contract buyTil
       from: '0xc20daa952d35677eb5dc40b8e0be84920f40ad68',
       to: '0x4f4b7e7edf5ec41235624ce207a6ef352aca7050',
       timestamp: new Date('2016-11-17T04:41:08.000Z'),
+      blockNumber: 2641570,
+      txHash: '0x64feae306ab228a93a56fad5c4855e317958d9f5d8423168aecdc163756925b6',
     }),
   );
 });
@@ -73,6 +75,8 @@ it('returns a proper setTile DecodedTransaction when given an OG contract setTil
       url: 'www.ethereum.org',
       from: '0xc20daa952d35677eb5dc40b8e0be84920f40ad68',
       timestamp: new Date('2016-11-17T04:44:03.000Z'),
+      blockNumber: 2641577,
+      txHash: '0x5ea7c8839918bf46f41622c2ca576b1d3724014f7c9cb3a1243dcf6416dcf62d',
     }),
   );
 });
@@ -88,6 +92,8 @@ it('returns a wrappedTile DecodedTransaction when given the first (1/3) wrapping
       price: 4,
       from: '0x4aeb32e16dcac00b092596adc6cd4955efdee290',
       timestamp: new Date('2021-08-26T21:08:49.000Z'),
+      blockNumber: 13103379,
+      txHash: '0x3feba41d9ccc7c7078e820438d11481bbc4bf3f8b0fd3ab023eea205d14a85f2',
     }),
   );
 });
@@ -103,6 +109,8 @@ it('returns a wrappedTile DecodedTransaction when given the second (2/3) wrappin
       price: 4,
       from: '0x4aeb32e16dcac00b092596adc6cd4955efdee290',
       timestamp: new Date('2021-08-26T21:08:49.000Z'),
+      blockNumber: 13103379,
+      txHash: '0x3feba41d9ccc7c7078e820438d11481bbc4bf3f8b0fd3ab023eea205d14a85f2',
     }),
   );
 });
@@ -118,6 +126,8 @@ it('returns a wrappedTile DecodedTransaction when given the third (3/3) wrapping
       price: 4,
       from: '0x4aeb32e16dcac00b092596adc6cd4955efdee290',
       timestamp: new Date('2021-08-26T21:08:49.000Z'),
+      blockNumber: 13103379,
+      txHash: '0x3feba41d9ccc7c7078e820438d11481bbc4bf3f8b0fd3ab023eea205d14a85f2',
     }),
   );
 });
@@ -134,6 +144,8 @@ it('returns a buyTile DecodedTransaction when given an OpenSea purchase transfer
       from: '0x59165f6219936b1e6a970c44f750d588d1f5d558',
       to: '0x60ceef10f9dd4a5d7874f22f461048ea96f475f6',
       timestamp: new Date('2021-08-26T22:35:01.000Z'),
+      blockNumber: 13103747,
+      txHash: '0xb054bf1c08cb269c51e773e3f5d2135a27885087904bfa89389bdbdd1240a71e',
     }),
   );
 });

@@ -36,8 +36,8 @@ export async function decodeTransaction(
 ): Promise<DecodedPixelMapTransaction> {
   const { provider, pixelMap, pixelMapWrapper } = initializeEthersJS();
   const eventType = await getEventType(event);
-  // console.log(JSON.stringify(event));
-  // console.log(event);
+  console.log(JSON.stringify(event));
+  console.log(event);
 
   let parsedTransaction: ethers.utils.TransactionDescription;
   let tileLocation: number; // Which tile is it?
@@ -58,35 +58,53 @@ export async function decodeTransaction(
           blockNumber: event.txData.blockNumber,
         });
       } else {
-        parsedTransaction = pixelMap.interface.parseTransaction(event.txData);
-        tileLocation = parsedTransaction.args.location.toNumber();
-        if (parsedTransaction.name == 'buyTile') {
-          const currentTileHistory = await tileRepository.findOne({ id: tileLocation });
-          const previousOwner = currentTileHistory.owner;
-          return new DecodedPixelMapTransaction({
-            location: tileLocation,
-            type: TransactionType.buyTile,
-            price: parseFloat(ethers.utils.formatEther(parsedTransaction.value)),
-            from: event.txData.from.toLowerCase(),
-            to: previousOwner,
-            timestamp: timestamp,
-            txHash: event.txHash,
-            blockNumber: event.txData.blockNumber,
-          });
-        }
+        try {
+          parsedTransaction = pixelMap.interface.parseTransaction(event.txData);
+          tileLocation = parsedTransaction.args.location.toNumber();
+          if (parsedTransaction.name == 'buyTile') {
+            const currentTileHistory = await tileRepository.findOne({ id: tileLocation });
+            const previousOwner = currentTileHistory.owner;
+            return new DecodedPixelMapTransaction({
+              location: tileLocation,
+              type: TransactionType.buyTile,
+              price: parseFloat(ethers.utils.formatEther(parsedTransaction.value)),
+              from: event.txData.from.toLowerCase(),
+              to: previousOwner,
+              timestamp: timestamp,
+              txHash: event.txHash,
+              blockNumber: event.txData.blockNumber,
+            });
+          }
 
-        if (parsedTransaction.name == 'setTile') {
-          return new DecodedPixelMapTransaction({
-            location: tileLocation,
-            type: TransactionType.setTile,
-            image: parsedTransaction.args.image,
-            url: parsedTransaction.args.url,
-            price: parseFloat(ethers.utils.formatEther(parsedTransaction.args.price)),
-            from: event.txData.from.toLowerCase(),
-            timestamp: timestamp,
-            txHash: event.txHash,
-            blockNumber: event.txData.blockNumber,
-          });
+          if (parsedTransaction.name == 'setTile') {
+            return new DecodedPixelMapTransaction({
+              location: tileLocation,
+              type: TransactionType.setTile,
+              image: parsedTransaction.args.image,
+              url: parsedTransaction.args.url,
+              price: parseFloat(ethers.utils.formatEther(parsedTransaction.args.price)),
+              from: event.txData.from.toLowerCase(),
+              timestamp: timestamp,
+              txHash: event.txHash,
+              blockNumber: event.txData.blockNumber,
+            });
+          }
+        } catch {
+          console.log('Unable to parse using normal methods, figuring out via block comparison');
+          const parsedLog = await pixelMap.interface.parseLog(event.eventData);
+          const value: number = parseInt(ethers.utils.formatEther(event.txData.value));
+          console.log(parsedLog);
+          console.log(value);
+          if (value > 0) {
+            // The tile was sold, likely via OpenSea.
+            return new DecodedPixelMapTransaction({
+              type: TransactionType.buyTile,
+              location: parsedLog.args.location,
+              from: event.txData.from,
+              to: event.txData.to,
+              price: event.txData,
+            });
+          }
         }
       }
       break;
@@ -177,42 +195,3 @@ export async function decodeTransaction(
 
   throw 'Unable to decode transaction.';
 }
-//
-// async function manuallyDecodeTransaction(event: PixelMapEvent, pixelMap, pixelMapWrapper, provider) {
-//   let parsedLog;
-//   if (event.eventData.topics[0] == pixelMapWrapper.filters.Transfer().topics[0]) {
-//     parsedLog = pixelMapWrapper.interface.parseLog(event.eventData);
-//     const value: number = parseInt(ethers.utils.formatEther(event.txData.value));
-//     // console.log(event);
-//     if (value > 0) {
-//       // The tile was sold, likely via OpenSea.
-//       return new DecodedPixelMapTransaction({
-//         type: TransactionType.buyTile,
-//         location: parsedLog.location,
-//         from: event.txData.from,
-//         to: event.txData.to,
-//         price: event.txData,
-//       });
-//     }
-//     throw 'HELP';
-//   }
-//   return {
-//     args: [],
-//     name: 'buyTile',
-//     functionFragment: {
-//       constant: true,
-//       format: undefined,
-//       stateMutability: '',
-//       payable: true,
-//       type: 'Unknown',
-//       name: 'Unknown',
-//       inputs: [],
-//       _isFragment: true,
-//     },
-//     signature: 'Unknown',
-//     sighash: 'Unknown',
-//     value: 5,
-//     from: 'adsadasdas',
-//     location: 5,
-//   };
-// }
