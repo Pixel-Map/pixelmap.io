@@ -391,11 +391,11 @@ async function initData() {
   }, 60 * 1000); //set to an acceptable length (every minute?)
 
   await updateData();
-  await getOpenseaPrices();
-
-  openseaPriceInterval = setInterval(() => {
-    getOpenseaPrices();
-  }, 10 * 60 * 1000); //every 10 minutes
+  // await getOpenseaPrices();
+  //
+  // openseaPriceInterval = setInterval(() => {
+  //   getOpenseaPrices();
+  // }, 10 * 60 * 1000); //every 10 minutes
 }
 
 async function updateTileMetaAndImage(tile, i) {
