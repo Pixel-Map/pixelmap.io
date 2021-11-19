@@ -15,8 +15,7 @@ import pako from "pako";
 import joi from "joi";
 import * as cache from "./utils/cache.js";
 import retry from "async-retry";
-import Timeout from 'await-timeout';
-
+import Timeout from "await-timeout";
 
 const __dirname = path.resolve();
 const app = express();
@@ -289,12 +288,11 @@ async function updateData() {
           try {
             return await Promise.race([
               await contract.tiles(i),
-              timer.set(1000, 'Timeout!')
+              timer.set(1000, "Timeout!"),
             ]);
           } finally {
             timer.clear();
           }
-
         },
         {
           retries: 5,
@@ -467,8 +465,14 @@ async function updateTileMetaAndImage(tile, i) {
   } else {
     // NO own image
     console.log("No image set, skipping!");
-    // tileMetaData.image = "https://s3.us-east-1.amazonaws.com/" + BUCKET_NAME + "/large_tiles/"+i+".png"
-    // await fs.writeFileSync("cache/"+i+".json",JSON.stringify(tileMetaData));
+    tileMetaData.image =
+      "https://s3.us-east-1.amazonaws.com/" +
+      BUCKET_NAME +
+      "/large_tiles/blank.png";
+    await fs.writeFileSync(
+      "cache/" + i + ".json",
+      JSON.stringify(tileMetaData)
+    );
   }
 
   // upload to localstack
