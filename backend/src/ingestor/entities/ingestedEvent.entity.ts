@@ -1,16 +1,13 @@
 import { Column, Entity, PrimaryColumn } from 'typeorm';
 
 @Entity()
-export class Block {
-  public constructor(init?: Partial<Block>) {
+export class IngestedEvent {
+  public constructor(init?: Partial<IngestedEvent>) {
     Object.assign(this, init);
   }
   @PrimaryColumn()
   id: number;
 
   @Column()
-  currentDownloadedBlock: number;
-
-  @Column()
-  currentIngestedBlock: number;
+  lastIngestedEvent: number;
 }

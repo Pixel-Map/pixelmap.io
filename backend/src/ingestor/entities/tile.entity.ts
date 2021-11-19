@@ -41,15 +41,15 @@ export class Tile {
   @Column()
   wrapped: boolean;
 
-  @OneToMany(() => DataHistory, (dataHistory) => dataHistory.tile, { cascade: true, eager: false })
+  @OneToMany(() => DataHistory, (dataHistory) => dataHistory.tile, { cascade: true, eager: true })
   dataHistory: DataHistory[];
 
-  @OneToMany(() => WrappingHistory, (wrappingHistory) => wrappingHistory.tile, { cascade: true, eager: false })
+  @OneToMany(() => WrappingHistory, (wrappingHistory) => wrappingHistory.tile, { cascade: true, eager: true })
   wrappingHistory: WrappingHistory[];
 
-  @OneToMany(() => PurchaseHistory, (purchaseHistory) => purchaseHistory.tile, { cascade: true, eager: false })
+  @OneToMany(() => PurchaseHistory, (purchaseHistory) => purchaseHistory.tile, { cascade: true, eager: true })
   purchaseHistory: PurchaseHistory[];
 
-  @OneToMany(() => TransferHistory, (transferHistory) => transferHistory.tile, { cascade: true, eager: false })
+  @OneToMany(() => TransferHistory, (transferHistory) => transferHistory.tile, { cascade: true, eager: true })
   transferHistory: TransferHistory[];
 }

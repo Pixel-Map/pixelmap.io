@@ -2,7 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cron } from '@nestjs/schedule';
 import { ethers } from 'ethers';
-import { Block } from './entities/block.entity';
+import { DownloadedBlock } from './entities/downloadedBlock.entity';
+import { IngestedEvent } from './entities/ingestedEvent.entity';
 import { Repository } from 'typeorm';
 import { PixelMapEvent } from './entities/pixelMapEvent.entity';
 import { Tile } from './entities/tile.entity';
@@ -14,18 +15,21 @@ import { DecodedPixelMapTransaction, decodeTransaction, TransactionType } from '
 import { initializeEthersJS } from './utils/initializeEthersJS';
 import { exit } from '@nestjs/cli/actions';
 
-const BLOCKS_TO_PROCESS_AT_TIME = 1;
+const BLOCKS_TO_PROCESS_AT_TIME = 1000;
 
 @Injectable()
 export class IngestorService {
   private readonly logger = new Logger(IngestorService.name);
   private lastDownloadedBlock;
+  private lastIngestedEvent;
   private currentlyRunningSync = true;
-  private currentlyProcessingEvents = false;
+  private currentlyIngestingEvents = false;
 
   constructor(
-    @InjectRepository(Block)
-    private blocks: Repository<Block>,
+    @InjectRepository(DownloadedBlock)
+    private downloadedBlocks: Repository<DownloadedBlock>,
+    @InjectRepository(IngestedEvent)
+    private ingestedEvents: Repository<IngestedEvent>,
     @InjectRepository(PixelMapEvent)
     private pixelMapEvent: Repository<PixelMapEvent>,
     @InjectRepository(Tile)
@@ -46,30 +50,15 @@ export class IngestorService {
 
   @Cron(new Date(Date.now() + 3000)) // Start 5 seconds after App startup
   async initialStartup() {
-    let lastBlock = await this.blocks.findOne();
+    let lastBlock = await this.downloadedBlocks.findOne();
     if (lastBlock == undefined) {
       this.logger.log('Starting fresh, start of contract! (2641527)');
-      lastBlock = await this.blocks.save({
+      lastBlock = await this.downloadedBlocks.save({
         id: 1,
-        currentDownloadedBlock: 2641527,
-        currentIngestedBlock: 0,
+        lastDownloadedBlock: 2641527,
       });
-      for (let i = 0; i < 3970; i++) {
-        this.logger.log('Initializing tile: ' + i);
-        await this.tile.save({
-          id: i,
-          price: 2,
-          wrapped: false,
-          image: '',
-          url: '',
-          owner: '0x4f4b7e7edf5ec41235624ce207a6ef352aca7050', // Creator of Pixelmap
-          dataHistory: [],
-          wrappingHistory: [],
-          purchaseHistory: [],
-        });
-      }
     }
-    this.lastDownloadedBlock = lastBlock.currentDownloadedBlock;
+    this.lastDownloadedBlock = lastBlock.lastDownloadedBlock;
 
     await this.syncBlocks();
     this.currentlyRunningSync = false;
@@ -84,7 +73,6 @@ export class IngestorService {
       this.logger.debug('Syncing again, one moment.');
       this.currentlyRunningSync = true;
       await this.syncBlocks();
-      // await this.ingestEvents();
       this.currentlyRunningSync = false;
     }
   }
@@ -93,6 +81,11 @@ export class IngestorService {
     const { provider, pixelMap, pixelMapWrapper } = initializeEthersJS();
 
     let endBlock = this.lastDownloadedBlock + BLOCKS_TO_PROCESS_AT_TIME;
+    if (endBlock > 3974343 && endBlock < 13062712) {
+      this.logger.log('Teleporting past the land of nothingness!');
+      endBlock = 13062713;
+    }
+
     const mostRecentBlockNumber = await provider.getBlockNumber();
     this.logger.log('Last downloaded block: ' + this.lastDownloadedBlock);
     this.logger.log('End block: ' + endBlock);
@@ -115,10 +108,11 @@ export class IngestorService {
             ],
           },
         ]);
-        await this.blocks.save(
-          this.blocks.create({
+        await this.processEvents(events);
+        await this.downloadedBlocks.save(
+          this.downloadedBlocks.create({
             id: 1,
-            currentDownloadedBlock: endBlock,
+            lastDownloadedBlock: endBlock,
           }),
         );
         this.lastDownloadedBlock = endBlock;
@@ -131,47 +125,72 @@ export class IngestorService {
     this.logger.debug('Finished syncing.  Will check again soon.');
   }
 
-  // @Cron('45 * * * *')
   async processEvents(events) {
-    if (!this.currentlyProcessingEvents) {
-      this.currentlyProcessingEvents = true;
-      const { provider, pixelMap, pixelMapWrapper } = initializeEthersJS();
-      for (let i = 0; i < events.length; i++) {
-        const event = events[i];
-        const transaction = await provider.getTransaction(event.transactionHash);
-        this.logger.log('Saving event at block: ' + transaction.blockNumber);
-        if (await this.pixelMapEvent.findOne({ txHash: event.transactionHash, logIndex: event.logIndex })) {
-          this.logger.warn('Already indexed this event, skipping!');
-          return;
-        } else {
-          await this.pixelMapEvent.save({
-            eventData: event,
-            txHash: event.transactionHash,
-            logIndex: event.logIndex,
-            txData: transaction,
-          });
-        }
+    const { provider, pixelMap, pixelMapWrapper } = initializeEthersJS();
+    for (let i = 0; i < events.length; i++) {
+      const event = events[i];
+      const transaction = await provider.getTransaction(event.transactionHash);
+      this.logger.log('Saving event at block: ' + transaction.blockNumber);
+      if (await this.pixelMapEvent.findOne({ txHash: event.transactionHash, logIndex: event.logIndex })) {
+        this.logger.warn('Already indexed this event, skipping!');
+        return;
+      } else {
+        await this.pixelMapEvent.save({
+          eventData: event,
+          txHash: event.transactionHash,
+          logIndex: event.logIndex,
+          txData: transaction,
+          block: transaction.blockNumber,
+        });
       }
-      this.currentlyProcessingEvents = false;
-    }
-    if (this.currentlyProcessingEvents) {
-      this.logger.debug('Already processing events, not starting again!');
     }
   }
 
+  @Cron('1 * * * * *')
   async ingestEvents() {
-    const lastBlock = await this.blocks.findOne();
-    const lastIngested = lastBlock.currentIngestedBlock;
-    const events = await this.pixelMapEvent.find({
-      skip: lastIngested,
-      order: { id: 'ASC' },
-    });
-    for (let i = 0; i < events.length; i++) {
-      const decodedEvent = await decodeTransaction(events[i], this.tile);
-      await this.ingestEvent(decodedEvent);
-      console.log(i + '/' + events.length);
-      lastBlock.currentIngestedBlock = events[i].id;
-      await this.blocks.save(lastBlock);
+    if (!this.currentlyIngestingEvents) {
+      this.currentlyIngestingEvents = true;
+      let lastEvent = await this.ingestedEvents.findOne();
+      if (lastEvent == undefined) {
+        this.logger.log('Starting fresh, start of events! (0)');
+        lastEvent = await this.ingestedEvents.save({
+          id: 1,
+          lastIngestedEvent: 0,
+        });
+      }
+      this.lastIngestedEvent = lastEvent.lastIngestedEvent;
+
+      if (this.lastIngestedEvent == 0) {
+        for (let i = 0; i < 3970; i++) {
+          this.logger.log('Initializing tile: ' + i);
+          await this.tile.save({
+            id: i,
+            price: 2,
+            wrapped: false,
+            image: '',
+            url: '',
+            owner: '0x4f4b7e7edf5ec41235624ce207a6ef352aca7050', // Creator of Pixelmap
+            dataHistory: [],
+            wrappingHistory: [],
+            purchaseHistory: [],
+          });
+        }
+      }
+      const events = await this.pixelMapEvent.find({
+        skip: this.lastIngestedEvent,
+        order: { block: 'ASC' },
+      });
+      for (let i = 0; i < events.length; i++) {
+        const decodedEvent = await decodeTransaction(events[i], this.tile);
+        await this.ingestEvent(decodedEvent);
+        const percent = (100 * (i + 1)) / events.length;
+        this.logger.verbose(i + 1 + '/' + events.length + ' events processed (' + percent + '% complete)');
+        lastEvent.lastIngestedEvent = events[i].id;
+        await this.ingestedEvents.save(lastEvent);
+      }
+      this.currentlyIngestingEvents = false;
+    } else {
+      this.logger.debug('Already ingesting, not starting again yet');
     }
   }
 
@@ -183,9 +202,9 @@ export class IngestorService {
     });
     if (existing) {
       this.logger.warn('Already indexed this update, skipping!');
-      return;
+      return true;
     }
-    return true;
+    return false;
   }
 
   async ingestEvent(decodedEvent: DecodedPixelMapTransaction) {
@@ -223,18 +242,29 @@ export class IngestorService {
           this.logger.warn('Already indexed this buyTile, skipping!');
           return;
         }
-        this.logger.log('Tile bought at block: ' + decodedEvent.blockNumber + ' (' + decodedEvent.timestamp + ')');
-        const purchaseHistory = new PurchaseHistory();
+        this.logger.log(
+          'Tile ' +
+            decodedEvent.location +
+            ' bought at block: ' +
+            decodedEvent.blockNumber +
+            ' (' +
+            decodedEvent.timestamp +
+            ')',
+        );
         if (decodedEvent.price <= 0) {
           throw 'Purchase cannot be 0 or less';
         }
         if (decodedEvent.to != tile.owner) {
-          throw 'Incorrect owner??!';
+          console.log(decodedEvent);
+          console.log(tile.owner);
+          this.logger.error('Incorrect owner??!');
+          exit();
         }
         tile.purchaseHistory.push(
           new PurchaseHistory({
             soldBy: tile.owner,
             purchasedBy: decodedEvent.from,
+            price: decodedEvent.price ? decodedEvent.price : tile.price,
             tx: decodedEvent.txHash,
             timeStamp: decodedEvent.timestamp,
             blockNumber: decodedEvent.blockNumber,
@@ -244,36 +274,49 @@ export class IngestorService {
         tile.price = 0; // Price is always set to zero following a sale!s
         await this.tile.save(tile);
         break;
-      // case 'wrap':
-      //   await this.processWrappedTile(event, decodedTransaction);
-      //   break;
+      case TransactionType.wrap:
+        if (await this.alreadyIndexed(this.wrappingHistory, decodedEvent.txHash)) {
+          this.logger.warn('Already indexed this wrap, skipping!');
+          return;
+        }
+        this.logger.log('Tile wrapped at block: ' + decodedEvent.blockNumber + ' (' + decodedEvent.timestamp + ')');
+        tile.wrapped = true;
+        tile.owner = decodedEvent.from;
+
+        tile.wrappingHistory.push(
+          new WrappingHistory({
+            wrapped: true,
+            tx: decodedEvent.txHash,
+            timeStamp: decodedEvent.timestamp,
+            blockNumber: decodedEvent.blockNumber,
+            updatedBy: decodedEvent.from,
+          }),
+        );
+        await this.tile.save(tile);
+        break;
+      case TransactionType.transfer:
+        if (await this.alreadyIndexed(this.transferHistory, decodedEvent.txHash)) {
+          this.logger.warn('Already indexed this transfer, skipping!');
+          return;
+        }
+        this.logger.log('Tile transferred at block: ' + decodedEvent.blockNumber + ' (' + decodedEvent.timestamp + ')');
+        tile.owner = decodedEvent.from;
+
+        tile.transferHistory.push(
+          new TransferHistory({
+            tx: decodedEvent.txHash,
+            timeStamp: decodedEvent.timestamp,
+            blockNumber: decodedEvent.blockNumber,
+            transferredFrom: decodedEvent.to,
+            transferredTo: decodedEvent.from,
+          }),
+        );
+        await this.tile.save(tile);
+        break;
       default:
         this.logger.error('Failed to account for the following event:');
+        console.log(decodedEvent);
         exit();
     }
   }
-  //
-  // async processWrappedTile(event: PixelMapEvent, decodedTransaction) {
-  //   this.logger.log('Tile wrapped at block: ' + event.txData.blockNumber);
-  //   const tile: Tile = await this.getTile(decodedTransaction, event);
-  //   if (tile.wrappingHistory.some((e) => e.tx === event.txHash)) {
-  //     this.logger.warn('Already indexed this wrap, skipping!');
-  //     return;
-  //   }
-  //   const timeStamp = await this.getTimestamp(event.txData.blockNumber);
-  //   tile.wrapped = true;
-  //   tile.owner = event.txData.from;
-  //
-  //   tile.wrappingHistory.push(
-  //     new WrappingHistory({
-  //       wrapped: true,
-  //       tx: event.txHash,
-  //       timeStamp: timeStamp,
-  //       blockNumber: event.txData.blockNumber,
-  //       updatedBy: event.txData.from,
-  //     }),
-  //   );
-  //   await this.tile.save(tile);
-  // }
-  //
 }

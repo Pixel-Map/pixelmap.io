@@ -11,6 +11,9 @@ export class PixelMapEvent {
   id: number;
 
   @Column()
+  block: number;
+
+  @Column()
   txHash: string;
 
   @Column()
