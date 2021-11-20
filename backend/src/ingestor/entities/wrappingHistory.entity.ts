@@ -21,6 +21,9 @@ export class WrappingHistory {
   tx: string;
 
   @Column()
+  logIndex: number;
+
+  @Column()
   wrapped: boolean;
 
   @Column()

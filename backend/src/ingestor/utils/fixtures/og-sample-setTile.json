@@ -1,7 +1,7 @@
 {
   "id": 2,
   "txHash": "0x5ea7c8839918bf46f41622c2ca576b1d3724014f7c9cb3a1243dcf6416dcf62d",
-  "logIndex": "0x4",
+  "logIndex": 4,
   "eventData": {
     "data": "0x00000000000000000000000000000000000000000000000000000000000007c0",
     "topics": [

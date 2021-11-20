@@ -17,7 +17,7 @@ export class PixelMapEvent {
   txHash: string;
 
   @Column()
-  logIndex: string;
+  logIndex: number;
 
   @Column({
     type: 'jsonb',

@@ -30,6 +30,9 @@ export class DataHistory {
   tx: string;
 
   @Column()
+  logIndex: number;
+
+  @Column()
   image: string;
 
   @Column('numeric', {

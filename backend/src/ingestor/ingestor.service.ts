@@ -194,10 +194,11 @@ export class IngestorService {
     }
   }
 
-  async alreadyIndexed(repo: Repository<any>, txHash: string): Promise<boolean> {
+  async alreadyIndexed(repo: Repository<any>, txHash: string, logIndex: number): Promise<boolean> {
     const existing = await repo.findOne({
       where: {
         tx: txHash,
+        logIndex: logIndex,
       },
     });
     if (existing) {
@@ -208,12 +209,12 @@ export class IngestorService {
   }
 
   async ingestEvent(decodedEvent: DecodedPixelMapTransaction) {
-    const { provider, pixelMap, pixelMapWrapper } = initializeEthersJS();
     // Skip event if it's a transfer to the wrapper, it's just the first step of wrapping.
     const tile: Tile = await this.tile.findOne({ id: decodedEvent.location });
+
     switch (decodedEvent.type) {
       case TransactionType.setTile:
-        if (await this.alreadyIndexed(this.dataHistory, decodedEvent.txHash)) {
+        if (await this.alreadyIndexed(this.dataHistory, decodedEvent.txHash, decodedEvent.logIndex)) {
           this.logger.warn('Already indexed this setTile, skipping!');
           return;
         }
@@ -233,12 +234,13 @@ export class IngestorService {
             blockNumber: decodedEvent.blockNumber,
             image: tile.image,
             updatedBy: decodedEvent.from,
+            logIndex: decodedEvent.logIndex,
           }),
         );
         await this.tile.save(tile);
         break;
       case TransactionType.buyTile:
-        if (await this.alreadyIndexed(this.purchaseHistory, decodedEvent.txHash)) {
+        if (await this.alreadyIndexed(this.purchaseHistory, decodedEvent.txHash, decodedEvent.logIndex)) {
           this.logger.warn('Already indexed this buyTile, skipping!');
           return;
         }
@@ -254,7 +256,7 @@ export class IngestorService {
         if (decodedEvent.price <= 0) {
           throw 'Purchase cannot be 0 or less';
         }
-        if (decodedEvent.to != tile.owner) {
+        if (decodedEvent.to.toLowerCase() != tile.owner.toLowerCase()) {
           console.log(decodedEvent);
           console.log(tile.owner);
           this.logger.error('Incorrect owner??!');
@@ -268,6 +270,7 @@ export class IngestorService {
             tx: decodedEvent.txHash,
             timeStamp: decodedEvent.timestamp,
             blockNumber: decodedEvent.blockNumber,
+            logIndex: decodedEvent.logIndex,
           }),
         );
         tile.owner = decodedEvent.from; // Update AFTER updating purchasedBy!
@@ -275,7 +278,7 @@ export class IngestorService {
         await this.tile.save(tile);
         break;
       case TransactionType.wrap:
-        if (await this.alreadyIndexed(this.wrappingHistory, decodedEvent.txHash)) {
+        if (await this.alreadyIndexed(this.wrappingHistory, decodedEvent.txHash, decodedEvent.logIndex)) {
           this.logger.warn('Already indexed this wrap, skipping!');
           return;
         }
@@ -290,12 +293,34 @@ export class IngestorService {
             timeStamp: decodedEvent.timestamp,
             blockNumber: decodedEvent.blockNumber,
             updatedBy: decodedEvent.from,
+            logIndex: decodedEvent.logIndex,
+          }),
+        );
+        await this.tile.save(tile);
+        break;
+      case TransactionType.unwrap:
+        if (await this.alreadyIndexed(this.wrappingHistory, decodedEvent.txHash, decodedEvent.logIndex)) {
+          this.logger.warn('Already indexed this unwrap, skipping!');
+          return;
+        }
+        this.logger.log('Tile unwrapped at block: ' + decodedEvent.blockNumber + ' (' + decodedEvent.timestamp + ')');
+        tile.wrapped = false;
+        tile.owner = decodedEvent.from;
+
+        tile.wrappingHistory.push(
+          new WrappingHistory({
+            wrapped: false,
+            tx: decodedEvent.txHash,
+            timeStamp: decodedEvent.timestamp,
+            blockNumber: decodedEvent.blockNumber,
+            updatedBy: decodedEvent.from,
+            logIndex: decodedEvent.logIndex,
           }),
         );
         await this.tile.save(tile);
         break;
       case TransactionType.transfer:
-        if (await this.alreadyIndexed(this.transferHistory, decodedEvent.txHash)) {
+        if (await this.alreadyIndexed(this.transferHistory, decodedEvent.txHash, decodedEvent.logIndex)) {
           this.logger.warn('Already indexed this transfer, skipping!');
           return;
         }
@@ -309,6 +334,7 @@ export class IngestorService {
             blockNumber: decodedEvent.blockNumber,
             transferredFrom: decodedEvent.to,
             transferredTo: decodedEvent.from,
+            logIndex: decodedEvent.logIndex,
           }),
         );
         await this.tile.save(tile);

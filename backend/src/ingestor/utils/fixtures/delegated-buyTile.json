@@ -2,7 +2,7 @@
   "id": 6885,
   "block": 13105460,
   "txHash": "0x84f4aec966f7e2de2b4139d0dfd510d28e9c1e7b318b69d7b96b5fdeb0eb7ec4",
-  "logIndex": "0x2b",
+  "logIndex": 43,
   "eventData": {
     "data": "0x0000000000000000000000000000000000000000000000000000000000000380",
     "topics": [

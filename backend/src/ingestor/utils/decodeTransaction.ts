@@ -21,13 +21,14 @@ export class DecodedPixelMapTransaction {
   location: number;
   type: TransactionType;
   price: number;
-  from: string; // The person paying, typically this is the BUYER of a tile
+  from: string; // The person paying, typically this is the BUYER of a tile or RECEIVER of a tile
   to: string; // The person receiving money, typically this is the SELLER of a tile
   image: string;
   url: string;
   timestamp: Date;
   txHash: string;
   blockNumber: number;
+  logIndex: number;
 }
 
 export async function decodeTransaction(
@@ -36,8 +37,8 @@ export async function decodeTransaction(
 ): Promise<DecodedPixelMapTransaction> {
   const { provider, pixelMap, pixelMapWrapper } = initializeEthersJS();
   const eventType = await getEventType(event);
-  console.log(JSON.stringify(event));
-  console.log(event);
+  // console.log(JSON.stringify(event));
+  // console.log(event);
 
   let parsedTransaction: ethers.utils.TransactionDescription;
   let tileLocation: number; // Which tile is it?
@@ -56,6 +57,7 @@ export async function decodeTransaction(
           timestamp: timestamp,
           txHash: event.txHash,
           blockNumber: event.txData.blockNumber,
+          logIndex: event.logIndex,
         });
       } else {
         try {
@@ -73,6 +75,7 @@ export async function decodeTransaction(
               timestamp: timestamp,
               txHash: event.txHash,
               blockNumber: event.txData.blockNumber,
+              logIndex: event.logIndex,
             });
           }
 
@@ -87,12 +90,12 @@ export async function decodeTransaction(
               timestamp: timestamp,
               txHash: event.txHash,
               blockNumber: event.txData.blockNumber,
+              logIndex: event.logIndex,
             });
           }
         } catch {
           console.log('Unable to parse using normal methods, figuring out via block comparison');
           const parsedLog = await pixelMap.interface.parseLog(event.eventData);
-          const value: number = parseInt(ethers.utils.formatEther(event.txData.value));
           const tileId = parsedLog.args.location.toNumber();
           const tilePriorToUpdate = await pixelMap.tiles(tileId, { blockTag: event.block - 1 }).catch();
           const tileAfterUpdate = await pixelMap.tiles(tileId, { blockTag: event.block }).catch();
@@ -105,6 +108,9 @@ export async function decodeTransaction(
               to: tilePriorToUpdate.owner,
               price: parseFloat(ethers.utils.formatEther(tilePriorToUpdate.price)),
               timestamp: new Date('2021-08-26T22:35:01.000Z'),
+              blockNumber: event.block,
+              txHash: event.txHash,
+              logIndex: event.logIndex,
             });
           } else {
             // Tis a setTile!
@@ -117,17 +123,24 @@ export async function decodeTransaction(
       const price = parseFloat(ethers.utils.formatEther(event.txData.value));
       if (event.txData.to.toLowerCase() === pixelMapWrapper.address.toLowerCase()) {
         parsedTransaction = pixelMapWrapper.interface.parseTransaction(event.txData);
-        tileLocation = parsedTransaction.args._locationID.toNumber();
-        // If the transfer is TO the PixelMapWrapper, this is a wrap/minting of ERC721.
-        return new DecodedPixelMapTransaction({
-          location: tileLocation,
-          type: TransactionType.wrap,
-          price: price,
-          from: event.txData.from.toLowerCase(),
-          timestamp: timestamp,
-          txHash: event.txHash,
-          blockNumber: event.txData.blockNumber,
-        });
+
+        if (parsedTransaction.args._locationID) {
+          tileLocation = parsedTransaction.args._locationID.toNumber();
+
+          // If the transfer is TO the PixelMapWrapper, this is a wrap/minting of ERC721.
+          return new DecodedPixelMapTransaction({
+            location: tileLocation,
+            type: TransactionType.wrap,
+            price: price,
+            from: event.txData.from.toLowerCase(),
+            timestamp: timestamp,
+            txHash: event.txHash,
+            blockNumber: event.txData.blockNumber,
+            logIndex: event.logIndex,
+          });
+        } else {
+          tileLocation = parsedTransaction.args.tokenId.toNumber();
+        }
       }
       const parsedLog = pixelMapWrapper.interface.parseLog(event.eventData);
       // If not a wrap, is it a sale?
@@ -141,6 +154,7 @@ export async function decodeTransaction(
           timestamp: timestamp,
           txHash: event.txHash,
           blockNumber: event.txData.blockNumber,
+          logIndex: event.logIndex,
         });
       }
       // Must have just been a regular transfer!
@@ -153,6 +167,7 @@ export async function decodeTransaction(
         timestamp: timestamp,
         txHash: event.txHash,
         blockNumber: event.txData.blockNumber,
+        logIndex: event.logIndex,
       });
     case EventType.Wrapped:
       parsedTransaction = pixelMapWrapper.interface.parseTransaction(event.txData);
@@ -165,38 +180,26 @@ export async function decodeTransaction(
         timestamp: timestamp,
         txHash: event.txHash,
         blockNumber: event.txData.blockNumber,
+        logIndex: event.logIndex,
       });
-
+    case EventType.Unwrapped:
+      parsedTransaction = pixelMapWrapper.interface.parseTransaction(event.txData);
+      tileLocation = parsedTransaction.args._locationID.toNumber();
+      return new DecodedPixelMapTransaction({
+        location: tileLocation,
+        type: TransactionType.unwrap,
+        price: parseFloat(ethers.utils.formatEther(parsedTransaction.value)),
+        from: event.txData.from.toLowerCase(),
+        timestamp: timestamp,
+        txHash: event.txHash,
+        blockNumber: event.txData.blockNumber,
+        logIndex: event.logIndex,
+      });
     default:
       // console.log(JSON.stringify(event));
       // console.log(event);
       throw 'IDK Clown';
   }
-
-  //
-  // if (event.eventData.topics.length > 1) {
-  //   if (
-  //     event.eventData.topics[0] == pixelMapWrapper.filters.Wrapped().topics[0] &&
-  //     event.txData.to.toLowerCase() == pixelMapWrapper.address.toLowerCase()
-  //   ) {
-  //     const decodedTx = pixelMapWrapper.interface.parseTransaction(event.txData);
-  //     return new DecodedPixelMapTransaction({
-  //       type: TransactionType.wrap,
-  //       location: decodedTx.args._location,
-  //       from: event.txData.from,
-  //       to: event.txData.to,
-  //       value: event.txData,
-  //     });
-  //   }
-  //   // return await manuallyDecodeTransaction(event, pixelMap, pixelMapWrapper, provider);
-  // }
-  // if (event.eventData.topics.pop() == pixelMap.filters.TileUpdated().topics[0]) {
-  //   if (event.txData.to.toLowerCase() == pixelMapWrapper.address.toLowerCase()) {
-  //     // return pixelMapWrapper.interface.parseTransaction(event.txData);
-  //   } else {
-  //     // return pixelMap.interface.parseTransaction(event.txData);
-  //   }
-  // }
 
   throw 'Unable to decode transaction.';
 }

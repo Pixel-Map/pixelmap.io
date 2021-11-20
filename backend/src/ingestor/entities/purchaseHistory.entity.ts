@@ -30,6 +30,9 @@ export class PurchaseHistory {
   tx: string;
 
   @Column()
+  logIndex: number;
+
+  @Column()
   soldBy: string;
 
   @Column()

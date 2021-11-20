@@ -4,8 +4,10 @@ import * as ogSampleSetTile from './fixtures/og-sample-setTile.json';
 import * as wrappingSample1 from './fixtures/sample-tileWrapped-e1.json';
 import * as wrappingSample2 from './fixtures/sample-tileWrapped-e2.json';
 import * as wrappingSample3 from './fixtures/sample-tileWrapped-e3.json';
+import * as unwrapping from './fixtures/sample-unwrap.json';
 import * as openseaPurchase from './fixtures/opensea-purchase.json';
 import * as delegatedBuyTile from './fixtures/delegated-buyTile.json';
+import * as transfer from './fixtures/sample-transfer.json';
 
 import { DecodedPixelMapTransaction, decodeTransaction, TransactionType } from './decodeTransaction';
 import { createConnection, getConnection, getRepository } from 'typeorm';
@@ -56,6 +58,7 @@ it('returns a proper buyTile DecodedTransaction when given an OG contract buyTil
       timestamp: new Date('2016-11-17T04:41:08.000Z'),
       blockNumber: 2641570,
       txHash: '0x64feae306ab228a93a56fad5c4855e317958d9f5d8423168aecdc163756925b6',
+      logIndex: 1,
     }),
   );
 });
@@ -77,6 +80,7 @@ it('returns a proper setTile DecodedTransaction when given an OG contract setTil
       timestamp: new Date('2016-11-17T04:44:03.000Z'),
       blockNumber: 2641577,
       txHash: '0x5ea7c8839918bf46f41622c2ca576b1d3724014f7c9cb3a1243dcf6416dcf62d',
+      logIndex: 4,
     }),
   );
 });
@@ -94,6 +98,7 @@ it('returns a wrappedTile DecodedTransaction when given the first (1/3) wrapping
       timestamp: new Date('2021-08-26T21:08:49.000Z'),
       blockNumber: 13103379,
       txHash: '0x3feba41d9ccc7c7078e820438d11481bbc4bf3f8b0fd3ab023eea205d14a85f2',
+      logIndex: 166,
     }),
   );
 });
@@ -111,6 +116,7 @@ it('returns a wrappedTile DecodedTransaction when given the second (2/3) wrappin
       timestamp: new Date('2021-08-26T21:08:49.000Z'),
       blockNumber: 13103379,
       txHash: '0x3feba41d9ccc7c7078e820438d11481bbc4bf3f8b0fd3ab023eea205d14a85f2',
+      logIndex: 167,
     }),
   );
 });
@@ -128,6 +134,25 @@ it('returns a wrappedTile DecodedTransaction when given the third (3/3) wrapping
       timestamp: new Date('2021-08-26T21:08:49.000Z'),
       blockNumber: 13103379,
       txHash: '0x3feba41d9ccc7c7078e820438d11481bbc4bf3f8b0fd3ab023eea205d14a85f2',
+      logIndex: 168,
+    }),
+  );
+});
+
+it('returns an unwrapTile DecodedTransaction when given an unwrapping event', async () => {
+  const event = Object.assign(new PixelMapEvent(), unwrapping);
+  const tileRepository = await getRepository(Tile);
+  const decodedTransaction = await decodeTransaction(event, tileRepository);
+  expect(decodedTransaction).toStrictEqual(
+    new DecodedPixelMapTransaction({
+      location: 1034,
+      type: TransactionType.unwrap,
+      price: 0,
+      from: '0x4f4b7e7edf5ec41235624ce207a6ef352aca7050',
+      timestamp: new Date('2021-08-27T05:04:12.000Z'),
+      blockNumber: 13105522,
+      txHash: '0x4a3359f5b5ed5500fd88847e44b67a6b70fc433ba70a303613fe963f5a97ac45',
+      logIndex: 123,
     }),
   );
 });
@@ -146,6 +171,7 @@ it('returns a buyTile DecodedTransaction when given an OpenSea purchase transfer
       timestamp: new Date('2021-08-26T22:35:01.000Z'),
       blockNumber: 13103747,
       txHash: '0xb054bf1c08cb269c51e773e3f5d2135a27885087904bfa89389bdbdd1240a71e',
+      logIndex: 458,
     }),
   );
 });
@@ -162,6 +188,28 @@ it('returns a buyTile DecodedTransaction when given a delegated purchase transfe
       from: '0x480F108332590c60eb50b3ecC22909309c8E721d',
       to: '0xb17bFA989e00c7b0d17e52d3e90Db440d2d7Ee5f',
       timestamp: new Date('2021-08-26T22:35:01.000Z'),
+      txHash: '0x84f4aec966f7e2de2b4139d0dfd510d28e9c1e7b318b69d7b96b5fdeb0eb7ec4',
+      blockNumber: 13105460,
+      logIndex: 43,
+    }),
+  );
+});
+
+it('returns a transfer DecodedTransaction when given a transfer event', async () => {
+  const event = Object.assign(new PixelMapEvent(), transfer);
+  const tileRepository = await getRepository(Tile);
+  const decodedTransaction = await decodeTransaction(event, tileRepository);
+  expect(decodedTransaction).toStrictEqual(
+    new DecodedPixelMapTransaction({
+      location: 3570,
+      type: TransactionType.transfer,
+      price: 0,
+      from: '0x6d5c43265a3107e95c629cf3e8428eb9275dba13',
+      to: '0x38ecf50ada3b087be4a0e52fea50b388b416992f',
+      timestamp: new Date('2021-08-27T06:05:00.000Z'),
+      txHash: '0x2bb3203913d34d29338c90343fae99b4af1dcebf9bd58db5310bac7fc3f9d6ff',
+      blockNumber: 13105786,
+      logIndex: 122,
     }),
   );
 });

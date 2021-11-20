@@ -20,6 +20,9 @@ export class TransferHistory {
   tx: string;
 
   @Column()
+  logIndex: number;
+
+  @Column()
   transferredFrom: string;
 
   @Column()
