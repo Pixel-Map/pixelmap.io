@@ -208,6 +208,19 @@ export class IngestorService {
     return false;
   }
 
+  async alreadyIndexedWrap(repo: Repository<any>, txHash: string): Promise<boolean> {
+    const existing = await repo.findOne({
+      where: {
+        tx: txHash,
+      },
+    });
+    if (existing) {
+      this.logger.warn('Already indexed this update, skipping!');
+      return true;
+    }
+    return false;
+  }
+
   async ingestEvent(decodedEvent: DecodedPixelMapTransaction) {
     // Skip event if it's a transfer to the wrapper, it's just the first step of wrapping.
     const tile: Tile = await this.tile.findOne({ id: decodedEvent.location });
@@ -278,7 +291,7 @@ export class IngestorService {
         await this.tile.save(tile);
         break;
       case TransactionType.wrap:
-        if (await this.alreadyIndexed(this.wrappingHistory, decodedEvent.txHash, decodedEvent.logIndex)) {
+        if (await this.alreadyIndexedWrap(this.wrappingHistory, decodedEvent.txHash)) {
           this.logger.warn('Already indexed this wrap, skipping!');
           return;
         }
@@ -299,7 +312,7 @@ export class IngestorService {
         await this.tile.save(tile);
         break;
       case TransactionType.unwrap:
-        if (await this.alreadyIndexed(this.wrappingHistory, decodedEvent.txHash, decodedEvent.logIndex)) {
+        if (await this.alreadyIndexedWrap(this.wrappingHistory, decodedEvent.txHash)) {
           this.logger.warn('Already indexed this unwrap, skipping!');
           return;
         }
