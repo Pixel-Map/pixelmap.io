@@ -250,21 +250,21 @@ async function getOpenseaPrices() {
         }
       }
 
-      const response = await fetch(
-        `https://api.opensea.io/wyvern/v1/orders?${params}`,
-        { method: "GET" }
-      );
-      let results = await response.json();
-
-      if (results && results.orders && results.orders.length > 0) {
-        results.orders.forEach((order) => {
-          let location = parseInt(order.asset.token_id);
-          let price = new BigNumber(order.current_price);
-          price = price.toFixed(0); //remove decimals and exp notation
-
-          tiles[location].openseaPrice = price;
-        });
-      }
+      // const response = await fetch(
+      //   `https://api.opensea.io/wyvern/v1/orders?${params}`,
+      //   { method: "GET" }
+      // );
+      // let results = await response.json();
+      //
+      // if (results && results.orders && results.orders.length > 0) {
+      //   results.orders.forEach((order) => {
+      //     let location = parseInt(order.asset.token_id);
+      //     let price = new BigNumber(order.current_price);
+      //     price = price.toFixed(0); //remove decimals and exp notation
+      //
+      //     tiles[location].openseaPrice = price;
+      //   });
+      // }
 
       cache.updateCache(tiles); //leave caching to updateData() only.
 
