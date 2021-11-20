@@ -159,7 +159,7 @@ it('returns a buyTile DecodedTransaction when given a delegated purchase transfe
       location: 896,
       type: TransactionType.buyTile,
       price: 3.55,
-      from: '0xb34a4bbc546f3218008ba78dec5cd9773e237da6',
+      from: '0x480F108332590c60eb50b3ecC22909309c8E721d',
       to: '0xb17bFA989e00c7b0d17e52d3e90Db440d2d7Ee5f',
       timestamp: new Date('2021-08-26T22:35:01.000Z'),
     }),
