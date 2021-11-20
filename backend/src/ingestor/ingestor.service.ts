@@ -131,14 +131,14 @@ export class IngestorService {
       const event = events[i];
       const transaction = await provider.getTransaction(event.transactionHash);
       this.logger.log('Saving event at block: ' + transaction.blockNumber);
-      if (await this.pixelMapEvent.findOne({ txHash: event.transactionHash, logIndex: event.logIndex })) {
+      if (await this.pixelMapEvent.findOne({ txHash: event.transactionHash, logIndex: parseInt(event.logIndex) })) {
         this.logger.warn('Already indexed this event, skipping!');
         return;
       } else {
         await this.pixelMapEvent.save({
           eventData: event,
           txHash: event.transactionHash,
-          logIndex: event.logIndex,
+          logIndex: parseInt(event.logIndex),
           txData: transaction,
           block: transaction.blockNumber,
         });
