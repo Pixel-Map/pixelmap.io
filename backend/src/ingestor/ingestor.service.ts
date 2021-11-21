@@ -178,13 +178,15 @@ export class IngestorService {
       }
       const events = await this.pixelMapEvent.find({
         skip: this.lastIngestedEvent,
-        order: { block: 'ASC' },
+        order: { id: 'ASC' },
       });
       for (let i = 0; i < events.length; i++) {
         const decodedEvent = await decodeTransaction(events[i], this.tile);
         await this.ingestEvent(decodedEvent);
         const percent = (100 * (i + 1)) / events.length;
-        this.logger.verbose(i + 1 + '/' + events.length + ' events processed (' + percent + '% complete)');
+        this.logger.verbose(
+          i + 1 + '/' + events.length + ' events processed (' + percent + '% complete) - ' + events[i].id,
+        );
         lastEvent.lastIngestedEvent = events[i].id;
         await this.ingestedEvents.save(lastEvent);
       }
