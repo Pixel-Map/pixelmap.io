@@ -20,7 +20,6 @@ const BLOCKS_TO_PROCESS_AT_TIME = 1000;
 @Injectable()
 export class IngestorService {
   private readonly logger = new Logger(IngestorService.name);
-  private lastDownloadedBlock;
   private lastIngestedEvent;
   private currentlyRunningSync = true;
   private currentlyIngestingEvents = false;
@@ -50,16 +49,6 @@ export class IngestorService {
 
   @Cron(new Date(Date.now() + 3000)) // Start 5 seconds after App startup
   async initialStartup() {
-    let lastBlock = await this.downloadedBlocks.findOne();
-    if (lastBlock == undefined) {
-      this.logger.log('Starting fresh, start of contract! (2641527)');
-      lastBlock = await this.downloadedBlocks.save({
-        id: 1,
-        lastDownloadedBlock: 2641527,
-      });
-    }
-    this.lastDownloadedBlock = lastBlock.lastDownloadedBlock;
-
     await this.syncBlocks();
     this.currentlyRunningSync = false;
     await this.resyncEveryMinute(); // Let's kick it off once so I don't have to wait a minute.
@@ -79,24 +68,29 @@ export class IngestorService {
 
   async syncBlocks() {
     const { provider, pixelMap, pixelMapWrapper } = initializeEthersJS();
-
-    let endBlock = this.lastDownloadedBlock + BLOCKS_TO_PROCESS_AT_TIME;
-    if (endBlock > 3974343 && endBlock < 13062712) {
-      this.logger.log('Teleporting past the land of nothingness!');
-      endBlock = 13062713;
+    let lastBlock = await this.downloadedBlocks.findOne();
+    if (lastBlock == undefined) {
+      this.logger.log('Starting fresh, start of contract! (2641527)');
+      lastBlock = await this.downloadedBlocks.save({
+        id: 1,
+        lastDownloadedBlock: 2641527,
+      });
     }
+    let lastDownloadedBlock = lastBlock.lastDownloadedBlock;
+
+    let endBlock = lastDownloadedBlock + BLOCKS_TO_PROCESS_AT_TIME;
 
     const mostRecentBlockNumber = await provider.getBlockNumber();
-    this.logger.log('Last downloaded block: ' + this.lastDownloadedBlock);
+    this.logger.log('Currently on block: ' + lastDownloadedBlock);
     this.logger.log('End block: ' + endBlock);
-    this.logger.log('Most recent block: ' + mostRecentBlockNumber);
+    this.logger.log('Most recent block on blockchain: ' + mostRecentBlockNumber);
     while (endBlock < mostRecentBlockNumber) {
-      this.logger.debug('Processing blocks: ' + this.lastDownloadedBlock + ' - ' + endBlock);
+      this.logger.debug('Processing blocks: ' + lastDownloadedBlock + ' - ' + endBlock);
       try {
         const events = await provider.send('eth_getLogs', [
           {
             address: [pixelMap.address, pixelMapWrapper.address],
-            fromBlock: ethers.BigNumber.from(this.lastDownloadedBlock).toHexString(),
+            fromBlock: ethers.BigNumber.from(lastDownloadedBlock).toHexString(),
             toBlock: ethers.BigNumber.from(endBlock).toHexString(),
             topics: [
               [
@@ -115,8 +109,15 @@ export class IngestorService {
             lastDownloadedBlock: endBlock,
           }),
         );
-        this.lastDownloadedBlock = endBlock;
-        endBlock = this.lastDownloadedBlock + BLOCKS_TO_PROCESS_AT_TIME;
+        lastDownloadedBlock = endBlock + 1;
+        endBlock = lastDownloadedBlock + BLOCKS_TO_PROCESS_AT_TIME;
+
+        // Secret Teleportation past nothingness
+        if (lastDownloadedBlock > 3974343 && lastDownloadedBlock < 13062712) {
+          this.logger.log('Teleporting past the land of nothingness!');
+          lastDownloadedBlock = 13062713;
+          endBlock = lastDownloadedBlock + BLOCKS_TO_PROCESS_AT_TIME;
+        }
       } catch (error) {
         this.logger.warn('Error while ingesting.  Retrying');
         this.logger.warn(error);
@@ -133,6 +134,10 @@ export class IngestorService {
       this.logger.log('Saving event at block: ' + transaction.blockNumber);
       if (await this.pixelMapEvent.findOne({ txHash: event.transactionHash, logIndex: parseInt(event.logIndex) })) {
         this.logger.warn('Already indexed this event, skipping!');
+        this.logger.warn(event);
+        this.logger.warn(transaction);
+        this.logger.error('WHat in the hell');
+        exit();
         return;
       } else {
         await this.pixelMapEvent.save({
@@ -146,7 +151,7 @@ export class IngestorService {
     }
   }
 
-  @Cron('1 * * * * *')
+  // @Cron('1 * * * * *')
   async ingestEvents() {
     if (!this.currentlyIngestingEvents) {
       this.currentlyIngestingEvents = true;
@@ -204,6 +209,8 @@ export class IngestorService {
       },
     });
     if (existing) {
+      this.logger.error('How did this happen');
+      exit();
       this.logger.warn('Already indexed this update, skipping!');
       return true;
     }
