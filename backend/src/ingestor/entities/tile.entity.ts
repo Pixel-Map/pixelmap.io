@@ -1,55 +1,41 @@
-import { Column, Entity, OneToMany, PrimaryColumn } from 'typeorm';
+import { Entity, OneToMany, PrimaryKey, Property } from '@mikro-orm/core';
 import { DataHistory } from './dataHistory.entity';
 import { WrappingHistory } from './wrappingHistory.entity';
 import { PurchaseHistory } from './purchaseHistory.entity';
 import { TransferHistory } from './transferHistory.entity';
-
-/// ColumnNumericTransformer
-export class ColumnNumericTransformer {
-  to(data: number): number {
-    return data;
-  }
-  from(data: string): number {
-    return parseFloat(data);
-  }
-}
 
 @Entity()
 export class Tile {
   public constructor(init?: Partial<Tile>) {
     Object.assign(this, init);
   }
-  @PrimaryColumn()
-  id: number;
+  @PrimaryKey()
+  id!: number;
 
-  @Column()
+  @Property()
   image: string;
 
-  @Column('numeric', {
-    precision: 7,
-    scale: 2,
-    transformer: new ColumnNumericTransformer(),
-  })
+  @Property({ columnType: 'decimal(10, 2)' })
   price: number;
 
-  @Column()
+  @Property()
   url: string;
 
-  @Column()
+  @Property()
   owner: string;
 
-  @Column()
+  @Property()
   wrapped: boolean;
 
-  @OneToMany(() => DataHistory, (dataHistory) => dataHistory.tile, { cascade: true, eager: true })
+  @OneToMany(() => DataHistory, (dataHistory) => dataHistory.tile)
   dataHistory: DataHistory[];
 
-  @OneToMany(() => WrappingHistory, (wrappingHistory) => wrappingHistory.tile, { cascade: true, eager: true })
+  @OneToMany(() => WrappingHistory, (wrappingHistory) => wrappingHistory.tile)
   wrappingHistory: WrappingHistory[];
 
-  @OneToMany(() => PurchaseHistory, (purchaseHistory) => purchaseHistory.tile, { cascade: true, eager: true })
+  @OneToMany(() => PurchaseHistory, (purchaseHistory) => purchaseHistory.tile)
   purchaseHistory: PurchaseHistory[];
 
-  @OneToMany(() => TransferHistory, (transferHistory) => transferHistory.tile, { cascade: true, eager: true })
+  @OneToMany(() => TransferHistory, (transferHistory) => transferHistory.tile)
   transferHistory: TransferHistory[];
 }

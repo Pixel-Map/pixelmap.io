@@ -1,13 +1,13 @@
-import { Column, Entity, PrimaryColumn } from 'typeorm';
+import { Entity, PrimaryKey, Property } from '@mikro-orm/core';
 
 @Entity()
 export class DownloadedBlock {
   public constructor(init?: Partial<DownloadedBlock>) {
     Object.assign(this, init);
   }
-  @PrimaryColumn()
-  id: number;
+  @PrimaryKey()
+  id!: number;
 
-  @Column()
+  @Property()
   lastDownloadedBlock: number;
 }

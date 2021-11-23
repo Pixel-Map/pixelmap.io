@@ -1,53 +1,39 @@
-import { Column, Entity, ManyToOne, PrimaryColumn, PrimaryGeneratedColumn, Unique } from 'typeorm';
 import { Tile } from './tile.entity';
-
-/// ColumnNumericTransformer
-export class ColumnNumericTransformer {
-  to(data: number): number {
-    return data;
-  }
-  from(data: string): number {
-    return parseFloat(data);
-  }
-}
+import { Entity, ManyToOne, PrimaryKey, Property, Unique } from '@mikro-orm/core';
 
 @Entity()
-@Unique('tile_data_index', ['tile', 'tx'])
+@Unique({ properties: ['tile', 'tx'] })
 export class DataHistory {
   public constructor(init?: Partial<DataHistory>) {
     Object.assign(this, init);
   }
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryKey()
+  id!: number;
 
-  @Column()
+  @Property()
   timeStamp: Date;
 
-  @Column()
+  @Property()
   blockNumber: number;
 
-  @Column()
+  @Property()
   tx: string;
 
-  @Column()
+  @Property()
   logIndex: number;
 
-  @Column()
+  @Property()
   image: string;
 
-  @Column('numeric', {
-    precision: 7,
-    scale: 2,
-    transformer: new ColumnNumericTransformer(),
-  })
+  @Property({ columnType: 'decimal(10, 2)' })
   price: number;
 
-  @Column()
+  @Property()
   url: string;
 
-  @Column()
+  @Property()
   updatedBy: string;
 
-  @ManyToOne(() => Tile, (tile) => tile.dataHistory, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Tile)
   tile: Tile;
 }

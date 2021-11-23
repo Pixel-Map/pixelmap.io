@@ -1,10 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Cron } from '@nestjs/schedule';
+import { Cron, SchedulerRegistry } from '@nestjs/schedule';
 import { ethers } from 'ethers';
 import { DownloadedBlock } from './entities/downloadedBlock.entity';
 import { IngestedEvent } from './entities/ingestedEvent.entity';
-import { Repository } from 'typeorm';
 import { PixelMapEvent } from './entities/pixelMapEvent.entity';
 import { Tile } from './entities/tile.entity';
 import { DataHistory } from './entities/dataHistory.entity';
@@ -14,6 +12,8 @@ import { TransferHistory } from './entities/transferHistory.entity';
 import { DecodedPixelMapTransaction, decodeTransaction, TransactionType } from './utils/decodeTransaction';
 import { initializeEthersJS } from './utils/initializeEthersJS';
 import { exit } from '@nestjs/cli/actions';
+import { EntityRepository } from '@mikro-orm/core';
+import { InjectRepository } from '@mikro-orm/nestjs';
 
 const BLOCKS_TO_PROCESS_AT_TIME = 1000;
 
@@ -26,21 +26,22 @@ export class IngestorService {
 
   constructor(
     @InjectRepository(DownloadedBlock)
-    private downloadedBlocks: Repository<DownloadedBlock>,
+    private downloadedBlocks: EntityRepository<DownloadedBlock>,
     @InjectRepository(IngestedEvent)
-    private ingestedEvents: Repository<IngestedEvent>,
+    private ingestedEvents: EntityRepository<IngestedEvent>,
     @InjectRepository(PixelMapEvent)
-    private pixelMapEvent: Repository<PixelMapEvent>,
+    private pixelMapEvent: EntityRepository<PixelMapEvent>,
     @InjectRepository(Tile)
-    private tile: Repository<Tile>,
+    private tile: EntityRepository<Tile>,
     @InjectRepository(DataHistory)
-    private dataHistory: Repository<DataHistory>,
+    private dataHistory: EntityRepository<DataHistory>,
     @InjectRepository(PurchaseHistory)
-    private purchaseHistory: Repository<PurchaseHistory>,
+    private purchaseHistory: EntityRepository<PurchaseHistory>,
     @InjectRepository(WrappingHistory)
-    private wrappingHistory: Repository<WrappingHistory>,
+    private wrappingHistory: EntityRepository<WrappingHistory>,
     @InjectRepository(TransferHistory)
-    private transferHistory: Repository<TransferHistory>,
+    private transferHistory: EntityRepository<TransferHistory>,
+    private schedulerRegistry: SchedulerRegistry,
   ) {}
 
   /**
@@ -68,13 +69,11 @@ export class IngestorService {
 
   async syncBlocks() {
     const { provider, pixelMap, pixelMapWrapper } = initializeEthersJS();
-    let lastBlock = await this.downloadedBlocks.findOne();
+    let lastBlock = await this.downloadedBlocks.findOne(1);
     if (lastBlock == undefined) {
       this.logger.log('Starting fresh, start of contract! (2641527)');
-      lastBlock = await this.downloadedBlocks.save({
-        id: 1,
-        lastDownloadedBlock: 2641527,
-      });
+      lastBlock = new DownloadedBlock({ id: 1, lastDownloadedBlock: 2641527 });
+      await this.downloadedBlocks.persistAndFlush(lastBlock);
     }
     let lastDownloadedBlock = lastBlock.lastDownloadedBlock;
 
@@ -103,12 +102,8 @@ export class IngestorService {
           },
         ]);
         await this.processEvents(events);
-        await this.downloadedBlocks.save(
-          this.downloadedBlocks.create({
-            id: 1,
-            lastDownloadedBlock: endBlock,
-          }),
-        );
+        lastBlock.lastDownloadedBlock = endBlock;
+        await this.downloadedBlocks.persistAndFlush(lastBlock);
         lastDownloadedBlock = endBlock + 1;
         endBlock = lastDownloadedBlock + BLOCKS_TO_PROCESS_AT_TIME;
 
@@ -134,41 +129,38 @@ export class IngestorService {
       this.logger.log('Saving event at block: ' + transaction.blockNumber);
       if (await this.pixelMapEvent.findOne({ txHash: event.transactionHash, logIndex: parseInt(event.logIndex) })) {
         this.logger.warn('Already indexed this event, skipping!');
-        this.logger.warn(event);
-        this.logger.warn(transaction);
-        this.logger.error('WHat in the hell');
-        exit();
         return;
       } else {
-        await this.pixelMapEvent.save({
+        const pixelMapEvent = new PixelMapEvent({
           eventData: event,
           txHash: event.transactionHash,
           logIndex: parseInt(event.logIndex),
           txData: transaction,
           block: transaction.blockNumber,
         });
+        await this.pixelMapEvent.persistAndFlush(pixelMapEvent);
       }
     }
   }
 
-  // @Cron('1 * * * * *')
+  @Cron('1 * * * * *', {
+    name: 'ingestEvents',
+  })
   async ingestEvents() {
     if (!this.currentlyIngestingEvents) {
       this.currentlyIngestingEvents = true;
-      let lastEvent = await this.ingestedEvents.findOne();
+      let lastEvent = await this.ingestedEvents.findOne(1);
       if (lastEvent == undefined) {
         this.logger.log('Starting fresh, start of events! (0)');
-        lastEvent = await this.ingestedEvents.save({
-          id: 1,
-          lastIngestedEvent: 0,
-        });
+        lastEvent = new IngestedEvent({ id: 1, lastIngestedEvent: 0 });
+        await this.ingestedEvents.persist(lastEvent);
       }
       this.lastIngestedEvent = lastEvent.lastIngestedEvent;
 
       if (this.lastIngestedEvent == 0) {
         for (let i = 0; i < 3970; i++) {
           this.logger.log('Initializing tile: ' + i);
-          await this.tile.save({
+          const tile = new Tile({
             id: i,
             price: 2,
             wrapped: false,
@@ -179,12 +171,16 @@ export class IngestorService {
             wrappingHistory: [],
             purchaseHistory: [],
           });
+          await this.tile.persist(tile);
         }
       }
-      const events = await this.pixelMapEvent.find({
-        skip: this.lastIngestedEvent,
-        order: { id: 'ASC' },
-      });
+      const events = await this.pixelMapEvent.find(
+        {},
+        {
+          offset: this.lastIngestedEvent,
+          orderBy: { id: 'ASC' },
+        },
+      );
       for (let i = 0; i < events.length; i++) {
         const decodedEvent = await decodeTransaction(events[i], this.tile);
         await this.ingestEvent(decodedEvent);
@@ -193,7 +189,7 @@ export class IngestorService {
           i + 1 + '/' + events.length + ' events processed (' + percent + '% complete) - ' + events[i].id,
         );
         lastEvent.lastIngestedEvent = events[i].id;
-        await this.ingestedEvents.save(lastEvent);
+        await this.ingestedEvents.persistAndFlush(lastEvent);
       }
       this.currentlyIngestingEvents = false;
     } else {
@@ -201,12 +197,10 @@ export class IngestorService {
     }
   }
 
-  async alreadyIndexed(repo: Repository<any>, txHash: string, logIndex: number): Promise<boolean> {
+  async alreadyIndexed(repo: EntityRepository<any>, txHash: string, logIndex: number): Promise<boolean> {
     const existing = await repo.findOne({
-      where: {
-        tx: txHash,
-        logIndex: logIndex,
-      },
+      tx: txHash,
+      logIndex: logIndex,
     });
     if (existing) {
       this.logger.error('How did this happen');
@@ -217,11 +211,9 @@ export class IngestorService {
     return false;
   }
 
-  async alreadyIndexedWrap(repo: Repository<any>, txHash: string): Promise<boolean> {
+  async alreadyIndexedWrap(repo: EntityRepository<any>, txHash: string): Promise<boolean> {
     const existing = await repo.findOne({
-      where: {
-        tx: txHash,
-      },
+      tx: txHash,
     });
     if (existing) {
       this.logger.warn('Already indexed this update, skipping!');
@@ -259,7 +251,7 @@ export class IngestorService {
             logIndex: decodedEvent.logIndex,
           }),
         );
-        await this.tile.save(tile);
+        await this.tile.persistAndFlush(tile);
         break;
       case TransactionType.buyTile:
         if (await this.alreadyIndexed(this.purchaseHistory, decodedEvent.txHash, decodedEvent.logIndex)) {
@@ -275,6 +267,7 @@ export class IngestorService {
             decodedEvent.timestamp +
             ')',
         );
+        console.log(decodedEvent);
         if (decodedEvent.price <= 0) {
           throw 'Purchase cannot be 0 or less';
         }
@@ -297,7 +290,7 @@ export class IngestorService {
         );
         tile.owner = decodedEvent.from; // Update AFTER updating purchasedBy!
         tile.price = 0; // Price is always set to zero following a sale!s
-        await this.tile.save(tile);
+        await this.tile.persistAndFlush(tile);
         break;
       case TransactionType.wrap:
         if (await this.alreadyIndexedWrap(this.wrappingHistory, decodedEvent.txHash)) {
@@ -318,7 +311,7 @@ export class IngestorService {
             logIndex: decodedEvent.logIndex,
           }),
         );
-        await this.tile.save(tile);
+        await this.tile.persistAndFlush(tile);
         break;
       case TransactionType.unwrap:
         if (await this.alreadyIndexedWrap(this.wrappingHistory, decodedEvent.txHash)) {
@@ -339,7 +332,7 @@ export class IngestorService {
             logIndex: decodedEvent.logIndex,
           }),
         );
-        await this.tile.save(tile);
+        await this.tile.persistAndFlush(tile);
         break;
       case TransactionType.transfer:
         if (await this.alreadyIndexed(this.transferHistory, decodedEvent.txHash, decodedEvent.logIndex)) {
@@ -359,7 +352,7 @@ export class IngestorService {
             logIndex: decodedEvent.logIndex,
           }),
         );
-        await this.tile.save(tile);
+        await this.tile.persistAndFlush(tile);
         break;
       default:
         this.logger.error('Failed to account for the following event:');

@@ -1,13 +1,13 @@
-import { Column, Entity, PrimaryColumn } from 'typeorm';
+import { Entity, PrimaryKey, Property } from '@mikro-orm/core';
 
 @Entity()
 export class IngestedEvent {
   public constructor(init?: Partial<IngestedEvent>) {
     Object.assign(this, init);
   }
-  @PrimaryColumn()
-  id: number;
+  @PrimaryKey()
+  id!: number;
 
-  @Column()
+  @Property()
   lastIngestedEvent: number;
 }

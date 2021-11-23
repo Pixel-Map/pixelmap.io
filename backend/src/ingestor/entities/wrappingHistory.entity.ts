@@ -1,34 +1,34 @@
-import { Column, Entity, ManyToOne, PrimaryGeneratedColumn, Unique } from 'typeorm';
+import { Entity, ManyToOne, PrimaryKey, Property, Unique } from '@mikro-orm/core';
 import { Tile } from './tile.entity';
 
 @Entity()
-@Unique('tile_wrapping_index', ['tile', 'tx'])
+@Unique({ properties: ['tile', 'tx'] })
 export class WrappingHistory {
   public constructor(init?: Partial<WrappingHistory>) {
     Object.assign(this, init);
   }
 
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryKey()
+  id!: number;
 
-  @Column()
+  @Property()
   timeStamp: Date;
 
-  @Column()
+  @Property()
   blockNumber: number;
 
-  @Column()
+  @Property()
   tx: string;
 
-  @Column()
+  @Property()
   logIndex: number;
 
-  @Column()
+  @Property()
   wrapped: boolean;
 
-  @Column()
+  @Property()
   updatedBy: string;
 
-  @ManyToOne(() => Tile, (tile) => tile.wrappingHistory, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Tile)
   tile: Tile;
 }

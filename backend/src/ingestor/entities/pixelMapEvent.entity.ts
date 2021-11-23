@@ -1,30 +1,30 @@
-import { Column, Entity, PrimaryGeneratedColumn, Unique } from 'typeorm';
+import { Entity, PrimaryKey, Property, Unique } from '@mikro-orm/core';
 
 @Entity()
-@Unique('pixelmap_event_index', ['txHash', 'logIndex'])
+@Unique({ properties: ['txHash', 'logIndex'] })
 export class PixelMapEvent {
   public constructor(init?: Partial<PixelMapEvent>) {
     Object.assign(this, init);
   }
 
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryKey()
+  id!: number;
 
-  @Column()
+  @Property()
   block: number;
 
-  @Column()
+  @Property()
   txHash: string;
 
-  @Column()
+  @Property()
   logIndex: number;
 
-  @Column({
+  @Property({
     type: 'jsonb',
   })
   eventData;
 
-  @Column({
+  @Property({
     type: 'jsonb',
   })
   txData;

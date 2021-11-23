@@ -1,50 +1,36 @@
-import { Column, Entity, ManyToOne, PrimaryGeneratedColumn, Unique } from 'typeorm';
+import { Entity, ManyToOne, PrimaryKey, Property, Unique } from '@mikro-orm/core';
 import { Tile } from './tile.entity';
 
-/// ColumnNumericTransformer
-export class ColumnNumericTransformer {
-  to(data: number): number {
-    return data;
-  }
-  from(data: string): number {
-    return parseFloat(data);
-  }
-}
-
 @Entity()
-@Unique('tile_purchase_index', ['tile', 'tx'])
+@Unique({ properties: ['tile', 'tx'] })
 export class PurchaseHistory {
   public constructor(init?: Partial<PurchaseHistory>) {
     Object.assign(this, init);
   }
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryKey()
+  id!: number;
 
-  @Column()
+  @Property()
   timeStamp: Date;
 
-  @Column()
+  @Property()
   blockNumber: number;
 
-  @Column()
+  @Property()
   tx: string;
 
-  @Column()
+  @Property()
   logIndex: number;
 
-  @Column()
+  @Property()
   soldBy: string;
 
-  @Column()
+  @Property()
   purchasedBy: string;
 
-  @Column('numeric', {
-    precision: 7,
-    scale: 2,
-    transformer: new ColumnNumericTransformer(),
-  })
+  @Property({ columnType: 'decimal(10, 2)' })
   price: number;
 
-  @ManyToOne(() => Tile, (tile) => tile.purchaseHistory, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Tile)
   tile: Tile;
 }

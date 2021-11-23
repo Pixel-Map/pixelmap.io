@@ -3,8 +3,8 @@ import { ethers } from 'ethers';
 import { initializeEthersJS } from './initializeEthersJS';
 import { EventType, getEventType } from './getEventType';
 import { getTimestamp } from './getTimestamp';
-import { Repository } from 'typeorm';
 import { Tile } from '../entities/tile.entity';
+import { EntityRepository } from '@mikro-orm/core';
 
 export enum TransactionType {
   setTile,
@@ -33,7 +33,7 @@ export class DecodedPixelMapTransaction {
 
 export async function decodeTransaction(
   event: PixelMapEvent,
-  tileRepository: Repository<Tile>,
+  tileRepository: EntityRepository<Tile>,
 ): Promise<DecodedPixelMapTransaction> {
   const { provider, pixelMap, pixelMapWrapper } = initializeEthersJS();
   const eventType = await getEventType(event);
@@ -64,7 +64,7 @@ export async function decodeTransaction(
           parsedTransaction = pixelMap.interface.parseTransaction(event.txData);
           tileLocation = parsedTransaction.args.location.toNumber();
           if (parsedTransaction.name == 'buyTile') {
-            const currentTileHistory = await tileRepository.findOne({ id: tileLocation });
+            const currentTileHistory = await tileRepository.findOne(tileLocation);
             const previousOwner = currentTileHistory.owner;
             return new DecodedPixelMapTransaction({
               location: tileLocation,
@@ -94,6 +94,7 @@ export async function decodeTransaction(
             });
           }
         } catch {
+          console.log(event);
           console.log('Unable to parse using normal methods, figuring out via block comparison');
           const parsedLog = await pixelMap.interface.parseLog(event.eventData);
           const tileId = parsedLog.args.location.toNumber();
