@@ -1,0 +1,218 @@
+{
+  "data": {
+    "propertyOrder": {},
+    "properties": {
+      "id": {
+        "name": "id",
+        "reference": "scalar",
+        "primary": true,
+        "type": "number"
+      },
+      "image": {
+        "name": "image",
+        "reference": "scalar",
+        "length": 800,
+        "getter": false,
+        "setter": false,
+        "type": "string"
+      },
+      "price": {
+        "name": "price",
+        "reference": "scalar",
+        "getter": false,
+        "setter": false,
+        "type": "number",
+        "columnTypes": [
+          "decimal(10, 2)"
+        ]
+      },
+      "url": {
+        "name": "url",
+        "reference": "scalar",
+        "getter": false,
+        "setter": false,
+        "type": "string"
+      },
+      "owner": {
+        "name": "owner",
+        "reference": "scalar",
+        "getter": false,
+        "setter": false,
+        "type": "string"
+      },
+      "wrapped": {
+        "name": "wrapped",
+        "reference": "scalar",
+        "getter": false,
+        "setter": false,
+        "type": "boolean"
+      },
+      "dataHistory": {
+        "name": "dataHistory",
+        "reference": "1:m",
+        "cascade": [
+          "persist"
+        ],
+        "type": "DataHistory"
+      },
+      "wrappingHistory": {
+        "name": "wrappingHistory",
+        "reference": "1:m",
+        "cascade": [
+          "persist"
+        ],
+        "type": "WrappingHistory"
+      },
+      "purchaseHistory": {
+        "name": "purchaseHistory",
+        "reference": "1:m",
+        "cascade": [
+          "persist"
+        ],
+        "type": "PurchaseHistory"
+      },
+      "transferHistory": {
+        "name": "transferHistory",
+        "reference": "1:m",
+        "cascade": [
+          "persist"
+        ],
+        "type": "TransferHistory"
+      }
+    },
+    "props": [
+      {
+        "name": "id",
+        "reference": "scalar",
+        "primary": true,
+        "type": "number"
+      },
+      {
+        "name": "image",
+        "reference": "scalar",
+        "length": 800,
+        "getter": false,
+        "setter": false,
+        "type": "string"
+      },
+      {
+        "name": "price",
+        "reference": "scalar",
+        "getter": false,
+        "setter": false,
+        "type": "number",
+        "columnTypes": [
+          "decimal(10, 2)"
+        ]
+      },
+      {
+        "name": "url",
+        "reference": "scalar",
+        "getter": false,
+        "setter": false,
+        "type": "string"
+      },
+      {
+        "name": "owner",
+        "reference": "scalar",
+        "getter": false,
+        "setter": false,
+        "type": "string"
+      },
+      {
+        "name": "wrapped",
+        "reference": "scalar",
+        "getter": false,
+        "setter": false,
+        "type": "boolean"
+      },
+      {
+        "name": "dataHistory",
+        "reference": "1:m",
+        "cascade": [
+          "persist"
+        ],
+        "type": "DataHistory"
+      },
+      {
+        "name": "wrappingHistory",
+        "reference": "1:m",
+        "cascade": [
+          "persist"
+        ],
+        "type": "WrappingHistory"
+      },
+      {
+        "name": "purchaseHistory",
+        "reference": "1:m",
+        "cascade": [
+          "persist"
+        ],
+        "type": "PurchaseHistory"
+      },
+      {
+        "name": "transferHistory",
+        "reference": "1:m",
+        "cascade": [
+          "persist"
+        ],
+        "type": "TransferHistory"
+      }
+    ],
+    "primaryKeys": [
+      "id"
+    ],
+    "filters": {},
+    "hooks": {},
+    "indexes": [],
+    "uniques": [],
+    "className": "Tile",
+    "path": "./src/ingestor/entities/tile.entity.ts",
+    "name": "Tile",
+    "abstract": false,
+    "constructorParams": [
+      "init"
+    ],
+    "toJsonParams": [],
+    "useCache": true,
+    "compositePK": false,
+    "relations": [
+      {
+        "name": "dataHistory",
+        "reference": "1:m",
+        "cascade": [
+          "persist"
+        ],
+        "type": "DataHistory"
+      },
+      {
+        "name": "wrappingHistory",
+        "reference": "1:m",
+        "cascade": [
+          "persist"
+        ],
+        "type": "WrappingHistory"
+      },
+      {
+        "name": "purchaseHistory",
+        "reference": "1:m",
+        "cascade": [
+          "persist"
+        ],
+        "type": "PurchaseHistory"
+      },
+      {
+        "name": "transferHistory",
+        "reference": "1:m",
+        "cascade": [
+          "persist"
+        ],
+        "type": "TransferHistory"
+      }
+    ],
+    "collection": "tile"
+  },
+  "origin": "./src/ingestor/entities/tile.entity.ts",
+  "hash": "4867e789905017bc727f0c40dc98c668",
+  "version": "4.5.9"
+}

@@ -160,18 +160,16 @@ export class IngestorService {
       if (this.lastIngestedEvent == 0) {
         for (let i = 0; i < 3970; i++) {
           this.logger.log('Initializing tile: ' + i);
-          const tile = new Tile({
+          const tile = await this.tile.create({
             id: i,
             price: 2,
             wrapped: false,
             image: '',
             url: '',
             owner: '0x4f4b7e7edf5ec41235624ce207a6ef352aca7050', // Creator of Pixelmap
-            dataHistory: [],
-            wrappingHistory: [],
-            purchaseHistory: [],
           });
           await this.tile.persist(tile);
+          console.log('mewoth');
         }
       }
       const events = await this.pixelMapEvent.find(
@@ -203,8 +201,6 @@ export class IngestorService {
       logIndex: logIndex,
     });
     if (existing) {
-      this.logger.error('How did this happen');
-      exit();
       this.logger.warn('Already indexed this update, skipping!');
       return true;
     }
@@ -224,7 +220,12 @@ export class IngestorService {
 
   async ingestEvent(decodedEvent: DecodedPixelMapTransaction) {
     // Skip event if it's a transfer to the wrapper, it's just the first step of wrapping.
-    const tile: Tile = await this.tile.findOne({ id: decodedEvent.location });
+    const tile = await this.tile.findOne({ id: decodedEvent.location }, [
+      'dataHistory',
+      'purchaseHistory',
+      'wrappingHistory',
+      'transferHistory',
+    ]);
 
     switch (decodedEvent.type) {
       case TransactionType.setTile:
@@ -239,7 +240,7 @@ export class IngestorService {
         tile.url = decodedEvent.url ? decodedEvent.url : tile.url;
         tile.owner = decodedEvent.from ? decodedEvent.from : tile.owner;
 
-        tile.dataHistory.push(
+        tile.dataHistory.add(
           new DataHistory({
             price: tile.price,
             url: tile.url,
@@ -251,7 +252,7 @@ export class IngestorService {
             logIndex: decodedEvent.logIndex,
           }),
         );
-        await this.tile.persistAndFlush(tile);
+        await this.tile.persist(tile);
         break;
       case TransactionType.buyTile:
         if (await this.alreadyIndexed(this.purchaseHistory, decodedEvent.txHash, decodedEvent.logIndex)) {
@@ -277,7 +278,7 @@ export class IngestorService {
           this.logger.error('Incorrect owner??!');
           exit();
         }
-        tile.purchaseHistory.push(
+        tile.purchaseHistory.add(
           new PurchaseHistory({
             soldBy: tile.owner,
             purchasedBy: decodedEvent.from,
@@ -290,7 +291,7 @@ export class IngestorService {
         );
         tile.owner = decodedEvent.from; // Update AFTER updating purchasedBy!
         tile.price = 0; // Price is always set to zero following a sale!s
-        await this.tile.persistAndFlush(tile);
+        await this.tile.persist(tile);
         break;
       case TransactionType.wrap:
         if (await this.alreadyIndexedWrap(this.wrappingHistory, decodedEvent.txHash)) {
@@ -301,7 +302,7 @@ export class IngestorService {
         tile.wrapped = true;
         tile.owner = decodedEvent.from;
 
-        tile.wrappingHistory.push(
+        tile.wrappingHistory.add(
           new WrappingHistory({
             wrapped: true,
             tx: decodedEvent.txHash,
@@ -311,7 +312,7 @@ export class IngestorService {
             logIndex: decodedEvent.logIndex,
           }),
         );
-        await this.tile.persistAndFlush(tile);
+        await this.tile.persist(tile);
         break;
       case TransactionType.unwrap:
         if (await this.alreadyIndexedWrap(this.wrappingHistory, decodedEvent.txHash)) {
@@ -322,7 +323,7 @@ export class IngestorService {
         tile.wrapped = false;
         tile.owner = decodedEvent.from;
 
-        tile.wrappingHistory.push(
+        tile.wrappingHistory.add(
           new WrappingHistory({
             wrapped: false,
             tx: decodedEvent.txHash,
@@ -332,7 +333,7 @@ export class IngestorService {
             logIndex: decodedEvent.logIndex,
           }),
         );
-        await this.tile.persistAndFlush(tile);
+        await this.tile.persist(tile);
         break;
       case TransactionType.transfer:
         if (await this.alreadyIndexed(this.transferHistory, decodedEvent.txHash, decodedEvent.logIndex)) {
@@ -342,7 +343,7 @@ export class IngestorService {
         this.logger.log('Tile transferred at block: ' + decodedEvent.blockNumber + ' (' + decodedEvent.timestamp + ')');
         tile.owner = decodedEvent.from;
 
-        tile.transferHistory.push(
+        tile.transferHistory.add(
           new TransferHistory({
             tx: decodedEvent.txHash,
             timeStamp: decodedEvent.timestamp,
@@ -352,7 +353,7 @@ export class IngestorService {
             logIndex: decodedEvent.logIndex,
           }),
         );
-        await this.tile.persistAndFlush(tile);
+        await this.tile.persist(tile);
         break;
       default:
         this.logger.error('Failed to account for the following event:');

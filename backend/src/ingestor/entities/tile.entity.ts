@@ -1,4 +1,4 @@
-import { Entity, OneToMany, PrimaryKey, Property } from '@mikro-orm/core';
+import { Collection, Entity, OneToMany, PrimaryKey, Property } from '@mikro-orm/core';
 import { DataHistory } from './dataHistory.entity';
 import { WrappingHistory } from './wrappingHistory.entity';
 import { PurchaseHistory } from './purchaseHistory.entity';
@@ -12,7 +12,7 @@ export class Tile {
   @PrimaryKey()
   id!: number;
 
-  @Property()
+  @Property({ length: 800 })
   image: string;
 
   @Property({ columnType: 'decimal(10, 2)' })
@@ -28,14 +28,14 @@ export class Tile {
   wrapped: boolean;
 
   @OneToMany(() => DataHistory, (dataHistory) => dataHistory.tile)
-  dataHistory: DataHistory[];
+  dataHistory = new Collection<DataHistory>(this);
 
   @OneToMany(() => WrappingHistory, (wrappingHistory) => wrappingHistory.tile)
-  wrappingHistory: WrappingHistory[];
+  wrappingHistory = new Collection<WrappingHistory>(this);
 
   @OneToMany(() => PurchaseHistory, (purchaseHistory) => purchaseHistory.tile)
-  purchaseHistory: PurchaseHistory[];
+  purchaseHistory = new Collection<PurchaseHistory>(this);
 
   @OneToMany(() => TransferHistory, (transferHistory) => transferHistory.tile)
-  transferHistory: TransferHistory[];
+  transferHistory = new Collection<TransferHistory>(this);
 }

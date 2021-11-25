@@ -22,7 +22,7 @@ export class DataHistory {
   @Property()
   logIndex: number;
 
-  @Property()
+  @Property({ length: 800 })
   image: string;
 
   @Property({ columnType: 'decimal(10, 2)' })
