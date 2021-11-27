@@ -12,7 +12,7 @@ import { TransferHistory } from './entities/transferHistory.entity';
 import { DecodedPixelMapTransaction, decodeTransaction, TransactionType } from './utils/decodeTransaction';
 import { initializeEthersJS } from './utils/initializeEthersJS';
 import { exit } from '@nestjs/cli/actions';
-import { EntityRepository } from '@mikro-orm/core';
+import { EntityRepository, QueryOrder } from '@mikro-orm/core';
 import { InjectRepository } from '@mikro-orm/nestjs';
 
 const BLOCKS_TO_PROCESS_AT_TIME = 1000;
@@ -20,7 +20,6 @@ const BLOCKS_TO_PROCESS_AT_TIME = 1000;
 @Injectable()
 export class IngestorService {
   private readonly logger = new Logger(IngestorService.name);
-  private lastIngestedEvent;
   private currentlyRunningSync = true;
   private currentlyIngestingEvents = false;
 
@@ -126,11 +125,11 @@ export class IngestorService {
     for (let i = 0; i < events.length; i++) {
       const event = events[i];
       const transaction = await provider.getTransaction(event.transactionHash);
-      this.logger.log('Saving event at block: ' + transaction.blockNumber);
       if (await this.pixelMapEvent.findOne({ txHash: event.transactionHash, logIndex: parseInt(event.logIndex) })) {
         this.logger.warn('Already indexed this event, skipping!');
         return;
       } else {
+        this.logger.log('Saving event at block: ' + transaction.blockNumber);
         const pixelMapEvent = new PixelMapEvent({
           eventData: event,
           txHash: event.transactionHash,
@@ -150,14 +149,14 @@ export class IngestorService {
     if (!this.currentlyIngestingEvents) {
       this.currentlyIngestingEvents = true;
       let lastEvent = await this.ingestedEvents.findOne(1);
+
       if (lastEvent == undefined) {
         this.logger.log('Starting fresh, start of events! (0)');
         lastEvent = new IngestedEvent({ id: 1, lastIngestedEvent: 0 });
         await this.ingestedEvents.persist(lastEvent);
       }
-      this.lastIngestedEvent = lastEvent.lastIngestedEvent;
 
-      if (this.lastIngestedEvent == 0) {
+      if (lastEvent.lastIngestedEvent == 0) {
         for (let i = 0; i < 3970; i++) {
           this.logger.log('Initializing tile: ' + i);
           const tile = await this.tile.create({
@@ -169,24 +168,19 @@ export class IngestorService {
             owner: '0x4f4b7e7edf5ec41235624ce207a6ef352aca7050', // Creator of Pixelmap
           });
           await this.tile.persist(tile);
-          console.log('mewoth');
         }
       }
-      const events = await this.pixelMapEvent.find(
-        {},
-        {
-          offset: this.lastIngestedEvent,
-          orderBy: { id: 'ASC' },
-        },
-      );
-      for (let i = 0; i < events.length; i++) {
+      await this.tile.flush();
+      const events = await this.pixelMapEvent.find({}, { orderBy: { id: QueryOrder.ASC } });
+
+      for (let i = lastEvent.lastIngestedEvent; i < events.length; i++) {
         const decodedEvent = await decodeTransaction(events[i], this.tile);
         await this.ingestEvent(decodedEvent);
-        const percent = (100 * (i + 1)) / events.length;
+        const percent = Math.round((100 * (i + 1)) / events.length);
         this.logger.verbose(
           i + 1 + '/' + events.length + ' events processed (' + percent + '% complete) - ' + events[i].id,
         );
-        lastEvent.lastIngestedEvent = events[i].id;
+        lastEvent.lastIngestedEvent = i;
         await this.ingestedEvents.persistAndFlush(lastEvent);
       }
       this.currentlyIngestingEvents = false;
@@ -240,6 +234,11 @@ export class IngestorService {
         tile.url = decodedEvent.url ? decodedEvent.url : tile.url;
         tile.owner = decodedEvent.from ? decodedEvent.from : tile.owner;
 
+        // Someone set the price to 12000000000000000000000000000000000000 >_< this is to prevent overflow in Postgres
+        if (tile.price > 99999) {
+          tile.price = 99999;
+        }
+
         tile.dataHistory.add(
           new DataHistory({
             price: tile.price,
@@ -268,7 +267,6 @@ export class IngestorService {
             decodedEvent.timestamp +
             ')',
         );
-        console.log(decodedEvent);
         if (decodedEvent.price <= 0) {
           throw 'Purchase cannot be 0 or less';
         }

@@ -3,6 +3,7 @@ import { DataHistory } from './dataHistory.entity';
 import { WrappingHistory } from './wrappingHistory.entity';
 import { PurchaseHistory } from './purchaseHistory.entity';
 import { TransferHistory } from './transferHistory.entity';
+import { v4 } from 'uuid';
 
 @Entity()
 export class Tile {
@@ -10,6 +11,9 @@ export class Tile {
     Object.assign(this, init);
   }
   @PrimaryKey()
+  uuid: string = v4();
+
+  @Property()
   id!: number;
 
   @Property({ length: 800 })

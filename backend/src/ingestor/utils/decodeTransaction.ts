@@ -38,7 +38,6 @@ export async function decodeTransaction(
   const { provider, pixelMap, pixelMapWrapper } = initializeEthersJS();
   const eventType = await getEventType(event);
   // console.log(JSON.stringify(event));
-  // console.log(event);
 
   let parsedTransaction: ethers.utils.TransactionDescription;
   let tileLocation: number; // Which tile is it?
@@ -64,8 +63,9 @@ export async function decodeTransaction(
           parsedTransaction = pixelMap.interface.parseTransaction(event.txData);
           tileLocation = parsedTransaction.args.location.toNumber();
           if (parsedTransaction.name == 'buyTile') {
-            const currentTileHistory = await tileRepository.findOne(tileLocation);
+            const currentTileHistory = await tileRepository.findOne({ id: tileLocation });
             const previousOwner = currentTileHistory.owner;
+
             return new DecodedPixelMapTransaction({
               location: tileLocation,
               type: TransactionType.buyTile,
@@ -93,8 +93,9 @@ export async function decodeTransaction(
               logIndex: event.logIndex,
             });
           }
-        } catch {
-          // console.log(event);
+        } catch (exception) {
+          console.log(exception);
+          console.log(event);
           console.log('Unable to parse using normal methods, figuring out via block comparison');
           const parsedLog = await pixelMap.interface.parseLog(event.eventData);
           const tileId = parsedLog.args.location.toNumber();

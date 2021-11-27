@@ -2,10 +2,17 @@
   "data": {
     "propertyOrder": {},
     "properties": {
+      "uuid": {
+        "name": "uuid",
+        "reference": "scalar",
+        "primary": true,
+        "type": "string"
+      },
       "id": {
         "name": "id",
         "reference": "scalar",
-        "primary": true,
+        "getter": false,
+        "setter": false,
         "type": "number"
       },
       "image": {
@@ -82,9 +89,16 @@
     },
     "props": [
       {
-        "name": "id",
+        "name": "uuid",
         "reference": "scalar",
         "primary": true,
+        "type": "string"
+      },
+      {
+        "name": "id",
+        "reference": "scalar",
+        "getter": false,
+        "setter": false,
         "type": "number"
       },
       {
@@ -160,7 +174,7 @@
       }
     ],
     "primaryKeys": [
-      "id"
+      "uuid"
     ],
     "filters": {},
     "hooks": {},
@@ -213,6 +227,6 @@
     "collection": "tile"
   },
   "origin": "./src/ingestor/entities/tile.entity.ts",
-  "hash": "4867e789905017bc727f0c40dc98c668",
+  "hash": "d9a648532355d4ed1c22966e38d8393b",
   "version": "4.5.9"
 }
