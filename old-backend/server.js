@@ -445,6 +445,7 @@ async function updateTileMetaAndImage(tile, i) {
       Key: "large_tiles/" + i + ".png", // File name you want to save as in S3
       Body: fileContent,
       ACL: "public-read",
+      ContentType: "image/png",
     };
     await s3.upload(params, function () {
       console.log(

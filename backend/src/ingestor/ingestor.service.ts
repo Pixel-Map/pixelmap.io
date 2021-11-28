@@ -15,7 +15,7 @@ import { exit } from '@nestjs/cli/actions';
 import { EntityRepository, QueryOrder } from '@mikro-orm/core';
 import { InjectRepository } from '@mikro-orm/nestjs';
 
-const BLOCKS_TO_PROCESS_AT_TIME = 1000;
+const BLOCKS_TO_PROCESS_AT_TIME = 1;
 
 @Injectable()
 export class IngestorService {
@@ -40,7 +40,6 @@ export class IngestorService {
     private wrappingHistory: EntityRepository<WrappingHistory>,
     @InjectRepository(TransferHistory)
     private transferHistory: EntityRepository<TransferHistory>,
-    private schedulerRegistry: SchedulerRegistry,
   ) {}
 
   /**
