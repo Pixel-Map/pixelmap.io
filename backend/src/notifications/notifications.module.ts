@@ -48,6 +48,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
         usePipes: [TransformPipe, ValidationPipe],
         // and other discord options
       }),
+      inject: [ConfigService],
     }),
   ],
 })

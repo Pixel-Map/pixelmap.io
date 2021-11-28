@@ -19,7 +19,7 @@ import { DiscordLastBlock } from './notifications/entities/discordLastBlock.enti
 
 @Module({
   imports: [
-    ConfigModule.forRoot(),
+    ConfigModule.forRoot({ isGlobal: true }),
     ScheduleModule.forRoot(),
     MikroOrmModule.forRoot({
       metadataProvider: TsMorphMetadataProvider,

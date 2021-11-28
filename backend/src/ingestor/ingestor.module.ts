@@ -9,6 +9,7 @@ import { Tile } from './entities/tile.entity';
 import { DownloadedBlock } from './entities/downloadedBlock.entity';
 import { IngestedEvent } from './entities/ingestedEvent.entity';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
+import { ConfigService } from '@nestjs/config';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { MikroOrmModule } from '@mikro-orm/nestjs';
       TransferHistory,
       Tile,
     ]),
+    ConfigService,
   ],
 
   providers: [IngestorService],
