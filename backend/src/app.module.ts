@@ -14,10 +14,12 @@ import { PurchaseHistory } from './ingestor/entities/purchaseHistory.entity';
 import { Tile } from './ingestor/entities/tile.entity';
 import { TransferHistory } from './ingestor/entities/transferHistory.entity';
 import { WrappingHistory } from './ingestor/entities/wrappingHistory.entity';
+import { NotificationsModule } from './notifications/notifications.module';
+import { DiscordLastBlock } from './notifications/entities/discordLastBlock.entity';
 
 @Module({
   imports: [
-    ConfigModule.forRoot(),
+    ConfigModule.forRoot({ isGlobal: true }),
     ScheduleModule.forRoot(),
     MikroOrmModule.forRoot({
       metadataProvider: TsMorphMetadataProvider,
@@ -30,6 +32,7 @@ import { WrappingHistory } from './ingestor/entities/wrappingHistory.entity';
         Tile,
         TransferHistory,
         WrappingHistory,
+        DiscordLastBlock,
       ],
       type: 'postgresql',
       dbName: 'postgres',
@@ -39,6 +42,7 @@ import { WrappingHistory } from './ingestor/entities/wrappingHistory.entity';
       password: 'password',
     }),
     IngestorModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
