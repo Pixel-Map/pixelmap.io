@@ -46,7 +46,6 @@ export class NotificationsService {
       });
       const sales = await this.purchaseHistory.find({}, ['tile'], { id: QueryOrder.ASC });
       for (let i = lastEvent.value; i < sales.length; i++) {
-        console.log(sales[i]);
         const sale = sales[i];
         this.logger.log('processed ' + i + ' of ' + sales.length);
         const ChannelWantSend = await this.client.channels.fetch('880480166793597048');
@@ -76,7 +75,6 @@ export class NotificationsService {
 
         const usd = formatter.format(sale.price * usdToEthPrice);
         const link = `https://s3.us-east-1.amazonaws.com/pixelmap.io/large_tiles/${sale.tile.id}.png`;
-        console.log(link);
         const message = new MessageEmbed()
           .setColor('#66ff82')
           .setTitle(`Tile #${sale.tile.id} has been sold`)

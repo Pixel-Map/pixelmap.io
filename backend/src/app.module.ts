@@ -20,7 +20,7 @@ import { CurrentState } from './ingestor/entities/currentState.entity';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     ScheduleModule.forRoot(),
-    MikroOrmModule.forFeature([Tile]),
+    MikroOrmModule.forFeature([Tile, DataHistory]),
     MikroOrmModule.forRoot({
       metadataProvider: TsMorphMetadataProvider,
       entities: [CurrentState, DataHistory, PixelMapEvent, PurchaseHistory, Tile, TransferHistory, WrappingHistory],
