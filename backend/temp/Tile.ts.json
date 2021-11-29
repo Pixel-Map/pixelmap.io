@@ -54,6 +54,25 @@
         "setter": false,
         "type": "boolean"
       },
+      "ens": {
+        "name": "ens",
+        "reference": "scalar",
+        "default": "",
+        "getter": false,
+        "setter": false,
+        "type": "string"
+      },
+      "openseaPrice": {
+        "name": "openseaPrice",
+        "reference": "scalar",
+        "default": 0,
+        "getter": false,
+        "setter": false,
+        "type": "number",
+        "columnTypes": [
+          "decimal(10, 2)"
+        ]
+      },
       "dataHistory": {
         "name": "dataHistory",
         "reference": "1:m",
@@ -139,6 +158,25 @@
         "getter": false,
         "setter": false,
         "type": "boolean"
+      },
+      {
+        "name": "ens",
+        "reference": "scalar",
+        "default": "",
+        "getter": false,
+        "setter": false,
+        "type": "string"
+      },
+      {
+        "name": "openseaPrice",
+        "reference": "scalar",
+        "default": 0,
+        "getter": false,
+        "setter": false,
+        "type": "number",
+        "columnTypes": [
+          "decimal(10, 2)"
+        ]
       },
       {
         "name": "dataHistory",
@@ -227,6 +265,6 @@
     "collection": "tile"
   },
   "origin": "./src/ingestor/entities/tile.entity.ts",
-  "hash": "d9a648532355d4ed1c22966e38d8393b",
+  "hash": "27536293dc8a37a87c6b1b2c45aae7cf",
   "version": "4.5.9"
 }

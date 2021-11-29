@@ -94,9 +94,7 @@ export async function decodeTransaction(
             });
           }
         } catch (exception) {
-          console.log(exception);
-          console.log(event);
-          console.log('Unable to parse using normal methods, figuring out via block comparison');
+          // console.log('Unable to parse using normal methods, figuring out via block comparison');
           const parsedLog = await pixelMap.interface.parseLog(event.eventData);
           const tileId = parsedLog.args.location.toNumber();
           const tilePriorToUpdate = await pixelMap.tiles(tileId, { blockTag: event.block - 1 }).catch();

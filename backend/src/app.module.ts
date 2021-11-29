@@ -16,6 +16,7 @@ import { TransferHistory } from './ingestor/entities/transferHistory.entity';
 import { WrappingHistory } from './ingestor/entities/wrappingHistory.entity';
 import { NotificationsModule } from './notifications/notifications.module';
 import { DiscordLastBlock } from './notifications/entities/discordLastBlock.entity';
+import { RendererModule } from './renderer/renderer.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { DiscordLastBlock } from './notifications/entities/discordLastBlock.enti
     }),
     IngestorModule,
     NotificationsModule,
+    RendererModule,
   ],
   controllers: [AppController],
   providers: [AppService],
