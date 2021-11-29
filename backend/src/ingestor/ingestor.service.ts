@@ -46,7 +46,7 @@ export class IngestorService {
    * initializeEthersJS initializes the PixelMap and PixelMapWrapper contracts
    */
 
-  @Cron(new Date(Date.now() + 3000)) // Start 5 seconds after App startup
+  @Cron(new Date(Date.now() + 5000)) // Start 5 seconds after App startup
   async initialStartup() {
     await this.syncBlocks();
     this.currentlyRunningSync = false;

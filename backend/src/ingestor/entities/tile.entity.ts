@@ -31,6 +31,12 @@ export class Tile {
   @Property()
   wrapped: boolean;
 
+  @Property({ default: '' })
+  ens: string;
+
+  @Property({ default: 0.0, columnType: 'decimal(10, 2)' })
+  openseaPrice: number;
+
   @OneToMany(() => DataHistory, (dataHistory) => dataHistory.tile)
   dataHistory = new Collection<DataHistory>(this);
 

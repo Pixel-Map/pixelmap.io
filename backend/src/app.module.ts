@@ -21,6 +21,7 @@ import { DiscordLastBlock } from './notifications/entities/discordLastBlock.enti
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     ScheduleModule.forRoot(),
+    MikroOrmModule.forFeature([Tile]),
     MikroOrmModule.forRoot({
       metadataProvider: TsMorphMetadataProvider,
       entities: [
