@@ -1,8 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Cron, SchedulerRegistry } from '@nestjs/schedule';
+import { Cron } from '@nestjs/schedule';
 import { ethers } from 'ethers';
-import { DownloadedBlock } from './entities/downloadedBlock.entity';
-import { IngestedEvent } from './entities/ingestedEvent.entity';
 import { PixelMapEvent } from './entities/pixelMapEvent.entity';
 import { Tile } from './entities/tile.entity';
 import { DataHistory } from './entities/dataHistory.entity';
@@ -12,10 +10,11 @@ import { TransferHistory } from './entities/transferHistory.entity';
 import { DecodedPixelMapTransaction, decodeTransaction, TransactionType } from './utils/decodeTransaction';
 import { initializeEthersJS } from './utils/initializeEthersJS';
 import { exit } from '@nestjs/cli/actions';
-import { EntityRepository, QueryOrder } from '@mikro-orm/core';
-import { InjectRepository } from '@mikro-orm/nestjs';
+import { EntityRepository, MikroORM, QueryOrder } from '@mikro-orm/core';
+import { InjectRepository, UseRequestContext } from '@mikro-orm/nestjs';
+import { CurrentState, StatesToTrack } from './entities/currentState.entity';
 
-const BLOCKS_TO_PROCESS_AT_TIME = 1;
+const BLOCKS_TO_PROCESS_AT_TIME = 1000;
 
 @Injectable()
 export class IngestorService {
@@ -24,10 +23,8 @@ export class IngestorService {
   private currentlyIngestingEvents = false;
 
   constructor(
-    @InjectRepository(DownloadedBlock)
-    private downloadedBlocks: EntityRepository<DownloadedBlock>,
-    @InjectRepository(IngestedEvent)
-    private ingestedEvents: EntityRepository<IngestedEvent>,
+    @InjectRepository(CurrentState)
+    private currentState: EntityRepository<CurrentState>,
     @InjectRepository(PixelMapEvent)
     private pixelMapEvent: EntityRepository<PixelMapEvent>,
     @InjectRepository(Tile)
@@ -40,13 +37,51 @@ export class IngestorService {
     private wrappingHistory: EntityRepository<WrappingHistory>,
     @InjectRepository(TransferHistory)
     private transferHistory: EntityRepository<TransferHistory>,
+    private readonly orm: MikroORM,
   ) {}
 
+  async onApplicationBootstrap() {
+    this.currentlyIngestingEvents = true;
+
+    // Initialize Data if Empty
+    if ((await this.currentState.findOne({ state: StatesToTrack.INGESTION_LAST_DOWNLOADED_BLOCK })) == undefined) {
+      this.logger.log('Starting fresh, start of events! (0)');
+      await this.currentState.persistAndFlush([
+        new CurrentState({
+          state: StatesToTrack.INGESTION_LAST_DOWNLOADED_BLOCK,
+          value: 2641527, // This is the block that PixelMap was created
+        }),
+        new CurrentState({
+          state: StatesToTrack.INGESTION_LAST_PROCESSED_PIXEL_MAP_EVENT,
+          value: 0,
+        }),
+        new CurrentState({
+          state: StatesToTrack.NOTIFICATIONS_LAST_PROCESSED_PURCHASE_ID,
+          value: 0,
+        }),
+      ]);
+
+      for (let i = 0; i < 3970; i++) {
+        this.logger.log('Initializing tile: ' + i);
+        const tile = await this.tile.create({
+          id: i,
+          price: 2,
+          wrapped: false,
+          image: '',
+          url: '',
+          owner: '0x4f4b7e7edf5ec41235624ce207a6ef352aca7050', // Creator of Pixelmap
+        });
+        await this.tile.persist(tile);
+      }
+      await this.tile.flush();
+    }
+    this.currentlyIngestingEvents = false;
+  }
   /**
    * initializeEthersJS initializes the PixelMap and PixelMapWrapper contracts
    */
 
-  @Cron(new Date(Date.now() + 5000)) // Start 5 seconds after App startup
+  @Cron(new Date(Date.now() + 10000)) // Start 5 seconds after App startup
   async initialStartup() {
     await this.syncBlocks();
     this.currentlyRunningSync = false;
@@ -67,13 +102,8 @@ export class IngestorService {
 
   async syncBlocks() {
     const { provider, pixelMap, pixelMapWrapper } = initializeEthersJS();
-    let lastBlock = await this.downloadedBlocks.findOne(1);
-    if (lastBlock == undefined) {
-      this.logger.log('Starting fresh, start of contract! (2641527)');
-      lastBlock = new DownloadedBlock({ id: 1, lastDownloadedBlock: 2641527 });
-      await this.downloadedBlocks.persistAndFlush(lastBlock);
-    }
-    let lastDownloadedBlock = lastBlock.lastDownloadedBlock;
+    const lastBlock = await this.currentState.findOne({ state: StatesToTrack.INGESTION_LAST_DOWNLOADED_BLOCK });
+    let lastDownloadedBlock = lastBlock.value;
 
     let endBlock = lastDownloadedBlock + BLOCKS_TO_PROCESS_AT_TIME;
 
@@ -100,8 +130,8 @@ export class IngestorService {
           },
         ]);
         await this.processEvents(events);
-        lastBlock.lastDownloadedBlock = endBlock;
-        await this.downloadedBlocks.persistAndFlush(lastBlock);
+        lastBlock.value = endBlock;
+        await this.currentState.persistAndFlush(lastBlock);
         lastDownloadedBlock = endBlock + 1;
         endBlock = lastDownloadedBlock + BLOCKS_TO_PROCESS_AT_TIME;
 
@@ -144,43 +174,25 @@ export class IngestorService {
   @Cron('1 * * * * *', {
     name: 'ingestEvents',
   })
+  @UseRequestContext()
   async ingestEvents() {
     if (!this.currentlyIngestingEvents) {
       this.currentlyIngestingEvents = true;
-      let lastEvent = await this.ingestedEvents.findOne(1);
+      const lastEvent = await this.currentState.findOne({
+        state: StatesToTrack.INGESTION_LAST_PROCESSED_PIXEL_MAP_EVENT,
+      });
 
-      if (lastEvent == undefined) {
-        this.logger.log('Starting fresh, start of events! (0)');
-        lastEvent = new IngestedEvent({ id: 1, lastIngestedEvent: 0 });
-        await this.ingestedEvents.persist(lastEvent);
-      }
-
-      if (lastEvent.lastIngestedEvent == 0) {
-        for (let i = 0; i < 3970; i++) {
-          this.logger.log('Initializing tile: ' + i);
-          const tile = await this.tile.create({
-            id: i,
-            price: 2,
-            wrapped: false,
-            image: '',
-            url: '',
-            owner: '0x4f4b7e7edf5ec41235624ce207a6ef352aca7050', // Creator of Pixelmap
-          });
-          await this.tile.persist(tile);
-        }
-      }
-      await this.tile.flush();
       const events = await this.pixelMapEvent.find({}, { orderBy: { id: QueryOrder.ASC } });
 
-      for (let i = lastEvent.lastIngestedEvent; i < events.length; i++) {
+      for (let i = lastEvent.value; i < events.length; i++) {
         const decodedEvent = await decodeTransaction(events[i], this.tile);
         await this.ingestEvent(decodedEvent);
         const percent = Math.round((100 * (i + 1)) / events.length);
         this.logger.verbose(
           i + 1 + '/' + events.length + ' events processed (' + percent + '% complete) - ' + events[i].id,
         );
-        lastEvent.lastIngestedEvent = i;
-        await this.ingestedEvents.persistAndFlush(lastEvent);
+        lastEvent.value = i;
+        await this.currentState.persistAndFlush(lastEvent);
       }
       this.currentlyIngestingEvents = false;
     } else {

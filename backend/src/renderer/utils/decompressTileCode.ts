@@ -1,9 +1,10 @@
-import pako from 'pako';
-import base91 from 'node-base91';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const pako = require('pako');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const base91 = require('node-base91');
 
 // Decompress the Tile if it's compressed
 export function decompressTileCode(tileCodeString) {
-  console.log(pako);
   if (typeof tileCodeString === 'string') {
     if (tileCodeString.startsWith('b#')) {
       // Using substring to remove the b#
@@ -11,8 +12,8 @@ export function decompressTileCode(tileCodeString) {
         to: 'string',
       });
     } else {
-      return tileCodeString;
+      return tileCodeString.trim();
     }
   }
-  return tileCodeString;
+  return tileCodeString.trim();
 }

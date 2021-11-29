@@ -40,6 +40,7 @@
     "@nestjs/core": "^8.0.0",
     "@nestjs/platform-express": "^8.0.0",
     "@nestjs/schedule": "^1.0.1",
+    "canvas": "^2.8.0",
     "compression": "^1.7.4",
     "discord-nestjs": "^1.2.1",
     "discord.js": "^13.3.1",

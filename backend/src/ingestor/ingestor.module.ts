@@ -6,23 +6,21 @@ import { WrappingHistory } from './entities/wrappingHistory.entity';
 import { PurchaseHistory } from './entities/purchaseHistory.entity';
 import { TransferHistory } from './entities/transferHistory.entity';
 import { Tile } from './entities/tile.entity';
-import { DownloadedBlock } from './entities/downloadedBlock.entity';
-import { IngestedEvent } from './entities/ingestedEvent.entity';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { ConfigService } from '@nestjs/config';
+import { CurrentState } from './entities/currentState.entity';
 
 @Module({
   imports: [
     IngestorModule,
     MikroOrmModule.forFeature([
-      DownloadedBlock,
-      IngestedEvent,
       PixelMapEvent,
       DataHistory,
       WrappingHistory,
       PurchaseHistory,
       TransferHistory,
       Tile,
+      CurrentState,
     ]),
     ConfigService,
   ],

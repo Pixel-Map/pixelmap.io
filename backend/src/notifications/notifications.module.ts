@@ -1,32 +1,27 @@
 import { Module } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
-import { DownloadedBlock } from '../ingestor/entities/downloadedBlock.entity';
-import { IngestedEvent } from '../ingestor/entities/ingestedEvent.entity';
 import { PixelMapEvent } from '../ingestor/entities/pixelMapEvent.entity';
 import { DataHistory } from '../ingestor/entities/dataHistory.entity';
 import { WrappingHistory } from '../ingestor/entities/wrappingHistory.entity';
 import { PurchaseHistory } from '../ingestor/entities/purchaseHistory.entity';
 import { TransferHistory } from '../ingestor/entities/transferHistory.entity';
-import { Tile } from '../ingestor/entities/tile.entity';
-import { DiscordLastBlock } from './entities/discordLastBlock.entity';
 import { DiscordModule, TransformPipe, ValidationPipe } from 'discord-nestjs';
 import { HttpModule } from '@nestjs/axios';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { CurrentState } from '../ingestor/entities/currentState.entity';
 
 @Module({
   providers: [NotificationsService],
   imports: [
     HttpModule,
     MikroOrmModule.forFeature([
-      DownloadedBlock,
-      IngestedEvent,
+      CurrentState,
       PixelMapEvent,
       DataHistory,
       WrappingHistory,
       PurchaseHistory,
       TransferHistory,
-      DiscordLastBlock,
     ]),
     ConfigService,
     DiscordModule.forRootAsync({

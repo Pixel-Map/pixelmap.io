@@ -1,16 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
-import { EntityRepository, QueryOrder } from '@mikro-orm/core';
-import { InjectRepository } from '@mikro-orm/nestjs';
+import { EntityRepository, MikroORM, QueryOrder } from '@mikro-orm/core';
+import { InjectRepository, UseRequestContext } from '@mikro-orm/nestjs';
 import { PurchaseHistory } from '../ingestor/entities/purchaseHistory.entity';
-import { DiscordLastBlock } from './entities/discordLastBlock.entity';
 import { DiscordClientProvider, Once } from 'discord-nestjs';
-import { MessageEmbed, TextChannel } from 'discord.js';
-import { format } from 'util';
-import { lastValueFrom, timestamp } from 'rxjs';
+import { MessageEmbed } from 'discord.js';
+import { lastValueFrom } from 'rxjs';
 import { ethers } from 'ethers';
 import { HttpService } from '@nestjs/axios';
-import { ConfigService } from '@nestjs/config'; //import discord.js
+import { ConfigService } from '@nestjs/config';
+import { CurrentState, StatesToTrack } from '../ingestor/entities/currentState.entity'; //import discord.js
 
 @Injectable()
 export class NotificationsService {
@@ -19,13 +18,14 @@ export class NotificationsService {
   private client;
 
   constructor(
-    @InjectRepository(DiscordLastBlock)
-    private discordLastBlock: EntityRepository<DiscordLastBlock>,
+    @InjectRepository(CurrentState)
+    private currentState: EntityRepository<CurrentState>,
     @InjectRepository(PurchaseHistory)
     private purchaseHistory: EntityRepository<PurchaseHistory>,
     private readonly discordProvider: DiscordClientProvider,
     private httpService: HttpService,
     private configService: ConfigService,
+    private readonly orm: MikroORM,
   ) {}
 
   @Once({ event: 'ready' })
@@ -37,21 +37,15 @@ export class NotificationsService {
   @Cron('1 * * * * *', {
     name: 'processDiscordEvents',
   })
+  @UseRequestContext()
   async eventsToDiscordNotifications() {
     if (!this.currentlyReadingEventsIntoDiscord) {
       this.currentlyReadingEventsIntoDiscord = true;
-      let lastEvent = await this.discordLastBlock.findOne(1);
-      if (lastEvent == undefined) {
-        this.logger.log('First time processing discord events');
-        lastEvent = new DiscordLastBlock({ id: 1, lastBlock: 0 });
-        await this.discordLastBlock.persist(lastEvent);
-      }
-
+      const lastEvent = await this.currentState.findOne({
+        state: StatesToTrack.NOTIFICATIONS_LAST_PROCESSED_PURCHASE_ID,
+      });
       const sales = await this.purchaseHistory.find({}, ['tile'], { id: QueryOrder.ASC });
-
-      console.log(lastEvent.lastBlock);
-      // console.log(sales);
-      for (let i = lastEvent.lastBlock; i < sales.length; i++) {
+      for (let i = lastEvent.value; i < sales.length; i++) {
         console.log(sales[i]);
         const sale = sales[i];
         this.logger.log('processed ' + i + ' of ' + sales.length);
@@ -100,11 +94,11 @@ export class NotificationsService {
           .setURL(`https://opensea.io/assets/0x050dc61dfb867e0fe3cf2948362b6c0f3faf790b/${sale.tile.id}`)
           .setFooter('Nice Purchase • ' + sale.timeStamp.toLocaleString('en-US'))
           .setThumbnail(link);
-        await (ChannelWantSend as TextChannel).send({ embeds: [message] });
-        lastEvent.lastBlock = i + 1;
-        await this.discordLastBlock.persist(lastEvent);
+        // await (ChannelWantSend as TextChannel).send({ embeds: [message] });
+        lastEvent.value = i + 1;
+        await this.currentState.persist(lastEvent);
       }
-      await this.discordLastBlock.flush();
+      await this.currentState.flush();
       this.currentlyReadingEventsIntoDiscord = false;
     } else {
       this.logger.debug('Already ingesting, not starting again yet');
