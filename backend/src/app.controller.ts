@@ -10,4 +10,9 @@ export class AppController {
   findAll(): Promise<Array<Tile>> {
     return this.appService.findAll();
   }
+
+  @Get('/timecapsule')
+  getFirstTilesWithImages() {
+    return this.appService.getFirstTilesWithImages();
+  }
 }
