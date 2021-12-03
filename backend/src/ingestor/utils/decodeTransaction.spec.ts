@@ -4,6 +4,7 @@ import * as ogSampleSetTile from './fixtures/og-sample-setTile.json';
 import * as wrappingSample1 from './fixtures/sample-tileWrapped-e1.json';
 import * as wrappingSample2 from './fixtures/sample-tileWrapped-e2.json';
 import * as wrappingSample3 from './fixtures/sample-tileWrapped-e3.json';
+import * as setTileData from './fixtures/sample-setTileData.json';
 import * as unwrapping from './fixtures/sample-unwrap.json';
 import * as openseaPurchase from './fixtures/opensea-purchase.json';
 import * as delegatedBuyTile from './fixtures/delegated-buyTile.json';
@@ -224,6 +225,27 @@ describe('EntityManagerSqlite', () => {
         txHash: '0x2bb3203913d34d29338c90343fae99b4af1dcebf9bd58db5310bac7fc3f9d6ff',
         blockNumber: 13105786,
         logIndex: 122,
+      }),
+    );
+  });
+
+  it('returns a proper setTile DecodedTransaction when given a wrapper setTileData event', async () => {
+    const event = Object.assign(new PixelMapEvent(), setTileData);
+    const tileRepository = await orm.em.getRepository(Tile);
+    const decodedTransaction = await decodeTransaction(event, tileRepository);
+    expect(decodedTransaction).toStrictEqual(
+      new DecodedPixelMapTransaction({
+        location: 1371,
+        type: TransactionType.setTile,
+        image:
+          // eslint-disable-next-line max-len
+          '000666fff999000666666666666999666000fff000ccc333fff666666ccc999333666666666999333999000fff666999000666999333ccc333333333666999666999ccc000666999999000ccc333fff000999ccc000ccc333003333ccc9996663339993333339cc9cc699666ccc66669c69c9cc33333366666666666636c69c69c36936969c9cc9cc9cc9cf333666666999999999ccc39c33636939c69c9cc9cf9cf9cc6663336666666666660009cc33636933669c69c669ccffff66633366666666633366633333636936939c699ccf9cc999333666666666666333ccc33336636936969c9ccccf666666999666666666666333000ccc33339969c69c9cfccf333000333666999666333ccc666000333666666000000999333ccccccccc333999999999333333333666999ffffffccc333fffccc666999ccc666000cccccc333ccc000999ccc333333ccc333ccc000999666fff333999333999666666333666666999666000ccc000ccc000fff000999666666666666666666000999ccc333',
+        url: 'https://twitter.com/ScreenieBabies',
+        from: '0xe6ee1b79627243ee40ec929fe2573e63d70b10c4',
+        timestamp: new Date('2021-09-07T17:31:36.000Z'),
+        blockNumber: 13180007,
+        txHash: '0x4b7639a49c4652b51b9b265c40be13a6654ef4c8f91d6729737d316e64801485',
+        logIndex: 37,
       }),
     );
   });

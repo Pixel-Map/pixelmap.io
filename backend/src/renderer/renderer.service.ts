@@ -1,49 +1,59 @@
-import { Injectable } from '@nestjs/common';
-import Jimp from 'jimp';
-import { decompressTileCode } from './utils/decompressTileCode';
+import { Injectable, Logger } from '@nestjs/common';
+import { InjectRepository, UseRequestContext } from '@mikro-orm/nestjs';
+import { CurrentState, StatesToTrack } from '../ingestor/entities/currentState.entity';
+import { EntityRepository, MikroORM, QueryOrder } from '@mikro-orm/core';
+import { Cron } from '@nestjs/schedule';
+import { DataHistory } from '../ingestor/entities/dataHistory.entity';
+import { renderImage } from './utils/renderImage';
 
 @Injectable()
 export class RendererService {
-  // async updateTileMetaAndImage(tile, i) {
-  // let imageData = tile[1];
-  // imageData = decompressTileCode(imageData);
-  // let tileMetaData = {
-  //   description: "Official PixelMap (2016) Wrapped Tile",
-  //   external_url: tile[2],
-  //   name: "Tile #" + i,
-  // };
-  //
-  // if (imageData.length >= 768) {
-  //   // OWN IMAGE
-  //
-  //   let data = imageData;
-  //   let imgdataarr = data.match(/.{1,3}/g);
-  //
-  //   let counter = 0;
-  //
-  //   let image = await new Jimp(16, 16);
-  //
-  //   for (let x = 0; x <= 15; x++) {
-  //     for (let y = 0; y <= 15; y++) {
-  //       let index = counter;
-  //       let hexstr = imgdataarr[index];
-  //       let newhex =
-  //         hexstr.substr(0, 1) +
-  //         hexstr.substr(0, 1) +
-  //         hexstr.substr(1, 1) +
-  //         hexstr.substr(1, 1) +
-  //         hexstr.substr(2, 1) +
-  //         hexstr.substr(2, 1);
-  //       image.setPixelColor(parseInt("0x" + newhex + "FF", 16), y, x);
-  //       counter++;
-  //     }
-  //   }
-  //
-  //   await image
-  //     .resize(512, 512, "nearestNeighbor")
-  //     .quality(100)
-  //     .write("cache/" + i + ".png");
-  //
+  private readonly logger = new Logger(RendererService.name);
+  private currentlyReadingImages = false;
+
+  constructor(
+    @InjectRepository(CurrentState)
+    private currentState: EntityRepository<CurrentState>,
+    @InjectRepository(DataHistory)
+    private dataHistory: EntityRepository<DataHistory>,
+    private readonly orm: MikroORM,
+  ) {}
+
+  @Cron('1 * * * * *', {
+    name: 'renderImages',
+  })
+  @UseRequestContext()
+  async eventsToDiscordNotifications() {
+    if (!this.currentlyReadingImages) {
+      const previousTiles = {};
+      this.currentlyReadingImages = true;
+      const lastEvent = await this.currentState.findOne({
+        state: StatesToTrack.RENDERER_LAST_PROCESSED_DATA_CHANGE,
+      });
+      const tileDataChange = await this.dataHistory.find({}, ['tile'], { id: QueryOrder.ASC });
+      for (let i = lastEvent.value; i < tileDataChange.length; i++) {
+        const tileData = tileDataChange[i];
+        if (!previousTiles.hasOwnProperty(tileData.tile.id)) {
+          console.log("Tile didn't exist, adding " + tileData.tile.id);
+          previousTiles[tileData.tile.id] = '';
+        }
+        // if (previousTiles[tileData.tile.id] == tileData.tile.image) {
+        //   this.logger.verbose("Image didn't change, not re-rendering");
+        // } else {
+        console.log('ohh new tile, nice!');
+        previousTiles[tileData.tile.id] = tileData.tile.image;
+        console.log('cache/' + tileData.tile.id + '/' + tileData.blockNumber + '.png');
+        await renderImage(tileData.image, 'cache/' + tileData.tile.id + '/' + tileData.blockNumber + '.png');
+        this.logger.log('rendered image ' + i + ' of ' + tileDataChange.length);
+        lastEvent.value = i + 1;
+        // }
+        await this.currentState.persist(lastEvent);
+      }
+      this.currentlyReadingImages = false;
+    } else {
+      this.logger.debug('Already rendering images, not starting again yet');
+    }
+  }
   //   // upload to localstack - plugin does not support await need a bit time for IO
   //   const fileContent = fs.readFileSync("cache/" + i + ".png");
   //   const params = {

@@ -59,6 +59,10 @@ export class IngestorService {
           state: StatesToTrack.NOTIFICATIONS_LAST_PROCESSED_PURCHASE_ID,
           value: 0,
         }),
+        new CurrentState({
+          state: StatesToTrack.RENDERER_LAST_PROCESSED_DATA_CHANGE,
+          value: 0,
+        }),
       ]);
 
       for (let i = 0; i < 3970; i++) {

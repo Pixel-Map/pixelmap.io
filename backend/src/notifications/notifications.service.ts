@@ -34,12 +34,13 @@ export class NotificationsService {
     this.logger.log(`Logged in as ${this.client.user.tag}!`);
   }
 
-  @Cron('1 * * * * *', {
-    name: 'processDiscordEvents',
-  })
+  // @Cron('1 * * * * *', {
+  //   name: 'processDiscordEvents',
+  // })
   @UseRequestContext()
   async eventsToDiscordNotifications() {
     if (!this.currentlyReadingEventsIntoDiscord) {
+      console.log('JHERE');
       this.currentlyReadingEventsIntoDiscord = true;
       const lastEvent = await this.currentState.findOne({
         state: StatesToTrack.NOTIFICATIONS_LAST_PROCESSED_PURCHASE_ID,

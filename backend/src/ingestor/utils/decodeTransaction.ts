@@ -45,19 +45,49 @@ export async function decodeTransaction(
   switch (eventType) {
     case EventType.TileUpdated:
       if (event.txData.to.toLowerCase() === pixelMapWrapper.address.toLowerCase()) {
-        // If the transfer is TO the PixelMapWrapper, this is a wrap/minting of ERC721.
+        // If the transfer is TO the PixelMapWrapper, this could be a wrap/minting of ERC721.
         parsedTransaction = pixelMapWrapper.interface.parseTransaction(event.txData);
         tileLocation = parsedTransaction.args._locationID.toNumber();
-        return new DecodedPixelMapTransaction({
-          location: tileLocation,
-          type: TransactionType.wrap,
-          price: parseFloat(ethers.utils.formatEther(parsedTransaction.value)),
-          from: event.txData.from.toLowerCase(),
-          timestamp: timestamp,
-          txHash: event.txHash,
-          blockNumber: event.txData.blockNumber,
-          logIndex: event.logIndex,
-        });
+        switch (parsedTransaction.name) {
+          case 'wrap':
+            return new DecodedPixelMapTransaction({
+              location: tileLocation,
+              type: TransactionType.wrap,
+              price: parseFloat(ethers.utils.formatEther(parsedTransaction.value)),
+              from: event.txData.from.toLowerCase(),
+              timestamp: timestamp,
+              txHash: event.txHash,
+              blockNumber: event.txData.blockNumber,
+              logIndex: event.logIndex,
+            });
+            break;
+          case 'unwrap':
+            return new DecodedPixelMapTransaction({
+              location: tileLocation,
+              type: TransactionType.unwrap,
+              price: parseFloat(ethers.utils.formatEther(parsedTransaction.value)),
+              from: event.txData.from.toLowerCase(),
+              timestamp: timestamp,
+              txHash: event.txHash,
+              blockNumber: event.txData.blockNumber,
+              logIndex: event.logIndex,
+            });
+            break;
+          case 'setTileData':
+            return new DecodedPixelMapTransaction({
+              location: tileLocation,
+              type: TransactionType.setTile,
+              image: parsedTransaction.args._image,
+              url: parsedTransaction.args._url,
+              from: event.txData.from.toLowerCase(),
+              timestamp: timestamp,
+              txHash: event.txHash,
+              blockNumber: event.txData.blockNumber,
+              logIndex: event.logIndex,
+            });
+          default:
+            throw new Error(`Unknown transaction type: ${parsedTransaction.name}`);
+        }
       } else {
         try {
           parsedTransaction = pixelMap.interface.parseTransaction(event.txData);
