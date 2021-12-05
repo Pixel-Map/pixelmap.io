@@ -8,9 +8,14 @@ export function decompressTileCode(tileCodeString) {
   if (typeof tileCodeString === 'string') {
     if (tileCodeString.startsWith('b#')) {
       // Using substring to remove the b#
-      return pako.inflate(base91.decode(tileCodeString.substr(2)), {
-        to: 'string',
-      });
+      try {
+        return pako.inflate(base91.decode(tileCodeString.substr(2)), {
+          to: 'string',
+        });
+      } catch {
+        console.log('Unable to deflate');
+        return '';
+      }
     } else {
       return tileCodeString.trim();
     }

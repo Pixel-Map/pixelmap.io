@@ -31,6 +31,7 @@ specifiers:
   eslint-config-prettier: ^8.3.0
   eslint-plugin-prettier: ^4.0.0
   ethers: ^5.5.1
+  graceful-fs: ^4.2.8
   jest: ^27.2.5
   jimp: ^0.16.1
   node-base91: ^0.3.4
@@ -67,6 +68,7 @@ dependencies:
   discord-nestjs: 1.2.1_14067eb312bb42a0b5e2702a96e8c134
   discord.js: 13.3.1
   ethers: 5.5.1
+  graceful-fs: 4.2.8
   jimp: 0.16.1
   node-base91: 0.3.4
   pako: 2.0.4

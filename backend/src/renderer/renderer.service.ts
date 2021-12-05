@@ -5,6 +5,8 @@ import { EntityRepository, MikroORM, QueryOrder } from '@mikro-orm/core';
 import { Cron } from '@nestjs/schedule';
 import { DataHistory } from '../ingestor/entities/dataHistory.entity';
 import { renderImage } from './utils/renderImage';
+import { renderFullMap } from './utils/renderFullMap';
+import { decompressTileCode } from './utils/decompressTileCode';
 
 @Injectable()
 export class RendererService {
@@ -23,9 +25,12 @@ export class RendererService {
     name: 'renderImages',
   })
   @UseRequestContext()
-  async eventsToDiscordNotifications() {
+  async renderImages() {
     if (!this.currentlyReadingImages) {
-      const previousTiles = {};
+      const previousTiles = [];
+      for (let i = 0; i <= 3969; i++) {
+        previousTiles[i] = '';
+      }
       this.currentlyReadingImages = true;
       const lastEvent = await this.currentState.findOne({
         state: StatesToTrack.RENDERER_LAST_PROCESSED_DATA_CHANGE,
@@ -33,21 +38,22 @@ export class RendererService {
       const tileDataChange = await this.dataHistory.find({}, ['tile'], { id: QueryOrder.ASC });
       for (let i = lastEvent.value; i < tileDataChange.length; i++) {
         const tileData = tileDataChange[i];
-        if (!previousTiles.hasOwnProperty(tileData.tile.id)) {
-          console.log("Tile didn't exist, adding " + tileData.tile.id);
-          previousTiles[tileData.tile.id] = '';
+
+        if (previousTiles[tileData.tile.id] == tileData.image) {
+          this.logger.verbose("Image didn't change, not re-rendering");
+        } else {
+          previousTiles[tileData.tile.id] = tileData.image;
+          const imageData = decompressTileCode(tileData.image);
+          if (imageData.length == 768) {
+            await renderImage(tileData.image, 'cache/' + tileData.tile.id + '/' + tileData.blockNumber + '.png');
+            await renderImage(tileData.image, 'cache/' + tileData.tile.id + '/latest.png');
+            await renderFullMap(previousTiles, 'cache/fullmap/' + tileData.blockNumber + '.png');
+            await renderFullMap(previousTiles, 'cache/fullmap/fullMap.png');
+            this.logger.verbose('Rendered image ' + i + ' of ' + tileDataChange.length);
+          }
         }
-        // if (previousTiles[tileData.tile.id] == tileData.tile.image) {
-        //   this.logger.verbose("Image didn't change, not re-rendering");
-        // } else {
-        console.log('ohh new tile, nice!');
-        previousTiles[tileData.tile.id] = tileData.tile.image;
-        console.log('cache/' + tileData.tile.id + '/' + tileData.blockNumber + '.png');
-        await renderImage(tileData.image, 'cache/' + tileData.tile.id + '/' + tileData.blockNumber + '.png');
-        this.logger.log('rendered image ' + i + ' of ' + tileDataChange.length);
         lastEvent.value = i + 1;
-        // }
-        await this.currentState.persist(lastEvent);
+        await this.currentState.persistAndFlush(lastEvent);
       }
       this.currentlyReadingImages = false;
     } else {

@@ -244,7 +244,7 @@ export class IngestorService {
         }
         this.logger.log('Tile updated at block: ' + decodedEvent.blockNumber + ' (' + decodedEvent.timestamp + ')');
 
-        tile.image = decodedEvent.image ? decodedEvent.image : tile.image;
+        tile.image = decodedEvent.image ? decodedEvent.image.substring(0, 799) : tile.image.substring(0, 799);
         tile.price = decodedEvent.price ? decodedEvent.price : tile.price;
         tile.url = decodedEvent.url ? decodedEvent.url : tile.url;
         tile.owner = decodedEvent.from ? decodedEvent.from : tile.owner;
@@ -261,7 +261,7 @@ export class IngestorService {
             tx: decodedEvent.txHash,
             timeStamp: decodedEvent.timestamp,
             blockNumber: decodedEvent.blockNumber,
-            image: tile.image,
+            image: tile.image.substring(0, 799),
             updatedBy: decodedEvent.from,
             logIndex: decodedEvent.logIndex,
           }),

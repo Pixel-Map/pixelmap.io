@@ -3,12 +3,10 @@ import { decompressTileCode } from './decompressTileCode';
 const Jimp = require('jimp');
 
 export async function renderImage(tileImageData: string, outputPath: string) {
-  const imageData = decompressTileCode(tileImageData);
-
-  if (imageData.length >= 768) {
+  if (tileImageData.length >= 768) {
     // OWN IMAGE
 
-    const imageDataArray = imageData.match(/.{1,3}/g);
+    const imageDataArray = tileImageData.match(/.{1,3}/g);
 
     let counter = 0;
 
@@ -29,7 +27,8 @@ export async function renderImage(tileImageData: string, outputPath: string) {
         counter++;
       }
     }
-
     await image.resize(512, 512, 'nearestNeighbor').quality(100).write(outputPath);
+  } else {
+    // console.log('Not saving image, invalid image data found!');
   }
 }
