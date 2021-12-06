@@ -15,6 +15,8 @@ import { WrappingHistory } from './ingestor/entities/wrappingHistory.entity';
 import { NotificationsModule } from './notifications/notifications.module';
 import { RendererModule } from './renderer/renderer.module';
 import { CurrentState } from './ingestor/entities/currentState.entity';
+import { MetadataService } from './metadata/metadata.service';
+import { MetadataModule } from './metadata/metadata.module';
 
 @Module({
   imports: [
@@ -34,8 +36,9 @@ import { CurrentState } from './ingestor/entities/currentState.entity';
     IngestorModule,
     NotificationsModule,
     RendererModule,
+    MetadataModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, MetadataService],
 })
 export class AppModule {}

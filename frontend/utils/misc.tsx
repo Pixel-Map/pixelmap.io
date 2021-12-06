@@ -1,11 +1,11 @@
 import { BigNumber, BigNumberish } from "@ethersproject/bignumber";
 import { formatUnits, parseUnits } from "@ethersproject/units";
 import { parse } from "path";
-import { TileAsset } from '../types/TileAsset';
+import { TileAsset } from "../types/TileAsset";
 
 export function shortenIfHex(hex: string, length = 12) {
   if (hex.length < length) {
-    return hex
+    return hex;
   }
   return `${hex.substring(0, length + 2)}…${hex.substring(
     hex.length - length
@@ -41,47 +41,51 @@ export const parseBalance = (
   decimals = 18,
   decimalsToDisplay = 3
 ) => {
-  return new Intl.NumberFormat('en-US', { currency: 'USD', style: 'decimal'}).format(parseFloat(formatUnits(value, decimals)));
-}
+  return new Intl.NumberFormat("en-US", {
+    currency: "USD",
+    style: "decimal",
+  }).format(parseFloat(formatUnits(value, decimals)));
+};
 
 export const cleanUrl = (url: string) => {
   let regex = new RegExp("^(http|https)://", "i");
-  
-  if( regex.test(url) ) {
+
+  if (regex.test(url)) {
     return url;
   } else {
     return `https://${url}`;
   }
-}
+};
 
 export const tilePrice = (tile: TileAsset) => {
   let osPrice = "0";
 
-  if (tile.openseaPrice && !tile.openseaPrice.match(/[^$,.\d]/)) osPrice = tile.openseaPrice;
-  
-  return (BigNumber.from(osPrice).gt(0) ? tile.openseaPrice.toString() : (tile.price.toString() || "0"));
-}
+  if (tile.openseaPrice && !tile.openseaPrice.match(/[^$,.\d]/))
+    osPrice = tile.openseaPrice;
+
+  return tile.openseaPrice ? tile.openseaPrice : tile.price.toString() || "0";
+};
 
 export const priceToEth = (tile: TileAsset) => {
   let price = tilePrice(tile);
 
-  return formatUnits(price, "ether").toString() || "0";
-}
+  return price || "0";
+};
 
 export const formatPrice = (tile: TileAsset) => {
   let price = priceToEth(tile);
-  
-  if( price === "0.0" ) {
-    return '–';
+
+  if (price === "0.0") {
+    return "–";
   }
-  
+
   return `${price}Ξ`;
-}
+};
 
 export const openseaLink = (id: number) => {
- return `https://opensea.io/assets/${process.env.NEXT_PUBLIC_PIXELMAP_WRAPPER_CONTRACT}/${id}`
-}
+  return `https://opensea.io/assets/${process.env.NEXT_PUBLIC_PIXELMAP_WRAPPER_CONTRACT}/${id}`;
+};
 
 export const convertEthToWei = (price: string) => {
   return parseUnits(price || "0", "ether");
-}
+};

@@ -7,6 +7,10 @@ import { DataHistory } from '../ingestor/entities/dataHistory.entity';
 import { renderImage } from './utils/renderImage';
 import { renderFullMap } from './utils/renderFullMap';
 import { decompressTileCode } from './utils/decompressTileCode';
+const S3SyncClient = require('s3-sync-client');
+const mime = require('mime-types');
+import { ConfigService } from '@nestjs/config';
+import { Tile } from '../ingestor/entities/tile.entity';
 
 @Injectable()
 export class RendererService {
@@ -18,7 +22,10 @@ export class RendererService {
     private currentState: EntityRepository<CurrentState>,
     @InjectRepository(DataHistory)
     private dataHistory: EntityRepository<DataHistory>,
+    @InjectRepository(Tile)
+    private tileData: EntityRepository<Tile>,
     private readonly orm: MikroORM,
+    private configService: ConfigService,
   ) {}
 
   @Cron('1 * * * * *', {
@@ -28,8 +35,10 @@ export class RendererService {
   async renderImages() {
     if (!this.currentlyReadingImages) {
       const previousTiles = [];
+      // Reload latest data
+      const tiles = await this.tileData.find({}, [], { id: QueryOrder.ASC });
       for (let i = 0; i <= 3969; i++) {
-        previousTiles[i] = '';
+        previousTiles[i] = tiles[i].image;
       }
       this.currentlyReadingImages = true;
       const lastEvent = await this.currentState.findOne({
@@ -48,53 +57,32 @@ export class RendererService {
             await renderImage(tileData.image, 'cache/' + tileData.tile.id + '/' + tileData.blockNumber + '.png');
             await renderImage(tileData.image, 'cache/' + tileData.tile.id + '/latest.png');
             await renderFullMap(previousTiles, 'cache/fullmap/' + tileData.blockNumber + '.png');
-            await renderFullMap(previousTiles, 'cache/fullmap/fullMap.png');
             this.logger.verbose('Rendered image ' + i + ' of ' + tileDataChange.length);
           }
         }
         lastEvent.value = i + 1;
         await this.currentState.persistAndFlush(lastEvent);
       }
+      await renderFullMap(previousTiles, 'cache/tilemap.png');
+
+      const client = new S3SyncClient({
+        region: 'us-east-1',
+        credentials: {
+          accessKeyId: this.configService.get('AWS_ACCESS_KEY_ID'),
+          secretAccessKey: this.configService.get('AWS_SECRET_ACCESS_KEY'),
+        },
+      });
+
+      const sync = await client.sync('cache', 's3://pixelmap.art', {
+        del: true,
+        commandInput: {
+          ContentType: (syncCommandInput) => mime.lookup(syncCommandInput.Key) || 'image/png',
+        },
+      });
+
       this.currentlyReadingImages = false;
     } else {
       this.logger.debug('Already rendering images, not starting again yet');
     }
   }
-  //   // upload to localstack - plugin does not support await need a bit time for IO
-  //   const fileContent = fs.readFileSync("cache/" + i + ".png");
-  //   const params = {
-  //     Bucket: BUCKET_NAME,
-  //     Key: "large_tiles/" + i + ".png", // File name you want to save as in S3
-  //     Body: fileContent,
-  //     ACL: "public-read",
-  //     ContentType: "image/png",
-  //   };
-  //   await s3.upload(params, function () {
-  //     console.log(
-  //       `Tile image data uploaded successfully. ${data.Location} to ${BUCKET_NAME}`
-  //     );
-  //   });
-  //
-  //   tileMetaData.image =
-  //     "https://s3.us-east-1.amazonaws.com/" +
-  //     BUCKET_NAME +
-  //     "/large_tiles/" +
-  //     i +
-  //     ".png";
-  //   await fs.writeFileSync(
-  //     "cache/" + i + ".json",
-  //     JSON.stringify(tileMetaData)
-  //   );
-  // } else {
-  //   // NO own image
-  //   console.log("No image set, skipping!");
-  //   tileMetaData.image =
-  //     "https://s3.us-east-1.amazonaws.com/" +
-  //     BUCKET_NAME +
-  //     "/large_tiles/blank.png";
-  //   await fs.writeFileSync(
-  //     "cache/" + i + ".json",
-  //     JSON.stringify(tileMetaData)
-  //   );
-  // }
 }
