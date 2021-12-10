@@ -14,7 +14,7 @@ import { EntityRepository, MikroORM, QueryOrder } from '@mikro-orm/core';
 import { InjectRepository, UseRequestContext } from '@mikro-orm/nestjs';
 import { CurrentState, StatesToTrack } from './entities/currentState.entity';
 
-const BLOCKS_TO_PROCESS_AT_TIME = 1000;
+let BLOCKS_TO_PROCESS_AT_TIME = 1000;
 
 @Injectable()
 export class IngestorService {
@@ -150,6 +150,7 @@ export class IngestorService {
         this.logger.warn(error);
       }
     }
+    BLOCKS_TO_PROCESS_AT_TIME = 1; // After initial sync, do tiny increments instead of every 1000
     this.logger.debug('Finished syncing.  Will check again soon.');
   }
 

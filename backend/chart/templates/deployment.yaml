@@ -42,6 +42,8 @@ spec:
             value: "{{ .Values.ETHERSCAN_API_KEY }}"
           - name: OPENSEA_API_KEY
             value: "{{ .Values.OPENSEA_API_KEY }}"
+          - name: SYNC_TO_AWS
+            value: "true"
           imagePullPolicy: Always
           ports:
             - name: http

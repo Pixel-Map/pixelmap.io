@@ -47,21 +47,23 @@ export class RendererService {
       const tileDataChange = await this.dataHistory.find({}, ['tile'], { id: QueryOrder.ASC });
       for (let i = lastEvent.value; i < tileDataChange.length; i++) {
         const tileData = tileDataChange[i];
-
         if (previousTiles[tileData.tile.id] == tileData.image) {
           this.logger.verbose("Image didn't change, not re-rendering");
         } else {
           previousTiles[tileData.tile.id] = tileData.image;
           const imageData = decompressTileCode(tileData.image);
+
           if (imageData.length == 768) {
-            await renderImage(tileData.image, 'cache/' + tileData.tile.id + '/' + tileData.blockNumber + '.png');
-            await renderImage(tileData.image, 'cache/' + tileData.tile.id + '/latest.png');
+            this.logger.verbose('Saving image of tile: ' + tileData.tile.id);
+            await renderImage(imageData, 'cache/' + tileData.tile.id + '/' + tileData.blockNumber + '.png');
+            await renderImage(imageData, 'cache/' + tileData.tile.id + '/latest.png');
             await renderFullMap(previousTiles, 'cache/fullmap/' + tileData.blockNumber + '.png');
-            this.logger.verbose('Rendered image ' + i + ' of ' + tileDataChange.length);
+            this.logger.verbose(
+              'Rendered image for tile: ' + tileData.tile.id + '(' + i + ' of ' + tileDataChange.length + ')',
+            );
           }
         }
         lastEvent.value = i + 1;
-        await this.currentState.persistAndFlush(lastEvent);
       }
       await renderFullMap(previousTiles, 'cache/tilemap.png');
 
@@ -72,14 +74,19 @@ export class RendererService {
           secretAccessKey: this.configService.get('AWS_SECRET_ACCESS_KEY'),
         },
       });
-
-      const sync = await client.sync('cache', 's3://pixelmap.art', {
-        del: true,
-        commandInput: {
-          ContentType: (syncCommandInput) => mime.lookup(syncCommandInput.Key) || 'image/png',
-        },
-      });
-
+      if (this.configService.get<boolean>('SYNC_TO_AWS')) {
+        this.logger.verbose('Syncing to AWS!');
+        const sync = await client.sync('cache', 's3://pixelmap.art', {
+          del: true,
+          commandInput: {
+            ContentType: (syncCommandInput) => mime.lookup(syncCommandInput.Key) || 'image/png',
+          },
+        });
+        this.logger.verbose('Sync to AWS complete!');
+      } else {
+        this.logger.verbose('Skipping sync, SYNC_TO_AWS is false.');
+      }
+      await this.currentState.persistAndFlush(lastEvent);
       this.currentlyReadingImages = false;
     } else {
       this.logger.debug('Already rendering images, not starting again yet');

@@ -29,6 +29,6 @@ export async function renderImage(tileImageData: string, outputPath: string) {
     }
     await image.resize(512, 512, 'nearestNeighbor').quality(100).write(outputPath);
   } else {
-    // console.log('Not saving image, invalid image data found!');
+    console.log('Not saving image, invalid image data found!');
   }
 }

@@ -7,6 +7,7 @@ const fs = require('fs');
 const S3SyncClient = require('s3-sync-client');
 const mime = require('mime-types');
 import { tileIsOnEdge } from '../renderer/utils/tileIsOnEdge';
+import { decompressTileCode } from '../renderer/utils/decompressTileCode';
 
 @Injectable()
 export class MetadataService {
@@ -23,7 +24,7 @@ export class MetadataService {
     name: 'generateMetadata',
   })
   @UseRequestContext()
-  async renderImages() {
+  async renderMetadata() {
     if (!this.currentlyGeneratingMetadata) {
       this.currentlyGeneratingMetadata = true;
 
@@ -72,11 +73,14 @@ export class MetadataService {
       });
     }
 
-    if (tile.image.length >= 768) {
-      tileMetaData.image = 'https://pixelmap.art/' + tile.id + '/latest/.png';
+    const image = decompressTileCode(tile.image);
+
+    if (image.length >= 768) {
+      tileMetaData.image = 'https://pixelmap.art/' + tile.id + '/latest.png';
     } else {
       tileMetaData.image = 'https://pixelmap.art/blank.png';
     }
+
     await fs.writeFileSync('cache/metadata/' + tile.id + '.json', JSON.stringify(tileMetaData, null, 2));
   }
 }
