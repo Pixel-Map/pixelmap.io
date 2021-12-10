@@ -57,23 +57,8 @@ export const cleanUrl = (url: string) => {
   }
 };
 
-export const tilePrice = (tile: TileAsset) => {
-  let osPrice = "0";
-
-  if (tile.openseaPrice && !tile.openseaPrice.match(/[^$,.\d]/))
-    osPrice = tile.openseaPrice;
-
-  return tile.openseaPrice ? tile.openseaPrice : tile.price.toString() || "0";
-};
-
-export const priceToEth = (tile: TileAsset) => {
-  let price = tilePrice(tile);
-
-  return price || "0";
-};
-
 export const formatPrice = (tile: TileAsset) => {
-  let price = priceToEth(tile);
+  let price = tile.openseaPrice;
 
   if (price === "0.0") {
     return "–";

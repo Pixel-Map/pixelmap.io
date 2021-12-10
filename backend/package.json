@@ -40,6 +40,7 @@
     "@nestjs/core": "^8.0.0",
     "@nestjs/platform-express": "^8.0.0",
     "@nestjs/schedule": "^1.0.1",
+    "bignumber.js": "^9.0.1",
     "canvas": "^2.8.0",
     "compression": "^1.7.4",
     "discord-nestjs": "^1.2.1",
@@ -53,7 +54,8 @@
     "reflect-metadata": "^0.1.13",
     "rimraf": "^3.0.2",
     "rxjs": "^7.2.0",
-    "s3-sync-client": "^2.1.0"
+    "s3-sync-client": "^2.1.0",
+    "uuid": "^8.3.2"
   },
   "devDependencies": {
     "@nestjs/cli": "^8.0.0",

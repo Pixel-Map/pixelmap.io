@@ -32,7 +32,7 @@ export class MetadataService {
 
       this.currentlyGeneratingMetadata = false;
     } else {
-      this.logger.debug('Already rendering images, not starting again yet');
+      this.logger.debug('Already rendering metadata, not starting again yet');
     }
   }
 

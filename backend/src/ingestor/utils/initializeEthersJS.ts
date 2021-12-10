@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
-import * as pixelMapABI from '../../../../abi/PixelMap.json';
-import * as pixelMapWrapperABI from '../../../../abi/PixelMapWrapper.json';
+import * as pixelMapABI from '../../../abi/PixelMap.json';
+import * as pixelMapWrapperABI from '../../../abi/PixelMapWrapper.json';
 
 export function initializeEthersJS() {
   const provider = new ethers.providers.JsonRpcProvider(

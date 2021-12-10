@@ -39,9 +39,7 @@ export default function Map(props: any) {
 
     setForSaleTiles(
       props.tiles.filter((tile: TileAsset) => {
-        return (
-          tile.price != "0" || (tile.openseaPrice && tile.openseaPrice != "0")
-        );
+        return tile.openseaPrice && tile.openseaPrice != "0.00";
       })
     );
   }, [props.tiles, account]);

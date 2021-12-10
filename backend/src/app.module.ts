@@ -17,26 +17,31 @@ import { RendererModule } from './renderer/renderer.module';
 import { CurrentState } from './ingestor/entities/currentState.entity';
 import { MetadataService } from './metadata/metadata.service';
 import { MetadataModule } from './metadata/metadata.module';
+import { OpenseaModule } from './opensea/opensea.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     ScheduleModule.forRoot(),
     MikroOrmModule.forFeature([Tile, DataHistory]),
-    MikroOrmModule.forRoot({
-      metadataProvider: TsMorphMetadataProvider,
-      entities: [CurrentState, DataHistory, PixelMapEvent, PurchaseHistory, Tile, TransferHistory, WrappingHistory],
-      type: 'postgresql',
-      dbName: 'postgres',
-      host: 'localhost',
-      port: 5432,
-      user: 'postgres',
-      password: 'password',
+    MikroOrmModule.forRootAsync({
+      useFactory: (configService: ConfigService) => ({
+        metadataProvider: TsMorphMetadataProvider,
+        entities: [CurrentState, DataHistory, PixelMapEvent, PurchaseHistory, Tile, TransferHistory, WrappingHistory],
+        type: 'postgresql',
+        dbName: configService.get<string>('DATABASE_NAME'),
+        host: configService.get<string>('DATABASE_HOST'),
+        port: 5432,
+        user: configService.get<string>('DATABASE_USERNAME'),
+        password: configService.get<string>('DATABASE_PASSWORD'),
+      }),
+      inject: [ConfigService],
     }),
     IngestorModule,
     NotificationsModule,
     RendererModule,
     MetadataModule,
+    OpenseaModule,
   ],
   controllers: [AppController],
   providers: [AppService, MetadataService],

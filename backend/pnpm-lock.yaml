@@ -23,6 +23,7 @@ specifiers:
   '@types/supertest': ^2.0.11
   '@typescript-eslint/eslint-plugin': ^5.0.0
   '@typescript-eslint/parser': ^5.0.0
+  bignumber.js: ^9.0.1
   canvas: ^2.8.0
   compression: ^1.7.4
   discord-nestjs: ^1.2.1
@@ -50,6 +51,7 @@ specifiers:
   ts-node: ^10.0.0
   tsconfig-paths: ^3.10.1
   typescript: ^4.3.5
+  uuid: ^8.3.2
 
 dependencies:
   '@mikro-orm/cli': 4.5.9_70a3b8c409b2020da9ee253ce1f7c57b
@@ -64,6 +66,7 @@ dependencies:
   '@nestjs/core': 8.2.0_4cd843d44b7cc56d7dd061c958134502
   '@nestjs/platform-express': 8.2.0_3be9f4a5443d29d58a8c4813bc34ec98
   '@nestjs/schedule': 1.0.1_a5fc77933aaf6b413a66315b382b25d2
+  bignumber.js: 9.0.1
   canvas: 2.8.0
   compression: 1.7.4
   discord-nestjs: 1.2.1_14067eb312bb42a0b5e2702a96e8c134
@@ -78,6 +81,7 @@ dependencies:
   rimraf: 3.0.2
   rxjs: 7.4.0
   s3-sync-client: 2.1.0
+  uuid: 8.3.2
 
 devDependencies:
   '@nestjs/cli': 8.1.4_eslint@8.2.0
@@ -3721,6 +3725,10 @@ packages:
 
   /bech32/1.1.4:
     resolution: {integrity: sha512-s0IrSOzLlbvX7yp4WBfPITzpAU8sqQcpsmwXDiKwrG4r491vwCO/XpejasRNl0piBMe/DvP4Tz0mIS/X1DPJBQ==}
+    dev: false
+
+  /bignumber.js/9.0.1:
+    resolution: {integrity: sha512-IdZR9mh6ahOBv/hYGiXyVuyCetmGJhtYkqLBpTStdhEGjegpPlUawydyaF3pbIOFynJTpllEs+NP+CS9jKFLjA==}
     dev: false
 
   /binary-extensions/2.2.0:

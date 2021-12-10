@@ -11,7 +11,7 @@ import WrapTile from "../../components/WrapTile";
 import Account from "../../components/Account";
 import useEagerConnect from "../../hooks/useEagerConnect";
 import { fetchTiles } from "../../utils/api";
-import { priceToEth, convertEthToWei } from "../../utils/misc";
+import { convertEthToWei } from "../../utils/misc";
 import ContractABI from "../../abi/pixelabi.json";
 import WrappedContractABI from "../../abi/wrapperpixelabi.json";
 
@@ -42,7 +42,6 @@ function Wrap() {
       });
 
       owned = owned.map((tile: TileAsset) => {
-        tile.newPrice = priceToEth(tile);
         return tile;
       });
 
