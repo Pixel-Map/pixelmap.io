@@ -51,7 +51,7 @@ export class MetadataService {
         price: tile.price,
         wrapped: tile.wrapped,
         openseaPrice: tile.openseaPrice,
-        lastUpdated: Date.now(),
+        lastUpdated: new Date('December 13, 2021 01:01:00'), // todo: Implement last updated
         ens: tile.ens,
       });
     }
@@ -80,7 +80,9 @@ export class MetadataService {
     } else {
       tileMetaData.image = 'https://pixelmap.art/blank.png';
     }
-
+    // Write metadata for OpenSea
     await fs.writeFileSync('cache/metadata/' + tile.id + '.json', JSON.stringify(tileMetaData, null, 2));
+    // Write data for /tile endpoint
+    await fs.writeFileSync('cache/tile/' + tile.id, JSON.stringify(tile, null, 2));
   }
 }

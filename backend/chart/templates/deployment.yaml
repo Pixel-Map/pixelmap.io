@@ -43,7 +43,7 @@ spec:
           - name: OPENSEA_API_KEY
             value: "{{ .Values.OPENSEA_API_KEY }}"
           - name: SYNC_TO_AWS
-            value: "true"
+            value: "false"
           imagePullPolicy: Always
           ports:
             - name: http

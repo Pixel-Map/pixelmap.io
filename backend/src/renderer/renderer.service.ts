@@ -74,17 +74,23 @@ export class RendererService {
           secretAccessKey: this.configService.get('AWS_SECRET_ACCESS_KEY'),
         },
       });
-      if (this.configService.get<boolean>('SYNC_TO_AWS')) {
-        this.logger.verbose('Syncing to AWS!');
-        const sync = await client.sync('cache', 's3://pixelmap.art', {
-          del: true,
-          commandInput: {
-            ContentType: (syncCommandInput) => mime.lookup(syncCommandInput.Key) || 'image/png',
-          },
-        });
-        this.logger.verbose('Sync to AWS complete!');
-      } else {
-        this.logger.verbose('Skipping sync, SYNC_TO_AWS is false.');
+      try {
+        if (this.configService.get<string>('SYNC_TO_AWS') == 'true') {
+          this.logger.verbose('Syncing to AWS!');
+          const sync = await client.sync('cache', 's3://pixelmap.art', {
+            del: false,
+            sizeOnly: true,
+            commandInput: {
+              ContentType: (syncCommandInput) => mime.lookup(syncCommandInput.Key) || 'image/png',
+            },
+          });
+          console.log(sync);
+          this.logger.verbose('Sync to AWS complete!');
+        } else {
+          this.logger.verbose('Skipping sync, SYNC_TO_AWS is false.');
+        }
+      } catch (e) {
+        this.logger.error('Error syncing to AWS: ' + e);
       }
       await this.currentState.persistAndFlush(lastEvent);
       this.currentlyReadingImages = false;

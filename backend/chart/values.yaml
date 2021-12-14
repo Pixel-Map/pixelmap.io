@@ -13,7 +13,7 @@ ETHERSCAN_API_KEY: ""
 OPENSEA_API_KEY: ""
 
 replicaCount: 1
-image: 389059433654.dkr.ecr.us-east-1.amazonaws.com/backend:1.1.6
+image: 389059433654.dkr.ecr.us-east-1.amazonaws.com/backend:1.1.18
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""

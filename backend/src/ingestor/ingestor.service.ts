@@ -13,8 +13,8 @@ import { exit } from '@nestjs/cli/actions';
 import { EntityRepository, MikroORM, QueryOrder } from '@mikro-orm/core';
 import { InjectRepository, UseRequestContext } from '@mikro-orm/nestjs';
 import { CurrentState, StatesToTrack } from './entities/currentState.entity';
-
-let BLOCKS_TO_PROCESS_AT_TIME = 1000;
+import { getEvents } from './utils/getEvents';
+const fs = require('fs');
 
 @Injectable()
 export class IngestorService {
@@ -42,6 +42,14 @@ export class IngestorService {
 
   async onApplicationBootstrap() {
     this.currentlyIngestingEvents = true;
+
+    // Create directories if they don't exist
+    if (!fs.existsSync('cache/metadata')) {
+      fs.mkdirSync('cache/metadata', { recursive: true });
+    }
+    if (!fs.existsSync('cache/tile')) {
+      fs.mkdirSync('cache/tile', { recursive: true });
+    }
 
     // Initialize Data if Empty
     if ((await this.currentState.findOne({ state: StatesToTrack.INGESTION_LAST_DOWNLOADED_BLOCK })) == undefined) {
@@ -107,50 +115,19 @@ export class IngestorService {
   async syncBlocks() {
     const { provider, pixelMap, pixelMapWrapper } = initializeEthersJS();
     const lastBlock = await this.currentState.findOne({ state: StatesToTrack.INGESTION_LAST_DOWNLOADED_BLOCK });
-    let lastDownloadedBlock = lastBlock.value;
-
-    let endBlock = lastDownloadedBlock + BLOCKS_TO_PROCESS_AT_TIME;
-
     const mostRecentBlockNumber = await provider.getBlockNumber();
-    this.logger.log('Currently on block: ' + lastDownloadedBlock);
-    this.logger.log('End block: ' + endBlock);
-    this.logger.log('Most recent block on blockchain: ' + mostRecentBlockNumber);
-    while (endBlock < mostRecentBlockNumber) {
-      this.logger.debug('Processing blocks: ' + lastDownloadedBlock + ' - ' + endBlock);
-      try {
-        const events = await provider.send('eth_getLogs', [
-          {
-            address: [pixelMap.address, pixelMapWrapper.address],
-            fromBlock: ethers.BigNumber.from(lastDownloadedBlock).toHexString(),
-            toBlock: ethers.BigNumber.from(endBlock).toHexString(),
-            topics: [
-              [
-                pixelMap.filters.TileUpdated().topics[0],
-                pixelMapWrapper.filters.Transfer().topics[0],
-                pixelMapWrapper.filters.Unwrapped().topics[0],
-                pixelMapWrapper.filters.Wrapped().topics[0],
-              ],
-            ],
-          },
-        ]);
-        await this.processEvents(events);
-        lastBlock.value = endBlock;
-        await this.currentState.persistAndFlush(lastBlock);
-        lastDownloadedBlock = endBlock + 1;
-        endBlock = lastDownloadedBlock + BLOCKS_TO_PROCESS_AT_TIME;
 
-        // Secret Teleportation past nothingness
-        if (lastDownloadedBlock > 3974343 && lastDownloadedBlock < 13062712) {
-          this.logger.log('Teleporting past the land of nothingness!');
-          lastDownloadedBlock = 13062713;
-          endBlock = lastDownloadedBlock + BLOCKS_TO_PROCESS_AT_TIME;
-        }
-      } catch (error) {
-        this.logger.warn('Error while ingesting.  Retrying');
-        this.logger.warn(error);
-      }
-    }
-    BLOCKS_TO_PROCESS_AT_TIME = 1; // After initial sync, do tiny increments instead of every 1000
+    // Download raw events
+    this.logger.log('Downloading raw events from block: ' + lastBlock.value + ' to ' + mostRecentBlockNumber);
+    const rawEvents = await getEvents(lastBlock.value, mostRecentBlockNumber);
+
+    // Process raw events and store them in the database
+    this.logger.debug('Processing blocks from block: ' + lastBlock.value + ' to ' + mostRecentBlockNumber);
+
+    await this.processEvents(rawEvents);
+    lastBlock.value = mostRecentBlockNumber + 1;
+    await this.currentState.persistAndFlush(lastBlock);
+
     this.logger.debug('Finished syncing.  Will check again soon.');
   }
 
@@ -171,9 +148,10 @@ export class IngestorService {
           txData: transaction,
           block: transaction.blockNumber,
         });
-        await this.pixelMapEvent.persistAndFlush(pixelMapEvent);
+        await this.pixelMapEvent.persist(pixelMapEvent);
       }
     }
+    await this.pixelMapEvent.flush();
   }
 
   @Cron('1 * * * * *', {
@@ -199,6 +177,7 @@ export class IngestorService {
         lastEvent.value = i;
         await this.currentState.persistAndFlush(lastEvent);
       }
+
       this.currentlyIngestingEvents = false;
     } else {
       this.logger.debug('Already ingesting, not starting again yet');
@@ -290,7 +269,6 @@ export class IngestorService {
           console.log(decodedEvent);
           console.log(tile.owner);
           this.logger.error('Incorrect owner??!');
-          exit();
         }
         tile.purchaseHistory.add(
           new PurchaseHistory({

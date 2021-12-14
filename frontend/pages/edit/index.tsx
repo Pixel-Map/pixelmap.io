@@ -88,7 +88,7 @@ function Edit() {
   const handleSave = (tile: TileAsset) => {
     console.log(tile.image);
     let compressedImage = compressTileCode(tile.image);
-    console.log(tile.image);
+    console.log(compressedImage);
     if (tile.wrapped === true) {
       const contract = new Contract(
         WRAPPED_PIXELMAP_CONTRACT,
