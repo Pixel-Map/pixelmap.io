@@ -115,11 +115,22 @@ export class IngestorService {
   async syncBlocks() {
     const { provider, pixelMap, pixelMapWrapper } = initializeEthersJS();
     const lastBlock = await this.currentState.findOne({ state: StatesToTrack.INGESTION_LAST_DOWNLOADED_BLOCK });
-    const mostRecentBlockNumber = await provider.getBlockNumber();
+    let mostRecentBlockNumber = await provider.getBlockNumber();
+
+    // Do batches of 1,000,000 max before saving!
+    if (mostRecentBlockNumber - lastBlock.value > 1000000) {
+      mostRecentBlockNumber = lastBlock.value + 1000000;
+    }
 
     // Download raw events
     this.logger.log('Downloading raw events from block: ' + lastBlock.value + ' to ' + mostRecentBlockNumber);
-    const rawEvents = await getEvents(lastBlock.value, mostRecentBlockNumber);
+    let rawEvents: ethers.Event[] = [];
+    try {
+      rawEvents = await getEvents(lastBlock.value, mostRecentBlockNumber);
+    } catch {
+      this.logger.error('Error downloading raw events');
+      return;
+    }
 
     // Process raw events and store them in the database
     this.logger.debug('Processing blocks from block: ' + lastBlock.value + ' to ' + mostRecentBlockNumber);
