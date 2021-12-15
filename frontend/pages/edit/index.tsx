@@ -118,7 +118,7 @@ function Edit() {
       </Head>
       <Layout>
         <main className="w-full max-w-2xl mx-auto mt-12 sm:mt-24 min-h-80 px-3">
-          <h1 className="text-3xl font-bold mb-4 text-white">
+          <h1 className="text-3xl font-bold mb-4 text-white ">
             Edit your tiles
           </h1>
           <div className="">
