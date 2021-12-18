@@ -27,7 +27,7 @@ export class AppService {
       if (isValidImage(event.image)) {
         if (tileAlreadyFound.has(event.tile.id)) {
         } else {
-          tileAlreadyFound[event.tile.id] = true;
+          tileAlreadyFound.set(event.tile.id, true);
           timeCapsuleTiles.push({
             tileId: event.tile.id,
             timeStamp: event.timeStamp,
