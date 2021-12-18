@@ -2,7 +2,7 @@ import { Entity, ManyToOne, PrimaryKey, Property, Unique } from '@mikro-orm/core
 import { Tile } from './tile.entity';
 
 @Entity()
-@Unique({ properties: ['tile', 'tx'] })
+@Unique({ properties: ['tile', 'tx', 'logIndex'] })
 export class PurchaseHistory {
   public constructor(init?: Partial<PurchaseHistory>) {
     Object.assign(this, init);

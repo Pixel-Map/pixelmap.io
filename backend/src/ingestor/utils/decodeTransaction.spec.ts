@@ -11,58 +11,18 @@ import * as delegatedBuyTile from './fixtures/delegated-buyTile.json';
 import * as transfer from './fixtures/sample-transfer.json';
 
 import { DecodedPixelMapTransaction, decodeTransaction, TransactionType } from './decodeTransaction';
-import { Tile } from '../entities/tile.entity';
-import { DataHistory } from '../entities/dataHistory.entity';
-import { WrappingHistory } from '../entities/wrappingHistory.entity';
-import { TransferHistory } from '../entities/transferHistory.entity';
-import { PurchaseHistory } from '../entities/purchaseHistory.entity';
-import { MikroORM } from '@mikro-orm/core';
-import { SqliteDriver } from '@mikro-orm/sqlite';
+import { initializeEthersJS } from './initializeEthersJS';
 
-export async function initORMSqlite() {
-  const orm = await MikroORM.init<SqliteDriver>({
-    entities: [Tile, DataHistory, WrappingHistory, TransferHistory, PurchaseHistory],
-    dbName: ':memory:',
-    // baseDir: BASE_DIR,
-    driver: SqliteDriver,
-    debug: ['query'],
-    forceUtcTimezone: true,
-    logger: (i) => i,
-    // metadataProvider: JavaScriptMetadataProvider,
-    cache: { enabled: true, pretty: true },
-  });
-
-  const connection = orm.em.getConnection();
-  // await connection.loadFile(__dirname + '/sqlite-schema.sql');
-  const generator = orm.getSchemaGenerator();
-  await generator.dropSchema();
-  await generator.createSchema();
-  await generator.updateSchema();
-  return orm;
-}
-
-describe('EntityManagerSqlite', () => {
-  let orm: MikroORM<SqliteDriver>;
-
-  beforeAll(async () => (orm = await initORMSqlite()));
-  afterAll(async () => await orm.close(true));
+describe('decodeTransaction', () => {
+  const { provider, pixelMap, pixelMapWrapper } = initializeEthersJS();
+  // afterAll(() => {
+  //   provider._websocket.terminate();
+  // });
 
   it('returns a proper buyTile DecodedTransaction when given an OG contract buyTile event', async () => {
     const event = Object.assign(new PixelMapEvent(), ogSampleBuyTile);
-    const tileRepository = await orm.em.getRepository(Tile);
-    const tile = await tileRepository.create({
-      id: 1984,
-      price: 2,
-      wrapped: false,
-      image: '',
-      url: '',
-      owner: '0x4f4b7e7edf5ec41235624ce207a6ef352aca7050', // Creator of PixelMap
-      dataHistory: [],
-      wrappingHistory: [],
-      purchaseHistory: [],
-    });
-    await tileRepository.persistAndFlush(tile);
-    const decodedTransaction = await decodeTransaction(event, tileRepository);
+
+    const decodedTransaction = await decodeTransaction(pixelMap, pixelMapWrapper, event);
     expect(decodedTransaction).toStrictEqual(
       new DecodedPixelMapTransaction({
         location: 1984,
@@ -80,8 +40,8 @@ describe('EntityManagerSqlite', () => {
 
   it('returns a proper setTile DecodedTransaction when given an OG contract setTile event', async () => {
     const event = Object.assign(new PixelMapEvent(), ogSampleSetTile);
-    const tileRepository = await orm.em.getRepository(Tile);
-    const decodedTransaction = await decodeTransaction(event, tileRepository);
+
+    const decodedTransaction = await decodeTransaction(pixelMap, pixelMapWrapper, event);
     expect(decodedTransaction).toStrictEqual(
       new DecodedPixelMapTransaction({
         location: 1984,
@@ -102,8 +62,7 @@ describe('EntityManagerSqlite', () => {
 
   it('returns a wrappedTile DecodedTransaction when given the first (1/3) wrapping event', async () => {
     const event = Object.assign(new PixelMapEvent(), wrappingSample1);
-    const tileRepository = await orm.em.getRepository(Tile);
-    const decodedTransaction = await decodeTransaction(event, tileRepository);
+    const decodedTransaction = await decodeTransaction(pixelMap, pixelMapWrapper, event);
     expect(decodedTransaction).toStrictEqual(
       new DecodedPixelMapTransaction({
         location: 3459,
@@ -120,8 +79,7 @@ describe('EntityManagerSqlite', () => {
 
   it('returns a wrappedTile DecodedTransaction when given the second (2/3) wrapping event', async () => {
     const event = Object.assign(new PixelMapEvent(), wrappingSample2);
-    const tileRepository = await orm.em.getRepository(Tile);
-    const decodedTransaction = await decodeTransaction(event, tileRepository);
+    const decodedTransaction = await decodeTransaction(pixelMap, pixelMapWrapper, event);
     expect(decodedTransaction).toStrictEqual(
       new DecodedPixelMapTransaction({
         location: 3459,
@@ -138,8 +96,7 @@ describe('EntityManagerSqlite', () => {
 
   it('returns a wrappedTile DecodedTransaction when given the third (3/3) wrapping event', async () => {
     const event = Object.assign(new PixelMapEvent(), wrappingSample3);
-    const tileRepository = await orm.em.getRepository(Tile);
-    const decodedTransaction = await decodeTransaction(event, tileRepository);
+    const decodedTransaction = await decodeTransaction(pixelMap, pixelMapWrapper, event);
     expect(decodedTransaction).toStrictEqual(
       new DecodedPixelMapTransaction({
         location: 3459,
@@ -156,8 +113,7 @@ describe('EntityManagerSqlite', () => {
 
   it('returns an unwrapTile DecodedTransaction when given an unwrapping event', async () => {
     const event = Object.assign(new PixelMapEvent(), unwrapping);
-    const tileRepository = await orm.em.getRepository(Tile);
-    const decodedTransaction = await decodeTransaction(event, tileRepository);
+    const decodedTransaction = await decodeTransaction(pixelMap, pixelMapWrapper, event);
     expect(decodedTransaction).toStrictEqual(
       new DecodedPixelMapTransaction({
         location: 1034,
@@ -174,8 +130,7 @@ describe('EntityManagerSqlite', () => {
 
   it('returns a buyTile DecodedTransaction when given an OpenSea purchase transfer event', async () => {
     const event = Object.assign(new PixelMapEvent(), openseaPurchase);
-    const tileRepository = await orm.em.getRepository(Tile);
-    const decodedTransaction = await decodeTransaction(event, tileRepository);
+    const decodedTransaction = await decodeTransaction(pixelMap, pixelMapWrapper, event);
     expect(decodedTransaction).toStrictEqual(
       new DecodedPixelMapTransaction({
         location: 222,
@@ -193,8 +148,7 @@ describe('EntityManagerSqlite', () => {
 
   it('returns a buyTile DecodedTransaction when given a delegated purchase transfer event', async () => {
     const event = Object.assign(new PixelMapEvent(), delegatedBuyTile);
-    const tileRepository = await orm.em.getRepository(Tile);
-    const decodedTransaction = await decodeTransaction(event, tileRepository);
+    const decodedTransaction = await decodeTransaction(pixelMap, pixelMapWrapper, event);
     expect(decodedTransaction).toStrictEqual(
       new DecodedPixelMapTransaction({
         location: 896,
@@ -212,8 +166,7 @@ describe('EntityManagerSqlite', () => {
 
   it('returns a transfer DecodedTransaction when given a transfer event', async () => {
     const event = Object.assign(new PixelMapEvent(), transfer);
-    const tileRepository = await orm.em.getRepository(Tile);
-    const decodedTransaction = await decodeTransaction(event, tileRepository);
+    const decodedTransaction = await decodeTransaction(pixelMap, pixelMapWrapper, event);
     expect(decodedTransaction).toStrictEqual(
       new DecodedPixelMapTransaction({
         location: 3570,
@@ -231,8 +184,7 @@ describe('EntityManagerSqlite', () => {
 
   it('returns a proper setTile DecodedTransaction when given a wrapper setTileData event', async () => {
     const event = Object.assign(new PixelMapEvent(), setTileData);
-    const tileRepository = await orm.em.getRepository(Tile);
-    const decodedTransaction = await decodeTransaction(event, tileRepository);
+    const decodedTransaction = await decodeTransaction(pixelMap, pixelMapWrapper, event);
     expect(decodedTransaction).toStrictEqual(
       new DecodedPixelMapTransaction({
         location: 1371,

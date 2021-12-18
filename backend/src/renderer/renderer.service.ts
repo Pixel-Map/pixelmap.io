@@ -79,7 +79,7 @@ export class RendererService {
           this.logger.verbose('Syncing to AWS!');
           const sync = await client.sync('cache', 's3://pixelmap.art', {
             del: false,
-            sizeOnly: true,
+            sizeOnly: false,
             commandInput: {
               ContentType: (syncCommandInput) => mime.lookup(syncCommandInput.Key) || 'image/png',
             },

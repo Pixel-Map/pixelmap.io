@@ -1,11 +1,12 @@
 import { initializeEthersJS } from './initializeEthersJS';
 import { ethers } from 'ethers';
+import { Logger } from '@nestjs/common';
 
 // Expect total events so far: 19110 (2641570 -> 13787439)
 // pixelMapWrapper.filters.Transfer().topics[0],
 // pixelMapWrapper.filters.Unwrapped().topics[0],
 // pixelMapWrapper.filters.Wrapped().topics[0],
-export async function getEvents(firstBlock: number, lastMinedBlock: number) {
+export async function getEvents(firstBlock: number, lastMinedBlock: number, logger: Logger) {
   const BLOCKS_TO_PROCESS_AT_TIME = 1000;
   // const firstBlock = 2641570;
   // const lastMinedBlock = 13787439;
@@ -22,7 +23,7 @@ export async function getEvents(firstBlock: number, lastMinedBlock: number) {
   while (currentBlock < lastMinedBlock) {
     // Secret Teleportation past nothingness
     if (currentBlock > 3974343 && currentBlock < 13062712) {
-      console.log('Teleporting past the land of nothingness!');
+      logger.log('Teleporting past the land of nothingness!');
       currentBlock = 13062713;
     }
 
@@ -41,7 +42,7 @@ export async function getEvents(firstBlock: number, lastMinedBlock: number) {
     allEvents.push(...unwrappedEvents);
     allEvents.push(...wrappedEvents);
 
-    console.log(
+    logger.log(
       'Scanning (inclusive) from: ' + currentBlock + ' to ' + toBlock + '.  Total events so far: ' + allEvents.length,
     );
     currentBlock = toBlock + 1;

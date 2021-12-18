@@ -26,9 +26,7 @@ export class AppService {
       const event = historyEvents[i];
       if (isValidImage(event.image)) {
         if (tileAlreadyFound.has(event.tile.id)) {
-          console.log('Do nothing, already spotted: ' + event.tile.id);
         } else {
-          console.log('Tile added to order!');
           tileAlreadyFound[event.tile.id] = true;
           timeCapsuleTiles.push({
             tileId: event.tile.id,

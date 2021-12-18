@@ -1,10 +1,7 @@
 import { PixelMapEvent } from '../entities/pixelMapEvent.entity';
 import { ethers } from 'ethers';
-import { initializeEthersJS } from './initializeEthersJS';
 import { EventType, getEventType } from './getEventType';
 import { getTimestamp } from './getTimestamp';
-import { Tile } from '../entities/tile.entity';
-import { EntityRepository } from '@mikro-orm/core';
 
 export enum TransactionType {
   setTile,
@@ -32,10 +29,10 @@ export class DecodedPixelMapTransaction {
 }
 
 export async function decodeTransaction(
+  pixelMap: ethers.Contract,
+  pixelMapWrapper: ethers.Contract,
   event: PixelMapEvent,
-  tileRepository: EntityRepository<Tile>,
 ): Promise<DecodedPixelMapTransaction> {
-  const { provider, pixelMap, pixelMapWrapper } = initializeEthersJS();
   const eventType = await getEventType(event);
   // console.log(JSON.stringify(event));
 
@@ -60,7 +57,6 @@ export async function decodeTransaction(
               blockNumber: event.txData.blockNumber,
               logIndex: event.logIndex,
             });
-            break;
           case 'unwrap':
             return new DecodedPixelMapTransaction({
               location: tileLocation,
@@ -72,7 +68,6 @@ export async function decodeTransaction(
               blockNumber: event.txData.blockNumber,
               logIndex: event.logIndex,
             });
-            break;
           case 'setTileData':
             return new DecodedPixelMapTransaction({
               location: tileLocation,
@@ -93,15 +88,25 @@ export async function decodeTransaction(
           parsedTransaction = pixelMap.interface.parseTransaction(event.txData);
           tileLocation = parsedTransaction.args.location.toNumber();
           if (parsedTransaction.name == 'buyTile') {
-            const currentTileHistory = await tileRepository.findOne({ id: tileLocation });
-            const previousOwner = currentTileHistory.owner;
+            const previousData = await pixelMap.tiles(tileLocation, { blockTag: event.txData.blockNumber - 1 });
+
+            // The first owner was myself.
+            let owner = previousData.owner;
+            if (owner == '0x0000000000000000000000000000000000000000') {
+              owner = '0x4f4b7e7edf5ec41235624ce207a6ef352aca7050';
+            }
+
+            // If owned by wrapper
+            if (owner.toLowerCase() == '0x050dc61dfb867e0fe3cf2948362b6c0f3faf790b'.toLowerCase()) {
+              owner = await pixelMapWrapper.ownerOf(tileLocation, { blockTag: event.txData.blockNumber - 1 });
+            }
 
             return new DecodedPixelMapTransaction({
               location: tileLocation,
               type: TransactionType.buyTile,
               price: parseFloat(ethers.utils.formatEther(parsedTransaction.value)),
               from: event.txData.from.toLowerCase(),
-              to: previousOwner,
+              to: owner,
               timestamp: timestamp,
               txHash: event.txHash,
               blockNumber: event.txData.blockNumber,

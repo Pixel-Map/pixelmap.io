@@ -83,7 +83,7 @@ export class IngestorService {
           url: '',
           owner: '0x4f4b7e7edf5ec41235624ce207a6ef352aca7050', // Creator of Pixelmap
         });
-        await this.tile.persist(tile);
+        await this.tile.persistAndFlush(tile);
       }
       await this.tile.flush();
     }
@@ -113,9 +113,10 @@ export class IngestorService {
   }
 
   async syncBlocks() {
-    const { provider, pixelMap, pixelMapWrapper } = initializeEthersJS();
+    const { provider } = initializeEthersJS();
     const lastBlock = await this.currentState.findOne({ state: StatesToTrack.INGESTION_LAST_DOWNLOADED_BLOCK });
     let mostRecentBlockNumber = await provider.getBlockNumber();
+    mostRecentBlockNumber = mostRecentBlockNumber - 10; // Let's stay 10 away from latest in case of uncles etc.
 
     // Do batches of 1,000,000 max before saving!
     if (mostRecentBlockNumber - lastBlock.value > 1000000) {
@@ -126,7 +127,7 @@ export class IngestorService {
     this.logger.log('Downloading raw events from block: ' + lastBlock.value + ' to ' + mostRecentBlockNumber);
     let rawEvents: ethers.Event[] = [];
     try {
-      rawEvents = await getEvents(lastBlock.value, mostRecentBlockNumber);
+      rawEvents = await getEvents(lastBlock.value, mostRecentBlockNumber, this.logger);
     } catch {
       this.logger.error('Error downloading raw events');
       return;
@@ -143,7 +144,7 @@ export class IngestorService {
   }
 
   async processEvents(events) {
-    const { provider, pixelMap, pixelMapWrapper } = initializeEthersJS();
+    const { provider } = initializeEthersJS();
     for (let i = 0; i < events.length; i++) {
       const event = events[i];
       const transaction = await provider.getTransaction(event.transactionHash);
@@ -159,7 +160,7 @@ export class IngestorService {
           txData: transaction,
           block: transaction.blockNumber,
         });
-        await this.pixelMapEvent.persist(pixelMapEvent);
+        await this.pixelMapEvent.persistAndFlush(pixelMapEvent);
       }
     }
     await this.pixelMapEvent.flush();
@@ -171,6 +172,7 @@ export class IngestorService {
   @UseRequestContext()
   async ingestEvents() {
     if (!this.currentlyIngestingEvents) {
+      const { provider, pixelMap, pixelMapWrapper } = initializeEthersJS();
       this.currentlyIngestingEvents = true;
       const lastEvent = await this.currentState.findOne({
         state: StatesToTrack.INGESTION_LAST_PROCESSED_PIXEL_MAP_EVENT,
@@ -179,7 +181,7 @@ export class IngestorService {
       const events = await this.pixelMapEvent.find({}, { orderBy: { id: QueryOrder.ASC } });
 
       for (let i = lastEvent.value; i < events.length; i++) {
-        const decodedEvent = await decodeTransaction(events[i], this.tile);
+        const decodedEvent = await decodeTransaction(pixelMap, pixelMapWrapper, events[i]);
         await this.ingestEvent(decodedEvent);
         const percent = Math.round((100 * (i + 1)) / events.length);
         this.logger.verbose(
@@ -257,7 +259,7 @@ export class IngestorService {
             logIndex: decodedEvent.logIndex,
           }),
         );
-        await this.tile.persist(tile);
+        await this.tile.persistAndFlush(tile);
         break;
       case TransactionType.buyTile:
         if (await this.alreadyIndexed(this.purchaseHistory, decodedEvent.txHash, decodedEvent.logIndex)) {
@@ -276,11 +278,6 @@ export class IngestorService {
         if (decodedEvent.price <= 0) {
           throw 'Purchase cannot be 0 or less';
         }
-        if (decodedEvent.to.toLowerCase() != tile.owner.toLowerCase()) {
-          console.log(decodedEvent);
-          console.log(tile.owner);
-          this.logger.error('Incorrect owner??!');
-        }
         tile.purchaseHistory.add(
           new PurchaseHistory({
             soldBy: tile.owner,
@@ -294,7 +291,7 @@ export class IngestorService {
         );
         tile.owner = decodedEvent.from; // Update AFTER updating purchasedBy!
         tile.price = 0; // Price is always set to zero following a sale!s
-        await this.tile.persist(tile);
+        await this.tile.persistAndFlush(tile);
         break;
       case TransactionType.wrap:
         if (await this.alreadyIndexedWrap(this.wrappingHistory, decodedEvent.txHash)) {
@@ -315,7 +312,7 @@ export class IngestorService {
             logIndex: decodedEvent.logIndex,
           }),
         );
-        await this.tile.persist(tile);
+        await this.tile.persistAndFlush(tile);
         break;
       case TransactionType.unwrap:
         if (await this.alreadyIndexedWrap(this.wrappingHistory, decodedEvent.txHash)) {
@@ -336,7 +333,7 @@ export class IngestorService {
             logIndex: decodedEvent.logIndex,
           }),
         );
-        await this.tile.persist(tile);
+        await this.tile.persistAndFlush(tile);
         break;
       case TransactionType.transfer:
         if (await this.alreadyIndexed(this.transferHistory, decodedEvent.txHash, decodedEvent.logIndex)) {
@@ -356,7 +353,7 @@ export class IngestorService {
             logIndex: decodedEvent.logIndex,
           }),
         );
-        await this.tile.persist(tile);
+        await this.tile.persistAndFlush(tile);
         break;
       default:
         this.logger.error('Failed to account for the following event:');
