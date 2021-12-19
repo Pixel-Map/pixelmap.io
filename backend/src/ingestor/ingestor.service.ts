@@ -14,6 +14,7 @@ import { EntityRepository, MikroORM, QueryOrder } from '@mikro-orm/core';
 import { InjectRepository, UseRequestContext } from '@mikro-orm/nestjs';
 import { CurrentState, StatesToTrack } from './entities/currentState.entity';
 import { getEvents } from './utils/getEvents';
+import { updateCurrentTileData } from './utils/updateCurrentTileData';
 const fs = require('fs');
 
 @Injectable()
@@ -21,6 +22,7 @@ export class IngestorService {
   private readonly logger = new Logger(IngestorService.name);
   private currentlyRunningSync = true;
   private currentlyIngestingEvents = false;
+  private updatingCurrentTileData = false;
 
   constructor(
     @InjectRepository(CurrentState)
@@ -164,6 +166,21 @@ export class IngestorService {
       }
     }
     await this.pixelMapEvent.flush();
+  }
+
+  @Cron('1 * * * * *')
+  @UseRequestContext()
+  async updateCurrentTileData() {
+    const { provider, pixelMap, pixelMapWrapper } = initializeEthersJS();
+    if (!this.updatingCurrentTileData) {
+      this.updatingCurrentTileData = true;
+      try {
+        await updateCurrentTileData(pixelMap, pixelMapWrapper, this.logger, this.tile);
+        this.updatingCurrentTileData = false;
+      } catch (e) {
+        this.logger.error('Error updating current tile data: ' + e);
+      }
+    }
   }
 
   @Cron('1 * * * * *', {
