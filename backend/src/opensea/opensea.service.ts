@@ -95,7 +95,7 @@ export class OpenseaService {
             this.logger.error(e);
           }
           await this.tileData.flush();
-          await sleep(500); //throttle requests to prevent rate limiting with OS
+          await sleep(1000); //throttle requests to prevent rate limiting with OS
         }
       } catch (err) {
         console.log(err);

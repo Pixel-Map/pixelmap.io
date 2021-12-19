@@ -11,10 +11,10 @@ DATABASE_HOST: "postgres-postgresql.prod.svc.cluster.local"
 DISCORD_TOKEN: ""
 ETHERSCAN_API_KEY: ""
 OPENSEA_API_KEY: ""
-SYNC_TO_AWS: "false"
+SYNC_TO_AWS: "true"
 
 replicaCount: 1
-image: 389059433654.dkr.ecr.us-east-1.amazonaws.com/backend:1.1.21
+image: 389059433654.dkr.ecr.us-east-1.amazonaws.com/backend:1.2.2
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
