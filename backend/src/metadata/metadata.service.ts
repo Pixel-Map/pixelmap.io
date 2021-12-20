@@ -21,7 +21,7 @@ export class MetadataService {
     private readonly orm: MikroORM, // private configService: ConfigService,
   ) {}
 
-  @Cron('1 * * * * *')
+  @Cron('5 * * * * *')
   @UseRequestContext()
   async renderMetadata() {
     if (!this.currentlyGeneratingMetadata) {

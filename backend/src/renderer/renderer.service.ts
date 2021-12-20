@@ -7,8 +7,6 @@ import { DataHistory } from '../ingestor/entities/dataHistory.entity';
 import { renderImage } from './utils/renderImage';
 import { renderFullMap } from './utils/renderFullMap';
 import { decompressTileCode } from './utils/decompressTileCode';
-const S3SyncClient = require('s3-sync-client');
-const mime = require('mime-types');
 import { ConfigService } from '@nestjs/config';
 import { Tile } from '../ingestor/entities/tile.entity';
 
@@ -25,10 +23,9 @@ export class RendererService {
     @InjectRepository(Tile)
     private tileData: EntityRepository<Tile>,
     private readonly orm: MikroORM,
-    private configService: ConfigService,
   ) {}
 
-  @Cron('1 * * * * *')
+  @Cron('5 * * * * *')
   @UseRequestContext()
   async renderImages() {
     if (!this.currentlyReadingImages) {
@@ -80,31 +77,6 @@ export class RendererService {
         }
         await renderFullMap(previousTiles, 'cache/tilemap.png');
 
-        const client = new S3SyncClient({
-          region: 'us-east-1',
-          credentials: {
-            accessKeyId: this.configService.get('AWS_ACCESS_KEY_ID'),
-            secretAccessKey: this.configService.get('AWS_SECRET_ACCESS_KEY'),
-          },
-        });
-        try {
-          if (this.configService.get<string>('SYNC_TO_AWS') == 'true') {
-            this.logger.verbose('Syncing to AWS!');
-            const sync = await client.sync('cache', 's3://pixelmap.art', {
-              del: false,
-              sizeOnly: false,
-              commandInput: {
-                ContentType: (syncCommandInput) => mime.lookup(syncCommandInput.Key) || 'image/png',
-              },
-            });
-            console.log(sync);
-            this.logger.verbose('Sync to AWS complete!');
-          } else {
-            this.logger.verbose('Skipping sync, SYNC_TO_AWS is false.');
-          }
-        } catch (e) {
-          this.logger.error('Error syncing to AWS: ' + e);
-        }
         await this.currentState.persistAndFlush(lastEvent);
         this.currentlyReadingImages = false;
       } catch (e) {

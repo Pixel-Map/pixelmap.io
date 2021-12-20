@@ -18,6 +18,8 @@ import { CurrentState } from './ingestor/entities/currentState.entity';
 import { MetadataService } from './metadata/metadata.service';
 import { MetadataModule } from './metadata/metadata.module';
 import { OpenseaModule } from './opensea/opensea.module';
+import { SyncToS3Service } from './sync-to-s3/sync-to-s3.service';
+import { SyncToS3Module } from './sync-to-s3/sync-to-s3.module';
 
 @Module({
   imports: [
@@ -42,8 +44,9 @@ import { OpenseaModule } from './opensea/opensea.module';
     RendererModule,
     MetadataModule,
     OpenseaModule,
+    SyncToS3Module,
   ],
   controllers: [AppController],
-  providers: [AppService, MetadataService],
+  providers: [AppService, MetadataService, SyncToS3Service],
 })
 export class AppModule {}
