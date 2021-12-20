@@ -21,8 +21,10 @@ jobs:
           version: 6.24.1
       - run: pnpm install
         working-directory: ./backend
-      - uses: paambaati/codeclimate-action@v2.2.4
+      - name: Test & publish code coverage
+        uses: paambaati/codeclimate-action@v3.0.0
         env:
-          CC_TEST_REPORTER_ID: 945dfb58a832d233a3caeb84e3e6d3be212e8c7abcb48117fce63b9adcb43647
+          CC_TEST_REPORTER_ID: e76841618cf0137951679b0911f11d973c5a2b325aa8db55f0fd07999bd6adf9
         with:
           coverageCommand: cd backend && pnpm test:cov
+          debug: true
