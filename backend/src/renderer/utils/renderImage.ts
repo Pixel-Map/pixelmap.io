@@ -1,4 +1,3 @@
-import { decompressTileCode } from './decompressTileCode';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const Jimp = require('jimp');
 
