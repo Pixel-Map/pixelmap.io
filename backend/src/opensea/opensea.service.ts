@@ -23,9 +23,7 @@ export class OpenseaService {
   ) {}
 
   // Update OpenSea prices every 15 minutes
-  @Cron('* * * * *', {
-    name: 'updateOpenSeaPrices',
-  })
+  @Cron('1 * * * *')
   @UseRequestContext()
   async updateOpenSeaPrices() {
     if (!this.updatingOpenSeaPrices) {

@@ -28,9 +28,7 @@ export class RendererService {
     private configService: ConfigService,
   ) {}
 
-  @Cron('1 * * * * *', {
-    name: 'renderImages',
-  })
+  @Cron('1 * * * * *')
   @UseRequestContext()
   async renderImages() {
     if (!this.currentlyReadingImages) {
