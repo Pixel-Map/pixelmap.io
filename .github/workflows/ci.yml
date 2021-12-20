@@ -34,8 +34,8 @@ jobs:
           version: 6.24.1
       - run: pnpm install
         working-directory: ./backend
-     - uses: paambaati/codeclimate-action@v2.2.4
-       env:
-        CC_TEST_REPORTER_ID: 945dfb58a832d233a3caeb84e3e6d3be212e8c7abcb48117fce63b9adcb43647
-       with:
-        coverageCommand: cd backend && pnpm test:cov
+      - uses: paambaati/codeclimate-action@v2.2.4
+        env:
+          CC_TEST_REPORTER_ID: 945dfb58a832d233a3caeb84e3e6d3be212e8c7abcb48117fce63b9adcb43647
+        with:
+          coverageCommand: cd backend && pnpm test:cov
