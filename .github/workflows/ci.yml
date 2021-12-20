@@ -8,7 +8,7 @@ jobs:
       - uses: actions/checkout@master
       - uses: actions/setup-node@master
         with:
-          node-version: 17.7.0
+          node-version: 17
       - name: Cache pnpm modules
         uses: actions/cache@v2
         with:
