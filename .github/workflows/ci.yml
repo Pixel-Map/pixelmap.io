@@ -1,8 +1,5 @@
 name: build
-on:
-  push:
-    tags:
-      - '!*' # Do not execute on tags.
+on: [push, pull_request]
 jobs:
   test:
     name: jest
