@@ -183,9 +183,7 @@ export class IngestorService {
     }
   }
 
-  @Cron('1 * * * * *', {
-    name: 'ingestEvents',
-  })
+  @Cron('1 * * * * *')
   @UseRequestContext()
   async ingestEvents() {
     if (!this.currentlyIngestingEvents) {

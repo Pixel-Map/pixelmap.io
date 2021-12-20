@@ -1,0 +1,33 @@
+name: build
+on: [push, pull_request]
+defaults:
+  run:
+    working-directory: ./backend
+jobs:
+  test:
+    name: jest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - uses: actions/setup-node@master
+        with:
+          node-version: 17
+      - name: Cache pnpm modules
+        uses: actions/cache@v2
+        with:
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-
+      - uses: pnpm/action-setup@v2.0.1
+        with:
+          version: 6.24.1
+      - run: pnpm install
+      - name: Test & publish code coverage
+        uses: paambaati/codeclimate-action@v3.0.0
+        env:
+          CC_TEST_REPORTER_ID: e76841618cf0137951679b0911f11d973c5a2b325aa8db55f0fd07999bd6adf9
+        with:
+          coverageCommand: pnpm test:cov
+          debug: true
+          workingDirectory: ./backend
