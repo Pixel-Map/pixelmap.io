@@ -22,6 +22,9 @@ export async function updateCurrentTileData(
     }
     if (tile.owner.toLowerCase() == '0x050dc61dfb867e0fe3cf2948362b6c0f3faf790b'.toLowerCase()) {
       tile.owner = await pixelMapWrapper.ownerOf(i);
+      tile.wrapped = true;
+    } else {
+      tile.wrapped = false;
     }
     logger.verbose('Updating with current data for tile: ' + i);
     await tileRepo.persistAndFlush(tile);
