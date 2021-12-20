@@ -309,46 +309,10 @@ export class IngestorService {
         await this.tile.persistAndFlush(tile);
         break;
       case TransactionType.wrap:
-        if (await this.alreadyIndexedWrap(this.wrappingHistory, decodedEvent.txHash)) {
-          this.logger.warn('Already indexed this wrap, skipping!');
-          return;
-        }
-        this.logger.log('Tile wrapped at block: ' + decodedEvent.blockNumber + ' (' + decodedEvent.timestamp + ')');
-        tile.wrapped = true;
-        tile.owner = decodedEvent.from;
-
-        tile.wrappingHistory.add(
-          new WrappingHistory({
-            wrapped: true,
-            tx: decodedEvent.txHash,
-            timeStamp: decodedEvent.timestamp,
-            blockNumber: decodedEvent.blockNumber,
-            updatedBy: decodedEvent.from,
-            logIndex: decodedEvent.logIndex,
-          }),
-        );
-        await this.tile.persistAndFlush(tile);
+        await this.addWrappingHistory(decodedEvent, tile, true);
         break;
       case TransactionType.unwrap:
-        if (await this.alreadyIndexedWrap(this.wrappingHistory, decodedEvent.txHash)) {
-          this.logger.warn('Already indexed this unwrap, skipping!');
-          return;
-        }
-        this.logger.log('Tile unwrapped at block: ' + decodedEvent.blockNumber + ' (' + decodedEvent.timestamp + ')');
-        tile.wrapped = false;
-        tile.owner = decodedEvent.from;
-
-        tile.wrappingHistory.add(
-          new WrappingHistory({
-            wrapped: false,
-            tx: decodedEvent.txHash,
-            timeStamp: decodedEvent.timestamp,
-            blockNumber: decodedEvent.blockNumber,
-            updatedBy: decodedEvent.from,
-            logIndex: decodedEvent.logIndex,
-          }),
-        );
-        await this.tile.persistAndFlush(tile);
+        await this.addWrappingHistory(decodedEvent, tile, false);
         break;
       case TransactionType.transfer:
         if (await this.alreadyIndexed(this.transferHistory, decodedEvent.txHash, decodedEvent.logIndex)) {
@@ -375,5 +339,24 @@ export class IngestorService {
         console.log(decodedEvent);
         exit();
     }
+  }
+  async addWrappingHistory(decodedEvent: DecodedPixelMapTransaction, tile: Tile, wrapped: boolean) {
+    if (await this.alreadyIndexedWrap(this.wrappingHistory, decodedEvent.txHash)) {
+      const noun = wrapped ? 'wrapping' : 'unwrapping';
+      this.logger.warn('Already indexed this ' + noun + ', skipping!');
+      return;
+    }
+    this.logger.log('Tile wrapped at block: ' + decodedEvent.blockNumber + ' (' + decodedEvent.timestamp + ')');
+    tile.wrappingHistory.add(
+      new WrappingHistory({
+        wrapped: wrapped,
+        tx: decodedEvent.txHash,
+        timeStamp: decodedEvent.timestamp,
+        blockNumber: decodedEvent.blockNumber,
+        updatedBy: decodedEvent.from,
+        logIndex: decodedEvent.logIndex,
+      }),
+    );
+    await this.tile.persistAndFlush(tile);
   }
 }
