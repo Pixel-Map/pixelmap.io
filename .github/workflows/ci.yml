@@ -1,5 +1,8 @@
 name: build
 on: [push, pull_request]
+defaults:
+  run:
+    working-directory: ./backend
 jobs:
   test:
     name: jest
@@ -20,11 +23,10 @@ jobs:
         with:
           version: 6.24.1
       - run: pnpm install
-        working-directory: ./backend
       - name: Test & publish code coverage
         uses: paambaati/codeclimate-action@v3.0.0
         env:
           CC_TEST_REPORTER_ID: e76841618cf0137951679b0911f11d973c5a2b325aa8db55f0fd07999bd6adf9
         with:
-          coverageCommand: cd backend && pnpm test:cov
+          coverageCommand: pnpm test:cov
           debug: true
