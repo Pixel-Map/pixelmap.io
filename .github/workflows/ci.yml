@@ -3,14 +3,6 @@ on:
   push:
     tags:
       - '!*' # Do not execute on tags.
-    paths:
-      - src/*
-      - test/*
-      - '*.json'
-      - yarn.lock
-  pull_request:
-    paths:
-      - '!*.MD'
 jobs:
   test:
     name: jest
