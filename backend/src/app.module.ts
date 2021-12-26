@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { CacheModule, Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -23,6 +23,7 @@ import { SyncToS3Module } from './sync-to-s3/sync-to-s3.module';
 
 @Module({
   imports: [
+    CacheModule.register({ isGlobal: true, ttl: 1000000, max: 100000 }),
     ConfigModule.forRoot({ isGlobal: true }),
     ScheduleModule.forRoot(),
     MikroOrmModule.forFeature([Tile, DataHistory]),

@@ -1,4 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { CACHE_MANAGER, Inject, Injectable, Logger } from '@nestjs/common';
+import { Cache } from 'cache-manager';
 import { InjectRepository, UseRequestContext } from '@mikro-orm/nestjs';
 import { CurrentState, StatesToTrack } from '../ingestor/entities/currentState.entity';
 import { EntityRepository, MikroORM, QueryOrder } from '@mikro-orm/core';
@@ -7,7 +8,6 @@ import { DataHistory } from '../ingestor/entities/dataHistory.entity';
 import { renderImage } from './utils/renderImage';
 import { renderFullMap } from './utils/renderFullMap';
 import { decompressTileCode } from './utils/decompressTileCode';
-import { ConfigService } from '@nestjs/config';
 import { Tile } from '../ingestor/entities/tile.entity';
 
 @Injectable()
@@ -23,9 +23,10 @@ export class RendererService {
     @InjectRepository(Tile)
     private tileData: EntityRepository<Tile>,
     private readonly orm: MikroORM,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
-  @Cron('5 * * * * *')
+  @Cron('1 * * * * *')
   @UseRequestContext()
   async renderImages() {
     if (!this.currentlyReadingImages) {
@@ -47,7 +48,7 @@ export class RendererService {
             this.logger.verbose("Image didn't change, not re-rendering");
           } else {
             previousTiles[tileData.tile.id] = tileData.image;
-            const imageData = decompressTileCode(tileData.image);
+            const imageData = decompressTileCode(tileData.image.trim());
 
             if (imageData.length == 768) {
               this.logger.verbose('Saving image of tile: ' + tileData.tile.id);
@@ -71,8 +72,15 @@ export class RendererService {
           }
 
           if (imageData.length == 768) {
-            // this.logger.verbose('Saving latest image of tile: ' + i);
-            await renderImage(imageData, 'cache/' + i + '/latest.png');
+            const lastRender = await this.cacheManager.get('image-' + String(tiles[i].id));
+            if (lastRender == imageData) {
+              // this.logger.verbose('Already rendered previously, skipping!');
+            } else {
+              this.logger.verbose('Saving latest image of tile: ' + i);
+              await renderImage(imageData, 'cache/' + i + '/latest.png');
+              // Cache it so we don't re-render needlessly!
+              await this.cacheManager.set('image-' + String(tiles[i].id), imageData);
+            }
           }
         }
         await renderFullMap(previousTiles, 'cache/tilemap.png');

@@ -7,7 +7,6 @@ import { PurchaseHistory } from './entities/purchaseHistory.entity';
 import { TransferHistory } from './entities/transferHistory.entity';
 import { Tile } from './entities/tile.entity';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
-import { ConfigService } from '@nestjs/config';
 import { CurrentState } from './entities/currentState.entity';
 
 @Module({
@@ -22,7 +21,6 @@ import { CurrentState } from './entities/currentState.entity';
       Tile,
       CurrentState,
     ]),
-    ConfigService,
   ],
 
   providers: [IngestorService],

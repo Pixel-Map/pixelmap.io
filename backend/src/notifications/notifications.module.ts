@@ -23,7 +23,6 @@ import { CurrentState } from '../ingestor/entities/currentState.entity';
       PurchaseHistory,
       TransferHistory,
     ]),
-    ConfigService,
     DiscordModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({

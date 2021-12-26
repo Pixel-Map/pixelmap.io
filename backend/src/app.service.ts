@@ -39,13 +39,13 @@ export class AppService {
         }
       }
     }
-
+    console.log(timeCapsuleTiles.length);
     return timeCapsuleTiles;
   }
 }
 
 function isValidImage(imgStr: string): boolean {
-  if (decompressTileCode(imgStr).length == 768) {
+  if (decompressTileCode(imgStr).trim().length == 768) {
     return true;
   }
   return false;

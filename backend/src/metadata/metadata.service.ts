@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { CACHE_MANAGER, Inject, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository, UseRequestContext } from '@mikro-orm/nestjs';
 import { EntityRepository, MikroORM, QueryOrder } from '@mikro-orm/core';
 import { Cron } from '@nestjs/schedule';
@@ -9,6 +9,7 @@ const mime = require('mime-types');
 import { tileIsOnEdge } from './utils/tileIsOnEdge';
 import { decompressTileCode } from '../renderer/utils/decompressTileCode';
 import { tileIsInCenter } from './utils/tileIsInCenter';
+import { Cache } from 'cache-manager';
 
 @Injectable()
 export class MetadataService {
@@ -19,6 +20,7 @@ export class MetadataService {
     @InjectRepository(Tile)
     private tileData: EntityRepository<Tile>,
     private readonly orm: MikroORM, // private configService: ConfigService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
   @Cron('5 * * * * *')
@@ -120,8 +122,16 @@ export class MetadataService {
       tileMetaData.image = 'https://pixelmap.art/blank.png';
     }
     // Write metadata for OpenSea
-    await fs.writeFileSync('cache/metadata/' + tile.id + '.json', JSON.stringify(tileMetaData, null, 2));
-    // Write data for /tile endpoint
-    await fs.writeFileSync('cache/tile/' + tile.id, JSON.stringify(tile, null, 2));
+    const jsonMetaData = JSON.stringify(tileMetaData);
+
+    const previousMetadata = await this.cacheManager.get('metadata-' + String(tile.id));
+    if (previousMetadata == jsonMetaData) {
+      // this.logger.verbose("Not re-saving metadata, it's identical!");
+    } else {
+      await fs.writeFileSync('cache/metadata/' + tile.id + '.json', JSON.stringify(tileMetaData, null, 2));
+      // Write data for /tile endpoint
+      await fs.writeFileSync('cache/tile/' + tile.id, JSON.stringify(tile, null, 2));
+      await this.cacheManager.set('metadata-' + String(tile.id), jsonMetaData);
+    }
   }
 }
