@@ -10,6 +10,7 @@
     "test": "jest"
   },
   "dependencies": {
+    "@babel/core": "^7.0.0-0",
     "@ethersproject/contracts": "^5.4.1",
     "@ethersproject/providers": "^5.4.5",
     "@ethersproject/units": "^5.4.0",
@@ -22,11 +23,12 @@
     "@web3-react/core": "^6.1.9",
     "@web3-react/injected-connector": "^6.0.7",
     "@web3-react/network-connector": "^6.1.9",
-    "next": "^11.0.0",
+    "next": "^12.0.7",
     "node-base91": "^0.3.4",
     "paco": "^0.4.0",
     "react": "17.0.2",
     "react-dom": "17.0.2",
+    "react-is": "^17.0.2",
     "react-popper-tooltip": "^4.3.0",
     "sharp": "^0.29.1",
     "tailwindcss": "^2.2.9"
@@ -40,8 +42,6 @@
     "babel-jest": "^27.2.4",
     "eslint": "^7.32.0",
     "eslint-config-next": "11.1.2",
-    "node-base91": "^0.3.4",
-    "pako": "^1.0.11",
     "identity-obj-proxy": "^3.0.0",
     "jest": "^27.2.4",
     "node-base91": "^0.3.4",

@@ -21,11 +21,11 @@ export async function getEvents(firstBlock: number, lastMinedBlock: number, logg
   const wrappedFilter = pixelMapWrapper.filters.Wrapped();
 
   while (currentBlock < lastMinedBlock) {
-    // Secret Teleportation past nothingness
-    if (currentBlock > 3974343 && currentBlock < 13062712) {
-      logger.log('Teleporting past the land of nothingness!');
-      currentBlock = 13062713;
-    }
+    // // Secret Teleportation past nothingness
+    // if (currentBlock > 3974343 && currentBlock < 13062712) {
+    //   logger.log('Teleporting past the land of nothingness!');
+    //   currentBlock = 13062713;
+    // }
 
     let toBlock = currentBlock + BLOCKS_TO_PROCESS_AT_TIME;
     if (toBlock > lastMinedBlock) {
