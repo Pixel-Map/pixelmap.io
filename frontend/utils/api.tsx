@@ -27,9 +27,10 @@ export const fetchSingleTile = async (id: string) => {
 };
 
 export interface TimeCapsuleTile {
-  tileId?: number,
-  orderImageSetOnTile?: number,
-  currentOwner?: number,
+  tileId?: number;
+  orderImageSetOnTile?: number;
+  currentOwner?: number;
+  claimed?: boolean;
 }
 
 export const fetchTimeCapsuleTiles = async () => {
