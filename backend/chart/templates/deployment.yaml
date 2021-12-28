@@ -52,10 +52,10 @@ spec:
           volumeMounts:
             - mountPath: "/cache"
               name: backend-storage
-          livenessProbe:
-            httpGet:
-              path: /tiledata
-              port: http
+#          livenessProbe:
+#            httpGet:
+#              path: /tiledata
+#              port: http
           readinessProbe:
             httpGet:
               path: /tiledata
