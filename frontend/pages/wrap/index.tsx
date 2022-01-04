@@ -4,8 +4,6 @@ import Head from "next/head";
 import { useWeb3React } from "@web3-react/core";
 import { Contract } from "@ethersproject/contracts";
 
-import { TileAsset } from "../../types/TileAsset";
-
 import WrapTile from "../../components/WrapTile";
 
 import Account from "../../components/Account";
@@ -20,10 +18,11 @@ import {
   WRAPPED_PIXELMAP_CONTRACT,
 } from "../../constants/addresses";
 import Layout from "../../components/Layout";
+import { PixelMapTile } from "@pixelmap/common/types/PixelMapTile";
 
 function Wrap() {
-  const [tiles, setTiles] = useState<TileAsset[]>([]);
-  const [ownedTiles, setOwnedTiles] = useState<TileAsset[]>([]);
+  const [tiles, setTiles] = useState<PixelMapTile[]>([]);
+  const [ownedTiles, setOwnedTiles] = useState<PixelMapTile[]>([]);
 
   const { account, library } = useWeb3React();
 
@@ -37,11 +36,11 @@ function Wrap() {
 
   useEffect(() => {
     if (account) {
-      let owned = tiles.filter((tile: TileAsset) => {
+      let owned = tiles.filter((tile: PixelMapTile) => {
         return tile.owner.toLowerCase() === account.toLowerCase();
       });
 
-      owned = owned.map((tile: TileAsset) => {
+      owned = owned.map((tile: PixelMapTile) => {
         return tile;
       });
 
@@ -58,7 +57,7 @@ function Wrap() {
     setOwnedTiles([..._tiles]);
   };
 
-  const handleSave = async (tile: TileAsset, index: number) => {
+  const handleSave = async (tile: PixelMapTile, index: number) => {
     setTileErrorMessage(tile, index, "");
 
     try {
@@ -78,7 +77,7 @@ function Wrap() {
     }
   };
 
-  const handleWrap = async (tile: TileAsset, index: number) => {
+  const handleWrap = async (tile: PixelMapTile, index: number) => {
     setTileErrorMessage(tile, index, "");
 
     try {
@@ -93,7 +92,7 @@ function Wrap() {
     }
   };
 
-  const handleRefresh = async (tile: TileAsset, index: number) => {
+  const handleRefresh = async (tile: PixelMapTile, index: number) => {
     setTileErrorMessage(tile, index, "");
     let _tiles = ownedTiles;
 
@@ -122,7 +121,7 @@ function Wrap() {
   };
 
   const setTileErrorMessage = (
-    tile: TileAsset,
+    tile: PixelMapTile,
     index: number,
     error: string
   ) => {
@@ -171,7 +170,7 @@ function Wrap() {
 
           {account && (
             <div className="mt-4">
-              {ownedTiles.map((ownedTile: TileAsset, index: number) => (
+              {ownedTiles.map((ownedTile: PixelMapTile, index: number) => (
                 <WrapTile
                   key={index}
                   tile={ownedTile}

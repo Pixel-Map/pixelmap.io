@@ -1,30 +1,50 @@
 import React, { useState } from "react";
-import Link from 'next/link'
-import { TileAsset } from '../types/TileAsset';
-import portal from '../public/assets/images/portal.gif';
-import { shortenIfHex, formatPrice, openseaLink, cleanUrl } from "../utils/misc";
-import TileImage from './TileImage';
+import Link from "next/link";
+import portal from "../public/assets/images/portal.gif";
+import {
+  shortenIfHex,
+  formatPrice,
+  openseaLink,
+  cleanUrl,
+} from "../utils/misc";
+import TileImage from "./TileImage";
 import logo from "../public/assets/images/logo.png";
 import Image from "next/image";
+import { PixelMapTile } from "@pixelmap/common/types/PixelMapTile";
 
 interface TileCardProps {
-  tile: TileAsset,
-  large?: boolean
+  tile: PixelMapTile;
+  large?: boolean;
 }
 
-export default function TileCard({tile, large}: TileCardProps) {
+export default function TileCard({ tile, large }: TileCardProps) {
   const ownerName = tile.ens ? tile.ens : shortenIfHex(tile.owner, 12);
 
   return (
     <>
-      <div className={`relative flex p-4 space-x-4 ${large ? "md:p-8 md:space-x-8" : ""}`}>
+      <div
+        className={`relative flex p-4 space-x-4 ${
+          large ? "md:p-8 md:space-x-8" : ""
+        }`}
+      >
         <div>
           <div className="bg-gray-100">
-            <TileImage className={`${large ? "h-20 w-20 md:h-40 md:w-40" : "h-16 w-16 md:h-20 md:w-20"}`} image={tile.image} />
+            <TileImage
+              className={`${
+                large
+                  ? "h-20 w-20 md:h-40 md:w-40"
+                  : "h-16 w-16 md:h-20 md:w-20"
+              }`}
+              image={tile.image}
+            />
           </div>
         </div>
         <div className={`flex-grow-1 space-y-1 ${large ? "md:space-y-3" : ""}`}>
-          <h3 className={`text-gray-900 font-bold ${large ? "md:text-3xl" : "text-xl"} mb-1 relative`}>
+          <h3
+            className={`text-gray-900 font-bold ${
+              large ? "md:text-3xl" : "text-xl"
+            } mb-1 relative`}
+          >
             <span>PixelMap #{tile.id}</span>
           </h3>
 
@@ -33,9 +53,17 @@ export default function TileCard({tile, large}: TileCardProps) {
           </p>
 
           <div className="truncate">
-            <a href={cleanUrl(tile.url)} className={`text-blue-600 break-all truncate text-sm whitespace-normal ${large ? 'md:text-base': ''}`} target="_blank" rel="noreferrer">{tile.url}</a>
+            <a
+              href={cleanUrl(tile.url)}
+              className={`text-blue-600 break-all truncate text-sm whitespace-normal ${
+                large ? "md:text-base" : ""
+              }`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {tile.url}
+            </a>
           </div>
-
         </div>
       </div>
 
@@ -50,25 +78,31 @@ export default function TileCard({tile, large}: TileCardProps) {
                 src={portal}
                 alt="Portal"
               />
-              <div className="font-bold md:px-3" >{'Enter Tile'}</div>
+              <div className="font-bold md:px-3">{"Enter Tile"}</div>
             </div>
           </Link>
           <div>
-            { tile.wrapped &&
-            <a className="nes-btn is-primary font-bold" target="_blank" href={openseaLink(tile.id)} rel="noreferrer">
-              {tile.openseaPrice != "0" ? 'Buy for ' + formatPrice(tile) : 'View on OpenSea'}
-            </a>
-            }
+            {tile.wrapped && (
+              <a
+                className="nes-btn is-primary font-bold"
+                target="_blank"
+                href={openseaLink(tile.id)}
+                rel="noreferrer"
+              >
+                {tile.openseaPrice != 0
+                  ? "Buy for " + formatPrice(tile)
+                  : "View on OpenSea"}
+              </a>
+            )}
 
-            { !tile.wrapped &&
-            <button className="flex items-center justify-center">
-              <div>
-                <p className="mr-2 text-green-600">Not Wrapped</p>
-                <p className="text-sm text-gray-500">(Use Etherscan)</p>
-              </div>
-
-            </button>
-            }
+            {!tile.wrapped && (
+              <button className="flex items-center justify-center">
+                <div>
+                  <p className="mr-2 text-green-600">Not Wrapped</p>
+                  <p className="text-sm text-gray-500">(Use Etherscan)</p>
+                </div>
+              </button>
+            )}
           </div>
         </div>
       </div>

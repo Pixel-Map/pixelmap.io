@@ -4,8 +4,6 @@ import Head from "next/head";
 import { useWeb3React } from "@web3-react/core";
 import { Contract } from "@ethersproject/contracts";
 
-import { TileAsset } from "../../types/TileAsset";
-
 import EditTile from "../../components/EditTile";
 import ImageEditorModal from "../../components/ImageEditorModal";
 
@@ -21,12 +19,15 @@ import {
 } from "../../constants/addresses";
 import getConfig from "next/config";
 import Layout from "../../components/Layout";
+import { PixelMapTile } from "@pixelmap/common/types/PixelMapTile";
 
 function Edit() {
-  const [tiles, setTiles] = useState<TileAsset[]>([]);
-  const [ownedTiles, setOwnedTiles] = useState<TileAsset[]>([]);
+  const [tiles, setTiles] = useState<PixelMapTile[]>([]);
+  const [ownedTiles, setOwnedTiles] = useState<PixelMapTile[]>([]);
   const [isOpenImageEditor, setIsOpenImageEditor] = useState<boolean>(false);
-  const [imageEditorTile, setImageEditorTile] = useState<TileAsset>({ id: 0 });
+  const [imageEditorTile, setImageEditorTile] = useState<PixelMapTile>({
+    id: 0,
+  });
   const { publicRuntimeConfig } = getConfig();
   const { account, library } = useWeb3React();
 
@@ -38,11 +39,11 @@ function Edit() {
 
   useEffect(() => {
     if (account) {
-      let owned = tiles.filter((tile: TileAsset) => {
+      let owned = tiles.filter((tile: PixelMapTile) => {
         return tile.owner.toLowerCase() === account.toLowerCase();
       });
 
-      owned = owned.map((tile: TileAsset) => {
+      owned = owned.map((tile: PixelMapTile) => {
         return tile;
       });
 
@@ -69,7 +70,7 @@ function Edit() {
   const handleImageChange = (image: string) => {
     let _tiles = ownedTiles;
 
-    _tiles = _tiles.map((tile: TileAsset) => {
+    _tiles = _tiles.map((tile: PixelMapTile) => {
       if (tile.id === imageEditorTile.id) {
         tile.image = image;
       }
@@ -80,12 +81,12 @@ function Edit() {
     setOwnedTiles([..._tiles]);
   };
 
-  const openImageEditor = (tile: TileAsset) => {
+  const openImageEditor = (tile: PixelMapTile) => {
     setImageEditorTile(tile);
     setIsOpenImageEditor(true);
   };
 
-  const handleSave = (tile: TileAsset) => {
+  const handleSave = (tile: PixelMapTile) => {
     console.log(tile.image);
     let compressedImage = compressTileCode(tile.image);
     console.log(compressedImage);
@@ -122,7 +123,7 @@ function Edit() {
             Edit your tiles
           </h1>
           <div className="">
-            {ownedTiles.map((ownedTile: TileAsset, index: number) => (
+            {ownedTiles.map((ownedTile: PixelMapTile, index: number) => (
               <EditTile
                 tile={ownedTile}
                 index={index}

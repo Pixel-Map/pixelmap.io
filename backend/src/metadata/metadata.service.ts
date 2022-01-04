@@ -147,7 +147,7 @@ export class MetadataService {
     } else {
       await fs.writeFileSync('cache/metadata/' + tile.id + '.json', JSON.stringify(tileMetaData, null, 2));
       // Write data for /tile endpoint
-      await fs.writeFileSync('cache/tile/' + tile.id, JSON.stringify(pixelMapTile, null, 2));
+      await fs.writeFileSync('cache/tile/' + tile.id + '.json', JSON.stringify(pixelMapTile, null, 2));
       await this.cacheManager.set('metadata-' + String(tile.id), jsonMetaData);
     }
   }

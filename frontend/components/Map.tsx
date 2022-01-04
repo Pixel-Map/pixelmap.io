@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { useWeb3React } from "@web3-react/core";
-import { TileAsset } from "../types/TileAsset";
 import MapToggles from "./MapToggles";
 import MapTiles from "./MapTiles";
 import TileOverlay from "./TileOverlay";
 import styles from "../styles/components/Map.module.scss";
 import getConfig from "next/config";
 import Image from "next/image";
+import { PixelMapTile } from "@pixelmap/common/types/PixelMapTile";
 const { publicRuntimeConfig } = getConfig();
 
 export default function Map(props: any) {
@@ -28,7 +28,7 @@ export default function Map(props: any) {
 
   useEffect(() => {
     setOwnedTiles(
-      props.tiles.filter((tile: TileAsset) => {
+      props.tiles.filter((tile: PixelMapTile) => {
         return (
           account &&
           account != "" &&
@@ -38,8 +38,8 @@ export default function Map(props: any) {
     );
 
     setForSaleTiles(
-      props.tiles.filter((tile: TileAsset) => {
-        return tile.openseaPrice && tile.openseaPrice != "0.00";
+      props.tiles.filter((tile: PixelMapTile) => {
+        return tile.openseaPrice && tile.openseaPrice != 0;
       })
     );
   }, [props.tiles, account]);

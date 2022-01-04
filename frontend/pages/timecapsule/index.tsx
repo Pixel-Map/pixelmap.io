@@ -9,16 +9,9 @@ import {
   TimeCapsuleTile,
 } from "../../utils/api";
 
-import { TileAsset } from "../../types/TileAsset";
-import Loader from "../../components/Loader";
 import styles from "../../styles/pages/Home.module.scss";
 import Image from "next/image";
 import Header from "../../components/Header";
-import TileImage from "../../components/TileImage";
-import Link from "next/link";
-import { cleanUrl, formatPrice, openseaLink } from "../../utils/misc";
-import portal from "../../public/assets/images/portal.gif";
-import EditTile from "../../components/EditTile";
 
 const TimeCapsule = () => {
   const large = true;

@@ -1,25 +1,25 @@
-import React, { useEffect, useState } from 'react';
-import Head from 'next/head'
-import { useRouter } from 'next/router'
-import tileHouse from '../../public/assets/images/tileHouse.png';
-import { fetchSingleTile } from '../../utils/api';
+import React, { useEffect, useState } from "react";
+import Head from "next/head";
+import { useRouter } from "next/router";
+import tileHouse from "../../public/assets/images/tileHouse.png";
+import { fetchSingleTile } from "../../utils/api";
 
-import { TileAsset } from '../../types/TileAsset';
-import Loader from '../../components/Loader';
+import Loader from "../../components/Loader";
 import styles from "../../styles/pages/Home.module.scss";
 import Image from "next/image";
 import Header from "../../components/Header";
+import { PixelMapTile } from "@pixelmap/common/types/PixelMapTile";
 
 const House = () => {
-  const [tile, setTile] = useState<TileAsset>();
+  const [tile, setTile] = useState<PixelMapTile>();
   const [fetching, setFetching] = useState(false);
-  const router = useRouter()
+  const router = useRouter();
   const id = router.query.id as string;
 
-  useEffect( () => {
+  useEffect(() => {
     setFetching(true);
 
-    fetchSingleTile(id).then( (_tile) => {
+    fetchSingleTile(id).then((_tile) => {
       setTile(_tile);
       setFetching(false);
     });
@@ -28,35 +28,36 @@ const House = () => {
   return (
     <>
       <div className={styles.tileHouse}>
-      <Header />
+        <Header />
       </div>
 
-      <div className={`flex items-center justify-center h-screen
-      ${styles.tileHouse}`
-      }>
-        { !tile &&
-        <>
-          <Head>
-            <title>Tile - PixelMap.io</title>
-            <link rel="icon" href="/favicon.ico" />
-          </Head>
-        </>
-        }
+      <div
+        className={`flex items-center justify-center h-screen
+      ${styles.tileHouse}`}
+      >
+        {!tile && (
+          <>
+            <Head>
+              <title>Tile - PixelMap.io</title>
+              <link rel="icon" href="/favicon.ico" />
+            </Head>
+          </>
+        )}
 
-        { fetching &&
-        <div className="w-screen flex flex-wrap flex-row place-items-center ">
-          <Loader />
-        </div>
-        }
+        {fetching && (
+          <div className="w-screen flex flex-wrap flex-row place-items-center ">
+            <Loader />
+          </div>
+        )}
 
-        { tile && !fetching &&
-        <>
-          <Head>
-            <title>Tile House #{tile.id} - PixelMap.io</title>
-            <link rel="icon" href="/favicon.ico" />
-          </Head>
-        </>
-        }
+        {tile && !fetching && (
+          <>
+            <Head>
+              <title>Tile House #{tile.id} - PixelMap.io</title>
+              <link rel="icon" href="/favicon.ico" />
+            </Head>
+          </>
+        )}
         <div className="place-content-center ">
           <Image
             className="w-6/12 h-full"
@@ -68,8 +69,7 @@ const House = () => {
         </div>
       </div>
     </>
-
   );
-}
+};
 
-export default House
+export default House;

@@ -1,7 +1,7 @@
 import { BigNumber, BigNumberish } from "@ethersproject/bignumber";
 import { formatUnits, parseUnits } from "@ethersproject/units";
 import { parse } from "path";
-import { TileAsset } from "../types/TileAsset";
+import { PixelMapTile } from "@pixelmap/common/types/PixelMapTile";
 
 export function shortenIfHex(hex: string, length = 12) {
   if (hex.length < length) {
@@ -57,10 +57,10 @@ export const cleanUrl = (url: string) => {
   }
 };
 
-export const formatPrice = (tile: TileAsset) => {
+export const formatPrice = (tile: PixelMapTile) => {
   let price = tile.openseaPrice;
 
-  if (price === "0.0") {
+  if (price === 0.0) {
     return "–";
   }
 
