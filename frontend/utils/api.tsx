@@ -1,11 +1,11 @@
-import { TileAsset } from "../types/TileAsset";
 import getConfig from "next/config";
+import {PixelMapTile} from "@pixelmap/common/types/PixelMapTile";
 const { publicRuntimeConfig } = getConfig();
 
 export const fetchTiles = async () => {
   try {
     const res = await fetch("https://pixelmap.art/tiledata.json");
-    const tiles: Array<TileAsset> = await res.json();
+    const tiles: Array<PixelMapTile> = await res.json();
 
     // By returning { props: { posts } }, the Blog component
     // will receive `posts` as a prop at build time
@@ -16,7 +16,7 @@ export const fetchTiles = async () => {
 };
 
 export const fetchSingleTile = async (id: string) => {
-  let tile: TileAsset;
+  let tile: PixelMapTile;
 
   try {
     const res = await fetch(`https://pixelmap.art/tile/${id}`);

@@ -3,13 +3,16 @@ import { InjectRepository, UseRequestContext } from '@mikro-orm/nestjs';
 import { EntityRepository, MikroORM, QueryOrder } from '@mikro-orm/core';
 import { Cron } from '@nestjs/schedule';
 import { Tile } from '../ingestor/entities/tile.entity';
+
 const fs = require('fs');
 const S3SyncClient = require('s3-sync-client');
 const mime = require('mime-types');
 import { tileIsOnEdge } from './utils/tileIsOnEdge';
 import { decompressTileCode } from '../renderer/utils/decompressTileCode';
 import { tileIsInCenter } from './utils/tileIsInCenter';
+import { getHistoricalImages } from './utils/getHistoricalImages';
 import { Cache } from 'cache-manager';
+import { PixelMapTile } from '@pixelmap/common/types/PixelMapTile';
 
 @Injectable()
 export class MetadataService {
@@ -29,8 +32,8 @@ export class MetadataService {
     if (!this.currentlyGeneratingMetadata) {
       this.currentlyGeneratingMetadata = true;
 
-      const tiles = await this.tileData.find({}, [], { id: QueryOrder.ASC });
-      const tileJSONData = await this.generateTiledataJSON(tiles);
+      const tiles = await this.tileData.find({}, ['dataHistory'], { id: QueryOrder.ASC });
+      await this.generateTiledataJSON(tiles);
 
       this.currentlyGeneratingMetadata = false;
     } else {
@@ -124,13 +127,27 @@ export class MetadataService {
     // Write metadata for OpenSea
     const jsonMetaData = JSON.stringify(tileMetaData);
 
+    const historical_images = getHistoricalImages(tile);
+    // Create PixelMapTile API data
+    const pixelMapTile: PixelMapTile = {
+      id: tile.id,
+      image: tile.image,
+      url: tile.url,
+      price: tile.price,
+      owner: tile.owner,
+      wrapped: tile.wrapped,
+      openseaPrice: tile.openseaPrice,
+      ens: tile.ens,
+      historical_images: historical_images,
+    };
+
     const previousMetadata = await this.cacheManager.get('metadata-' + String(tile.id));
     if (previousMetadata == jsonMetaData) {
       // this.logger.verbose("Not re-saving metadata, it's identical!");
     } else {
       await fs.writeFileSync('cache/metadata/' + tile.id + '.json', JSON.stringify(tileMetaData, null, 2));
       // Write data for /tile endpoint
-      await fs.writeFileSync('cache/tile/' + tile.id, JSON.stringify(tile, null, 2));
+      await fs.writeFileSync('cache/tile/' + tile.id, JSON.stringify(pixelMapTile, null, 2));
       await this.cacheManager.set('metadata-' + String(tile.id), jsonMetaData);
     }
   }

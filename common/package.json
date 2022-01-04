@@ -1,0 +1,22 @@
+{
+  "name": "@pixelmap/common",
+  "version": "0.0.7",
+  "description": "Common types shared between frontend and backend",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Pixel-Map/pixelmap.io.git"
+  },
+  "keywords": [
+    "pixelmap"
+  ],
+  "author": "Ken Erwin",
+  "license": "AGPL-3.0",
+  "bugs": {
+    "url": "https://github.com/Pixel-Map/pixelmap.io/issues"
+  },
+  "homepage": "https://github.com/Pixel-Map/pixelmap.io#readme"
+}

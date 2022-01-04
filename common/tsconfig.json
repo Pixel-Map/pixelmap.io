@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "target": "es5", // Or whatever you want
+    "module": "es2015", // Or whatever you want
+    "declaration": true,
+    "declarationMap": true,
+    "outDir": "./dist",
+    "composite": true
+  }
+}

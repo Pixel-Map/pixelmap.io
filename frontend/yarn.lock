@@ -1163,6 +1163,11 @@
     "@nodelib/fs.scandir" "2.1.5"
     fastq "^1.6.0"
 
+"@pixelmap/common@0.0.7":
+  version "0.0.7"
+  resolved "https://registry.yarnpkg.com/@pixelmap/common/-/common-0.0.7.tgz#da0e5fe2a52d74f2c757889467ca6fe107f5efff"
+  integrity sha512-Q4zPfUo67QsqoEwWjMverTQWBWf+zdQU1aVJLMdPF0ZcTnha3kcutRGKR++lKsl8FkiAKh9iaUZFuJIt0VhBeA==
+
 "@popperjs/core@^2.10.2", "@popperjs/core@^2.9.0":
   version "2.10.2"
   resolved "https://registry.npmjs.org/@popperjs/core/-/core-2.10.2.tgz"
