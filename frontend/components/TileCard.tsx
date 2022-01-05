@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import portal from "../public/assets/images/portal.gif";
 import {
@@ -8,9 +8,10 @@ import {
   cleanUrl,
 } from "../utils/misc";
 import TileImage from "./TileImage";
-import logo from "../public/assets/images/logo.png";
 import Image from "next/image";
 import { PixelMapTile } from "@pixelmap/common/types/PixelMapTile";
+import { fetchSingleTile } from "../utils/api";
+import { PixelMapImage } from "@pixelmap/common/types/PixelMapImage";
 
 interface TileCardProps {
   tile: PixelMapTile;
@@ -19,6 +20,17 @@ interface TileCardProps {
 
 export default function TileCard({ tile, large }: TileCardProps) {
   const ownerName = tile.ens ? tile.ens : shortenIfHex(tile.owner, 12);
+  const [tileExtended, setTile] = useState<PixelMapTile>();
+  const [fetching, setFetching] = useState(false);
+  const [tileImage, setTileImage] = useState(tile.image);
+  useEffect(() => {
+    setFetching(true);
+
+    fetchSingleTile(tile.id.toString()).then((_tile) => {
+      setTile(_tile);
+      setFetching(false);
+    });
+  }, [, tile.id.toString()]);
 
   return (
     <>
@@ -35,7 +47,7 @@ export default function TileCard({ tile, large }: TileCardProps) {
                   ? "h-20 w-20 md:h-40 md:w-40"
                   : "h-16 w-16 md:h-20 md:w-20"
               }`}
-              image={tile.image}
+              image={tileImage}
             />
           </div>
         </div>
@@ -66,7 +78,28 @@ export default function TileCard({ tile, large }: TileCardProps) {
           </div>
         </div>
       </div>
-
+      <div className={"px-4 text-sm text-gray-700 items-center flex py-1"}>
+        {tileExtended &&
+          !fetching &&
+          tileExtended.historical_images.length > 0 && (
+            <>
+              <p>Previous Images:</p>
+              {tileExtended.historical_images.map(
+                (image: PixelMapImage, idx: number) => (
+                  <Image
+                    onMouseEnter={() => {
+                      setTileImage(image.image);
+                    }}
+                    key={idx}
+                    src={image.image_url}
+                    height={16}
+                    width={16}
+                  />
+                )
+              )}
+            </>
+          )}
+      </div>
       <div className={`px-4 py-3 bg-gray-50 ${large ? "md:px-8 md:py-4" : ""}`}>
         <div className="flex justify-between items-center">
           <Link href={`/house/${encodeURIComponent(tile.id)}`}>
