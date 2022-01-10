@@ -1,22 +1,26 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
-import tileHouse from "../../public/assets/images/tileHouse.png";
 import { fetchSingleTile } from "../../utils/api";
 
 import Loader from "../../components/Loader";
 import styles from "../../styles/pages/Home.module.scss";
-import Image from "next/image";
+import tileHouseStyle from "../../styles/pages/TileHouse.module.scss";
 import Header from "../../components/Header";
 import { PixelMapTile } from "@pixelmap/common/types/PixelMapTile";
+import Overworld from "./overworld";
 
 const House = () => {
+  const canvasRef = useRef(null);
+
   const [tile, setTile] = useState<PixelMapTile>();
   const [fetching, setFetching] = useState(false);
   const router = useRouter();
   const id = router.query.id as string;
 
   useEffect(() => {
+    const overworld = new Overworld(canvasRef);
+    overworld.init();
     setFetching(true);
 
     fetchSingleTile(id).then((_tile) => {
@@ -59,13 +63,14 @@ const House = () => {
           </>
         )}
         <div className="place-content-center ">
-          <Image
-            className="w-6/12 h-full"
-            src={tileHouse}
-            alt="Portal"
-            width={600}
-            height={600}
-          />
+          <div className={tileHouseStyle.gameContainer}>
+            <canvas
+              className="game-canvas"
+              width="756"
+              height="790"
+              ref={canvasRef}
+            />
+          </div>
         </div>
       </div>
     </>
