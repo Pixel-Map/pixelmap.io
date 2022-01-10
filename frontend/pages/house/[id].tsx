@@ -8,7 +8,7 @@ import styles from "../../styles/pages/Home.module.scss";
 import tileHouseStyle from "../../styles/pages/TileHouse.module.scss";
 import Header from "../../components/Header";
 import { PixelMapTile } from "@pixelmap/common/types/PixelMapTile";
-import Overworld from "./overworld";
+import Overworld from "../../lib/overworld";
 
 const House = () => {
   const canvasRef = useRef(null);
