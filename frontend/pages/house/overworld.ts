@@ -1,11 +1,15 @@
 import { GameObject } from "./gameObject";
 import { OverworldMap } from "./overworldMap";
+import { utils } from "./utils";
+import { Person } from "./person";
+import { DirectionInput } from "./directionInput";
 
 export default class Overworld {
   public element: any;
   public canvas: any;
   public ctx: any;
   private map: OverworldMap;
+  private directionInput: DirectionInput;
 
   constructor(config) {
     this.canvas = config.current;
@@ -14,10 +18,20 @@ export default class Overworld {
 
   startGameLoop() {
     const step = () => {
+      // Clear the Canvas
+      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+      // Draw bottom layer
       this.map.drawLowerImage(this.ctx);
       Object.values(this.map.gameObjects).forEach((object) => {
+        object.update({
+          arrow: this.directionInput.heldDirections,
+        });
         object.sprite.draw(this.ctx);
       });
+
+      // Draw top layer
+      // this.map.drawUpperImage(this.ctx);
 
       requestAnimationFrame(() => {
         step();
@@ -39,16 +53,17 @@ export default class Overworld {
         lowerSrc: "/assets/images/tileHouse1.png",
         upperSrc: "/assets/images/tileHouse1.png",
         gameObjects: {
-          hero: new GameObject({
-            x: 28,
-            y: 10,
+          hero: new Person({
+            x: utils.withGrid(28),
+            y: utils.withGrid(10),
           }),
         },
       },
     };
 
     this.map = new OverworldMap(overworldMaps.DemoRoom);
-
+    this.directionInput = new DirectionInput();
+    this.directionInput.init();
     this.startGameLoop();
   }
 }
