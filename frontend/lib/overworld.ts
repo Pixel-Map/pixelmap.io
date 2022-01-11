@@ -17,27 +17,36 @@ export default class Overworld {
   }
 
   startGameLoop() {
-    const step = () => {
-      // Clear the Canvas
-      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-      // Draw bottom layer
-      this.map.drawLowerImage(this.ctx);
-      Object.values(this.map.gameObjects).forEach((object) => {
-        object.update({
-          arrow: this.directionInput.heldDirections,
+    // Example usage:
+    let render = 0;
+    const engine = new FixedStepEngine(
+      15,
+      (deltaTime) => {
+        Object.values(this.map.gameObjects).forEach((object) => {
+          object.sprite.updateAnimationProgress();
         });
-        object.sprite.draw(this.ctx);
-      });
+        // console.log("Update", deltaTime);
+        // Clear the Canvas
+      },
+      240,
+      (deltaTime) => {
+        // console.log("Render", deltaTime);
+        // Draw bottom layer
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        const cameraPerson = this.map.gameObjects["hero"];
 
-      // Draw top layer
-      // this.map.drawUpperImage(this.ctx);
+        this.map.drawLowerImage(this.ctx, cameraPerson);
+        Object.values(this.map.gameObjects).forEach((object) => {
+          object.update({
+            arrow: this.directionInput.heldDirections,
+          });
+          object.sprite.draw(this.ctx, cameraPerson);
+        });
 
-      requestAnimationFrame(() => {
-        step();
-      });
-    };
-    step();
+        render++;
+      }
+    );
+    engine.start();
   }
 
   init() {
@@ -66,4 +75,67 @@ export default class Overworld {
     this.directionInput.init();
     this.startGameLoop();
   }
+}
+
+class FixedStepEngine {
+  private updateFps: any;
+  private renderFps: any;
+  private update: any;
+  private render: any;
+  private updateInterval: number;
+  private renderInterval: number;
+  private sinceLastUpdate: number;
+  private sinceLastRender: number;
+  private running: boolean;
+  private lastTime: DOMHighResTimeStamp;
+
+  constructor(updateFps, update, renderFps, render) {
+    this.updateFps = updateFps;
+    this.renderFps = renderFps;
+    this.update = update;
+    this.render = render;
+
+    this.updateInterval = 1000 / this.updateFps / 1000;
+    this.renderInterval = 1000 / this.renderFps / 1000;
+    this.sinceLastUpdate = 0;
+    this.sinceLastRender = 0;
+    this.running = false;
+  }
+
+  start() {
+    this.running = true;
+    this.lastTime = performance.now();
+    requestAnimationFrame(this.gameLoop);
+  }
+
+  stop() {
+    this.running = false;
+  }
+
+  gameLoop = (timestamp) => {
+    const deltaTime = (timestamp - this.lastTime) / 1000;
+    this.lastTime = timestamp;
+    // console.log(timestamp, deltaTime * 1000);
+
+    this.sinceLastUpdate += deltaTime;
+    this.sinceLastRender += deltaTime;
+
+    while (this.sinceLastUpdate >= this.updateInterval) {
+      this.update(this.updateInterval);
+      this.sinceLastUpdate -= this.updateInterval;
+    }
+    if (this.renderFps != null) {
+      let renders = 0;
+      while (this.sinceLastRender >= this.renderInterval) {
+        renders++;
+        this.sinceLastRender -= this.renderInterval;
+      }
+      if (renders > 0) {
+        this.render(this.renderInterval * renders);
+      }
+    }
+    if (this.running) {
+      requestAnimationFrame(this.gameLoop);
+    }
+  };
 }

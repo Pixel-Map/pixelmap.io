@@ -1,3 +1,5 @@
+import { utils } from "./utils";
+
 export class OverworldMap {
   public gameObjects: { GameObject };
   private lowerImage: any;
@@ -15,8 +17,12 @@ export class OverworldMap {
     this.upperImage.src = props.upperSrc;
   }
 
-  drawLowerImage(ctx) {
-    ctx.drawImage(this.lowerImage, 0, 0);
+  drawLowerImage(ctx, cameraPerson) {
+    ctx.drawImage(
+      this.lowerImage,
+      utils.withGrid(23.6) - cameraPerson.x,
+      utils.withGrid(24.7) - cameraPerson.y
+    );
   }
 
   drawUpperImage(ctx) {

@@ -6,15 +6,17 @@ export class Person extends GameObject {
   constructor(props) {
     super(props);
     this.directionUpdate = {
-      up: ["y", -1],
-      down: ["y", 1],
-      left: ["x", -1],
-      right: ["x", 1],
+      Up: ["y", -1.6],
+      Down: ["y", 1.6],
+      Left: ["x", -1.6],
+      Right: ["x", 1.6],
     };
   }
 
   update(state): void {
+    this.updateSprite(state);
     if (state.arrow[0]) {
+      this.direction = state.arrow[0];
       for (const direction of state.arrow) {
         this.updatePosition(direction);
       }
@@ -24,5 +26,13 @@ export class Person extends GameObject {
   updatePosition(direction) {
     const [property, change] = this.directionUpdate[direction];
     this[property] += change;
+  }
+
+  updateSprite(state) {
+    if (state.arrow[0]) {
+      this.sprite.setAnimation("walk" + this.direction);
+    } else {
+      this.sprite.setAnimation("idle" + this.direction);
+    }
   }
 }

@@ -14,14 +14,14 @@ export class DirectionInput {
   constructor() {
     this.heldDirections = [];
     this.map = {
-      KeyW: "up",
-      ArrowUp: "up",
-      KeyS: "down",
-      ArrowDown: "down",
-      KeyA: "left",
-      ArrowLeft: "left",
-      KeyD: "right",
-      ArrowRight: "right",
+      KeyW: "Up",
+      ArrowUp: "Up",
+      KeyS: "Down",
+      ArrowDown: "Down",
+      KeyA: "Left",
+      ArrowLeft: "Left",
+      KeyD: "Right",
+      ArrowRight: "Right",
     };
   }
 
