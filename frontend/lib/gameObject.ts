@@ -1,8 +1,8 @@
 import { Sprite } from "./sprite";
 
 export class GameObject {
-  private x: number;
-  private y: number;
+  protected x: number;
+  protected y: number;
   sprite: Sprite;
   protected direction: string;
 

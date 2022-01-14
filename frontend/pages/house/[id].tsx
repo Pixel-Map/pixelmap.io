@@ -19,13 +19,15 @@ const House = () => {
   const id = router.query.id as string;
 
   useEffect(() => {
-    const overworld = new Overworld(canvasRef);
-    overworld.init();
+    document.body.style.overflow = "hidden";
+
     setFetching(true);
 
     fetchSingleTile(id).then((_tile) => {
       setTile(_tile);
       setFetching(false);
+      const overworld = new Overworld(canvasRef, _tile);
+      overworld.init();
     });
   }, [, id]);
 
@@ -66,8 +68,8 @@ const House = () => {
           <div className={tileHouseStyle.gameContainer}>
             <canvas
               className="game-canvas"
-              width="756"
-              height="790"
+              width="352"
+              height="224"
               ref={canvasRef}
             />
           </div>

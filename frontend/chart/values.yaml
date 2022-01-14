@@ -2,25 +2,31 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+IMAGE: 389059433654.dkr.ecr.us-east-1.amazonaws.com/frontend:1.2.19
+API_ENDPOINT: https://api.pixelmap.io
+DOMAINS:
+  - "pixelmap.io"
+  - "pixelmap.com"
+
 replicaCount: 2
-imagePullSecrets: []
+imagePullSecrets: [ ]
 nameOverride: ""
 fullnameOverride: ""
 
-podAnnotations: {}
+podAnnotations: { }
 
 podSecurityContext:
-  {}
-  # fsGroup: 2000
+  { }
+# fsGroup: 2000
 
 securityContext:
-  {}
+  { }
   # capabilities:
   #   drop:
   #   - ALL
   # readOnlyRootFilesystem: true
   # runAsNonRoot: true
-  # runAsUser: 1000
+# runAsUser: 1000
 
 service:
   type: ClusterIP
@@ -32,7 +38,7 @@ ingress:
       paths:
         - path: /
           pathType: ImplementationSpecific
-  tls: []
+  tls: [ ]
   #  - secretName: chart-example-tls
   #    hosts:
   #      - chart-example.local

@@ -1,5 +1,6 @@
 import getConfig from "next/config";
 import { PixelMapTile } from "@pixelmap/common/types/PixelMapTile";
+
 const { publicRuntimeConfig } = getConfig();
 
 export const fetchTiles = async () => {
@@ -17,11 +18,12 @@ export const fetchTiles = async () => {
 
 export const fetchSingleTile = async (id: string) => {
   let tile: PixelMapTile;
-
-  try {
-    const res = await fetch(`https://pixelmap.art/tile/${id}.json`);
-    tile = await res.json();
-  } catch (err) {}
+  if (id != undefined) {
+    try {
+      const res = await fetch(`https://pixelmap.art/tile/${id}.json`);
+      tile = await res.json();
+    } catch (err) {}
+  }
 
   return tile;
 };

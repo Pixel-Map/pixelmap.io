@@ -103,14 +103,14 @@ export class Sprite {
   }
 
   draw(ctx, cameraPerson) {
-    const x = this.gameObject.x - 8 + utils.withGrid(23.6) - cameraPerson.x;
-    const y = this.gameObject.y - 8 + utils.withGrid(24.7) - cameraPerson.y;
+    const x = this.gameObject.x - 8 + utils.withGrid(7.5) - cameraPerson.x;
+    const y = this.gameObject.y - 8 + utils.withGrid(7) - cameraPerson.y;
 
     const [frameX, frameY] = this.frame;
 
-    this.isShadowLoaded &&
-      ctx.drawImage(this.shadow, 0, 0, 32, 32, x - 10, y - 15, 64, 64);
+    // this.isShadowLoaded &&
+    //   ctx.drawImage(this.shadow, 0, 0, 32, 32, x, y + 0, 24, 24);
     this.isLoaded &&
-      ctx.drawImage(this.image, frameX * 24, frameY * 24, 24, 24, x, y, 52, 52);
+      ctx.drawImage(this.image, frameX * 24, frameY * 24, 24, 24, x, y, 24, 24);
   }
 }
