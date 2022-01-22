@@ -1,0 +1,35 @@
+{
+    "Map/SizeTest": {
+        "height": 4300,
+        "width": 2
+    },
+    "activeFile": "",
+    "expandedProjectPaths": [
+    ],
+    "fileStates": {
+        "tileset.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 3
+        }
+    },
+    "last.exportedFilePath": "/Users/kendog/Documents/pixelmap.io/frontend/lib/tiled",
+    "last.externalTilesetPath": "/Users/kendog/Documents/pixelmap.io/frontend/lib/tiled",
+    "last.imagePath": "/Users/kendog/Documents/pixelmap.io/frontend/public/assets/images/tileHouse",
+    "lastUsedTilesetExportFilter": "JSON tileset files (*.json)",
+    "map.lastUsedExportFilter": "JSON map files (*.json)",
+    "map.lastUsedFormat": "tmx",
+    "map.tileHeight": 16,
+    "map.tileWidth": 16,
+    "openFiles": [
+    ],
+    "project": "pixelmap.tiled-project",
+    "recentFiles": [
+        "tileset.tsx"
+    ],
+    "tileset.lastUsedFilter": "Tiled tileset files (*.tsx *.xml)",
+    "tileset.lastUsedFormat": "tsx",
+    "tileset.tileSize": {
+        "height": 16,
+        "width": 16
+    }
+}

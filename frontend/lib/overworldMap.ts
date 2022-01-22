@@ -28,6 +28,60 @@ export class OverworldMap {
     );
   }
 
+  drawTileSet(ctx, cameraPerson) {
+    let tileSize = 16;
+    let tileOutputSize = 1;
+    let updatedTileSize = tileSize * tileOutputSize;
+    let mapColumn = 14;
+    let mapRow = 14;
+    let mapHeight = mapRow * tileSize;
+    let mapWidth = mapColumn * tileSize;
+    let level1Map = [
+      1, 2, 3, 4, 5, 3, 4, 5, 3, 4, 5, 3, 6, 7, 28, 29, 30, 31, 32, 30, 31, 32,
+      30, 31, 32, 30, 33, 34, 55, 56, 57, 57, 57, 57, 57, 57, 57, 57, 57, 57,
+      60, 61, 82, 83, 57, 57, 57, 57, 57, 57, 57, 57, 57, 57, 87, 88, 109, 110,
+      57, 57, 57, 57, 57, 57, 57, 57, 57, 57, 114, 115, 55, 56, 57, 57, 57, 57,
+      57, 57, 57, 57, 57, 57, 60, 61, 82, 83, 57, 57, 57, 57, 57, 57, 57, 57,
+      57, 57, 87, 88, 109, 110, 57, 57, 57, 57, 57, 57, 57, 57, 57, 57, 114,
+      115, 55, 56, 57, 57, 57, 57, 57, 57, 57, 57, 57, 57, 60, 61, 82, 83, 57,
+      57, 57, 57, 57, 57, 57, 57, 57, 57, 87, 88, 55, 56, 57, 57, 57, 57, 57,
+      57, 57, 57, 57, 57, 60, 61, 82, 83, 57, 57, 57, 57, 57, 57, 57, 57, 57,
+      57, 87, 88, 109, 137, 138, 139, 140, 138, 139, 140, 138, 139, 140, 138,
+      141, 115, 163, 164, 165, 166, 167, 165, 166, 167, 165, 166, 167, 165, 168,
+      169,
+    ];
+    let mapIndex = 0;
+    let sourceX = 0;
+    let sourceY = 0;
+    const atlasCol = 27;
+
+    const tileSetImage = new Image();
+    tileSetImage.src = "/assets/images/tileHouse/tileset.png";
+    for (let col = 0; col < mapHeight; col += tileSize) {
+      for (let row = 0; row < mapWidth; row += tileSize) {
+        let tileVal = level1Map[mapIndex];
+
+        if (tileVal != 0) {
+          tileVal -= 1;
+          sourceY = Math.floor(tileVal / atlasCol) * tileSize;
+          sourceX = (tileVal % atlasCol) * tileSize;
+          ctx.drawImage(
+            tileSetImage,
+            sourceX,
+            sourceY,
+            tileSize,
+            tileSize,
+            row * tileOutputSize + utils.withGrid(28) - cameraPerson.x,
+            col * tileOutputSize + utils.withGrid(10) - cameraPerson.y,
+            updatedTileSize,
+            updatedTileSize
+          );
+        }
+        mapIndex++;
+      }
+    }
+  }
+
   drawTile(ctx, tileImage, cameraPerson) {
     // this.map.drawUpperImage(this.ctx, cameraPerson);
     let hex = decompressTileCode(tileImage);

@@ -12,16 +12,20 @@ export default class Overworld {
   private map: OverworldMap;
   private directionInput: DirectionInput;
   private tileImage: any;
+  public tileSetImage;
 
   constructor(config, tile) {
     this.canvas = config.current;
     this.ctx = this.canvas.getContext("2d");
     this.tileImage = tile ? tile.image : "";
+    this.tileSetImage = new Image();
+    this.tileSetImage.src = "/assets/images/tileHouse/zeldaHouse.png";
   }
 
   startGameLoop() {
     // Example usage:
     let render = 0;
+
     const engine = new FixedStepEngine(
       15,
       (deltaTime) => {
@@ -38,8 +42,10 @@ export default class Overworld {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         const cameraPerson = this.map.gameObjects["hero"];
 
-        this.map.drawLowerImage(this.ctx, cameraPerson);
-        this.map.drawTile(this.ctx, this.tileImage, cameraPerson);
+        // this.map.drawLowerImage(this.ctx, cameraPerson);
+        this.map.drawTileSet(this.ctx, cameraPerson);
+        // this.ctx.fillRect(50, 50, 100, 100);
+        // this.map.drawTile(this.ctx, this.tileImage, cameraPerson);
         Object.values(this.map.gameObjects).forEach((object) => {
           object.update({
             arrow: this.directionInput.heldDirections,
