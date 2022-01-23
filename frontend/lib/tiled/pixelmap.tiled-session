@@ -6,13 +6,14 @@
     "activeFile": "",
     "expandedProjectPaths": [
     ],
+    "file.lastUsedOpenFilter": "All Files (*)",
     "fileStates": {
         "tileset.tsx": {
             "scaleInDock": 1,
             "scaleInEditor": 3
         }
     },
-    "last.exportedFilePath": "/Users/kendog/Documents/pixelmap.io/frontend/lib/tiled",
+    "last.exportedFilePath": "/Users/ken/Documents/pixelmap.io/frontend/lib/tiled",
     "last.externalTilesetPath": "/Users/kendog/Documents/pixelmap.io/frontend/lib/tiled",
     "last.imagePath": "/Users/kendog/Documents/pixelmap.io/frontend/public/assets/images/tileHouse",
     "lastUsedTilesetExportFilter": "JSON tileset files (*.json)",

@@ -1,11 +1,13 @@
 import { utils } from "./utils";
 import { decompressTileCode } from "../utils/ImageUtils";
+import DefaultTileHouse from "../lib/tiled/maps/defaultTileHouse.json";
 
 export class OverworldMap {
   public gameObjects: { GameObject };
   private lowerImage: any;
   private upperImage: any;
   private walls: any;
+  private tileSetImage: any;
 
   constructor(props) {
     this.gameObjects = props.gameObjects;
@@ -18,6 +20,9 @@ export class OverworldMap {
     // Overhead Layer
     this.upperImage = new Image();
     this.upperImage.src = props.upperSrc;
+
+    this.tileSetImage = new Image();
+    this.tileSetImage.src = "/assets/images/tileHouse/tileset.png";
   }
 
   drawLowerImage(ctx, cameraPerson) {
@@ -36,27 +41,12 @@ export class OverworldMap {
     let mapRow = 14;
     let mapHeight = mapRow * tileSize;
     let mapWidth = mapColumn * tileSize;
-    let level1Map = [
-      1, 2, 3, 4, 5, 3, 4, 5, 3, 4, 5, 3, 6, 7, 28, 29, 30, 31, 32, 30, 31, 32,
-      30, 31, 32, 30, 33, 34, 55, 56, 57, 57, 57, 57, 57, 57, 57, 57, 57, 57,
-      60, 61, 82, 83, 57, 57, 57, 57, 57, 57, 57, 57, 57, 57, 87, 88, 109, 110,
-      57, 57, 57, 57, 57, 57, 57, 57, 57, 57, 114, 115, 55, 56, 57, 57, 57, 57,
-      57, 57, 57, 57, 57, 57, 60, 61, 82, 83, 57, 57, 57, 57, 57, 57, 57, 57,
-      57, 57, 87, 88, 109, 110, 57, 57, 57, 57, 57, 57, 57, 57, 57, 57, 114,
-      115, 55, 56, 57, 57, 57, 57, 57, 57, 57, 57, 57, 57, 60, 61, 82, 83, 57,
-      57, 57, 57, 57, 57, 57, 57, 57, 57, 87, 88, 55, 56, 57, 57, 57, 57, 57,
-      57, 57, 57, 57, 57, 60, 61, 82, 83, 57, 57, 57, 57, 57, 57, 57, 57, 57,
-      57, 87, 88, 109, 137, 138, 139, 140, 138, 139, 140, 138, 139, 140, 138,
-      141, 115, 163, 164, 165, 166, 167, 165, 166, 167, 165, 166, 167, 165, 168,
-      169,
-    ];
+    let level1Map = DefaultTileHouse.layers[0].data
     let mapIndex = 0;
     let sourceX = 0;
     let sourceY = 0;
     const atlasCol = 27;
 
-    const tileSetImage = new Image();
-    tileSetImage.src = "/assets/images/tileHouse/tileset.png";
     for (let col = 0; col < mapHeight; col += tileSize) {
       for (let row = 0; row < mapWidth; row += tileSize) {
         let tileVal = level1Map[mapIndex];
@@ -66,7 +56,7 @@ export class OverworldMap {
           sourceY = Math.floor(tileVal / atlasCol) * tileSize;
           sourceX = (tileVal % atlasCol) * tileSize;
           ctx.drawImage(
-            tileSetImage,
+            this.tileSetImage,
             sourceX,
             sourceY,
             tileSize,

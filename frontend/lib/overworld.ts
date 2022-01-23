@@ -25,7 +25,7 @@ export default class Overworld {
   startGameLoop() {
     // Example usage:
     let render = 0;
-
+    const cameraPerson = this.map.gameObjects["hero"];
     const engine = new FixedStepEngine(
       15,
       (deltaTime) => {
@@ -33,6 +33,11 @@ export default class Overworld {
           object.sprite.updateAnimationProgress();
         });
         // console.log("Update", deltaTime);
+
+        // Current Location == (Hero Location + Half Map Size) / Size of Tiles
+        const currentLocationX = Math.round((cameraPerson.x + utils.withGrid(7)) / 16)
+        const currentLocationY = Math.round((cameraPerson.y + utils.withGrid(7)) / 16)
+        console.log(`Player Current Location: (${currentLocationX}, ${currentLocationY})`)
         // Clear the Canvas
       },
       240,
@@ -40,7 +45,8 @@ export default class Overworld {
         // console.log("Render", deltaTime);
         // Draw bottom layer
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        const cameraPerson = this.map.gameObjects["hero"];
+
+
 
         // this.map.drawLowerImage(this.ctx, cameraPerson);
         this.map.drawTileSet(this.ctx, cameraPerson);
@@ -74,20 +80,20 @@ export default class Overworld {
         upperSrc: "/assets/images/tileHouse/houseTop.png",
         gameObjects: {
           hero: new Person({
-            x: utils.withGrid(28),
-            y: utils.withGrid(10),
+            x: utils.withGrid(25), // 28
+            y: utils.withGrid(10), // 10
           }),
         },
         walls: [
-          { x1: 22, x2: 31, y1: 14.5, y2: 25 }, // Bottom Left Wall
-          { x1: 31.5, x2: 40, y1: 14.5, y2: 25 }, // Bottom Right Wall
-          { x1: 22, x2: 40, y1: 15.5, y2: 25 }, // Bottom
-          { x1: 34, x2: 37, y1: 11.5, y2: 25 }, // Bed
-          { x1: 36, x2: 40, y1: 0, y2: 40 }, // Right Wall
-          { x1: 22, x2: 26, y1: 0, y2: 40 }, // Right Wall
-          { x1: 0, x2: 40, y1: 0, y2: 5 }, // Top Wall
-          { x1: 24, x2: 27.5, y1: 3, y2: 7 }, // Pot
-          { x1: 24, x2: 29.5, y1: 6, y2: 8.2 }, // Table
+          // { x1: 22, x2: 31, y1: 14.5, y2: 25 }, // Bottom Left Wall
+          // { x1: 31.5, x2: 40, y1: 14.5, y2: 25 }, // Bottom Right Wall
+          // { x1: 22, x2: 40, y1: 15.5, y2: 25 }, // Bottom
+          // { x1: 34, x2: 37, y1: 11.5, y2: 25 }, // Bed
+          // { x1: 36, x2: 40, y1: 0, y2: 40 }, // Right Wall
+          // { x1: 22, x2: 26, y1: 0, y2: 40 }, // Right Wall
+          // { x1: 0, x2: 40, y1: 0, y2: 5 }, // Top Wall
+          // { x1: 24, x2: 27.5, y1: 3, y2: 7 }, // Pot
+          // { x1: 24, x2: 29.5, y1: 6, y2: 8.2 }, // Table
         ],
       },
     };
