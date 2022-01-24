@@ -48,7 +48,7 @@ export class OverworldMap {
     let mapIndex = 0;
     let sourceX = 0;
     let sourceY = 0;
-    const atlasCol = 27;
+    const atlasCol = 36;
     this.player = new Polygon(
       {
         x: cameraPerson.x - 1 + utils.withGrid(7.5),
@@ -75,7 +75,7 @@ export class OverworldMap {
           const identifiedTile = TileSet.tiles.find((tile) => {
             return tile.id === tileVal;
           });
-          if (identifiedTile.objectgroup != undefined) {
+          if (identifiedTile && identifiedTile.objectgroup != undefined) {
             // console.log(identifiedTile);
             for (const object of identifiedTile.objectgroup.objects) {
               this.collisionWalls.push(
@@ -121,7 +121,7 @@ export class OverworldMap {
     let mapIndex = 0;
     let sourceX = 0;
     let sourceY = 0;
-    const atlasCol = 27;
+    const atlasCol = 36;
 
     for (let col = 0; col < mapHeight; col += tileHeight) {
       for (let row = 0; row < mapWidth; row += tileHeight) {
@@ -170,11 +170,9 @@ export class OverworldMap {
 
   isSpaceTaken(currentX, currentY, direction) {
     const { x, y } = utils.nextPosition(currentX, currentY, direction);
-    const nextGridX = utils.getGridPosition(x);
-    const nextGridY = utils.getGridPosition(y);
 
     // Update Player Bounding Box
-    this.player.setPosition(x - 1 + utils.withGrid(7.5), y + utils.withGrid(7));
+    this.player.setPosition(x + utils.withGrid(7.6), y + utils.withGrid(7.4));
     this.system.update();
     for (const collider of this.system.getPotentials(this.player)) {
       if (this.system.checkCollision(this.player, collider)) {
