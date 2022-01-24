@@ -20,8 +20,10 @@ export class Sprite {
   private isShadowLoaded: boolean;
   private useShadow: boolean;
   private animationFrameLimit: number = 16;
+  private elapsedTime;
 
   constructor(props: SpriteProps) {
+    this.elapsedTime = 0;
     // Image
     this.image = new Image();
     this.image.src = props.src;
@@ -95,10 +97,17 @@ export class Sprite {
     }
   }
 
-  updateAnimationProgress() {
-    this.currentAnimationFrame += 1;
-    if (this.frame === undefined) {
-      this.currentAnimationFrame = 0;
+  updateAnimationProgress(deltaTime) {
+    if (deltaTime) {
+      this.elapsedTime += deltaTime * 10;
+    }
+
+    if (this.elapsedTime > 0.42) {
+      this.currentAnimationFrame += 1;
+      if (this.frame === undefined) {
+        this.currentAnimationFrame = 0;
+      }
+      this.elapsedTime = 0;
     }
   }
 

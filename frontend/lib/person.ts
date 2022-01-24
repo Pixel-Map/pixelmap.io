@@ -37,9 +37,9 @@ export class Person extends GameObject {
 
   updatePosition(direction, deltaTime) {
     const [property, change] = this.directionUpdate[direction];
-    console.log(deltaTime);
+
     if (deltaTime) {
-      this[property] += change * (deltaTime * 130);
+      this[property] += change * (deltaTime * 110);
     }
   }
 

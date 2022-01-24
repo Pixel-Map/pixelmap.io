@@ -23,48 +23,33 @@ export default class Overworld {
 
   startGameLoop() {
     // Example usage:
-    let render = 0;
+
     const cameraPerson = this.map.gameObjects["hero"];
     this.map.createCollisionBodies(this.ctx, cameraPerson);
-    const engine = new FixedStepEngine(
-      15,
-      (deltaTime) => {
-        Object.values(this.map.gameObjects).forEach((object) => {
-          object.sprite.updateAnimationProgress();
+    const engine = new FixedStepEngine((deltaTime) => {
+      Object.values(this.map.gameObjects).forEach((object) => {
+        object.sprite.updateAnimationProgress(deltaTime);
+      });
+      const currentLocationX = Math.round(
+        (cameraPerson.x + utils.withGrid(7)) / 16
+      );
+      const currentLocationY = Math.round(
+        (cameraPerson.y + utils.withGrid(7)) / 16
+      );
+      this.handleInput(deltaTime);
+      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+      this.map.drawTileSet(this.ctx, cameraPerson);
+      this.map.drawCollisionBoxes(this.ctx, cameraPerson);
+
+      Object.values(this.map.gameObjects).forEach((object) => {
+        object.update({
+          arrow: this.directionInput.heldDirections,
+          map: this.map,
         });
-        // console.log("Update", deltaTime);
-
-        // Current Location == (Hero Location + Half Map Size) / Size of Tiles
-        const currentLocationX = Math.round(
-          (cameraPerson.x + utils.withGrid(7)) / 16
-        );
-        const currentLocationY = Math.round(
-          (cameraPerson.y + utils.withGrid(7)) / 16
-        );
-        // console.log(
-        //   `Player Current Location: (${currentLocationX}, ${currentLocationY})`
-        // );
-        // Clear the Canvas
-      },
-      240,
-      (deltaTime) => {
-        this.handleInput(deltaTime);
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-        this.map.drawTileSet(this.ctx, cameraPerson);
-        this.map.drawCollisionBoxes(this.ctx, cameraPerson);
-
-        Object.values(this.map.gameObjects).forEach((object) => {
-          object.update({
-            arrow: this.directionInput.heldDirections,
-            map: this.map,
-          });
-          object.sprite.draw(this.ctx, cameraPerson);
-        });
-
-        render++;
-      }
-    );
+        object.sprite.draw(this.ctx, cameraPerson);
+      });
+    });
     engine.start();
   }
 
@@ -103,27 +88,14 @@ export default class Overworld {
 }
 
 class FixedStepEngine {
-  private updateFps: any;
-  private renderFps: any;
   private update: any;
-  private render: any;
-  private updateInterval: number;
-  private renderInterval: number;
   private sinceLastUpdate: number;
-  private sinceLastRender: number;
   private running: boolean;
   private lastTime: DOMHighResTimeStamp;
 
-  constructor(updateFps, update, renderFps, render) {
-    this.updateFps = updateFps;
-    this.renderFps = renderFps;
+  constructor(update) {
     this.update = update;
-    this.render = render;
-
-    this.updateInterval = 1000 / this.updateFps / 1000;
-    this.renderInterval = 1000 / this.renderFps / 1000;
     this.sinceLastUpdate = 0;
-    this.sinceLastRender = 0;
     this.running = false;
   }
 
@@ -140,25 +112,9 @@ class FixedStepEngine {
   gameLoop = (timestamp) => {
     const deltaTime = (timestamp - this.lastTime) / 1000;
     this.lastTime = timestamp;
-    // console.log(timestamp, deltaTime * 1000);
 
-    this.sinceLastUpdate += deltaTime;
-    this.sinceLastRender += deltaTime;
+    this.update(deltaTime);
 
-    while (this.sinceLastUpdate >= this.updateInterval) {
-      this.update(this.updateInterval);
-      this.sinceLastUpdate -= this.updateInterval;
-    }
-    if (this.renderFps != null) {
-      let renders = 0;
-      while (this.sinceLastRender >= this.renderInterval) {
-        renders++;
-        this.sinceLastRender -= this.renderInterval;
-      }
-      if (renders > 0) {
-        this.render(this.renderInterval * renders);
-      }
-    }
     if (this.running) {
       requestAnimationFrame(this.gameLoop);
     }
