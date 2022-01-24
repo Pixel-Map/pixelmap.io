@@ -30,14 +30,17 @@ export class Person extends GameObject {
         if (state.map.isSpaceTaken(this.x, this.y, direction)) {
           return;
         }
-        this.updatePosition(direction);
+        this.updatePosition(direction, state.delta);
       }
     }
   }
 
-  updatePosition(direction) {
+  updatePosition(direction, deltaTime) {
     const [property, change] = this.directionUpdate[direction];
-    this[property] += change;
+    console.log(deltaTime);
+    if (deltaTime) {
+      this[property] += change * (deltaTime * 130);
+    }
   }
 
   updateSprite(state) {

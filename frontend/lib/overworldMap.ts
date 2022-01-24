@@ -1,6 +1,8 @@
 import { utils } from "./utils";
 import { decompressTileCode } from "../utils/ImageUtils";
 import DefaultTileHouse from "../lib/tiled/maps/defaultTileHouse.json";
+import TileSet from "../lib/tiled/tileset.json";
+import { Polygon, System } from "detect-collisions";
 
 export class OverworldMap {
   public gameObjects: { GameObject };
@@ -8,10 +10,16 @@ export class OverworldMap {
   private upperImage: any;
   private walls: any;
   private tileSetImage: any;
+  private system: System;
+  private level1Map;
+  private collisionWalls: Polygon[];
 
   constructor(props) {
     this.gameObjects = props.gameObjects;
     this.walls = props.walls;
+
+    // Load TileHouse
+    this.level1Map = DefaultTileHouse.layers[0].data;
 
     // Bottom Layer
     this.lowerImage = new Image();
@@ -25,6 +33,111 @@ export class OverworldMap {
     this.tileSetImage.src = "/assets/images/tileHouse/tileset.png";
   }
 
+  createCollisionBodies(ctx, cameraPerson) {
+    this.system = new System();
+    let tileHeight = DefaultTileHouse.tileheight;
+    let tileOutputSize = 1;
+    let updatedTileSize = tileHeight * tileOutputSize;
+    let mapColumn = DefaultTileHouse.width;
+    let mapRow = DefaultTileHouse.height;
+    let mapHeight = mapRow * tileHeight;
+    let mapWidth = mapColumn * tileHeight;
+    this.collisionWalls = [];
+
+    let mapIndex = 0;
+    let sourceX = 0;
+    let sourceY = 0;
+    const atlasCol = 27;
+    const player = new Polygon(
+      {
+        x: cameraPerson.x - 1 + utils.withGrid(7.5) - cameraPerson.x,
+        y: cameraPerson.y + 7 + utils.withGrid(7) - cameraPerson.y,
+      },
+      [
+        { x: 0, y: 0 },
+        { x: 10, y: 0 },
+        { x: 10, y: 6 },
+        { x: 0, y: 6 },
+      ]
+    );
+    this.system.insert(player);
+    this.system.update();
+    this.system.checkOne(player, (result) => {
+      console.log(result);
+    });
+
+    const potentials = this.system.getPotentials(player);
+    console.log(potentials);
+    for (let col = 0; col < mapHeight; col += tileHeight) {
+      for (let row = 0; row < mapWidth; row += tileHeight) {
+        let tileVal = this.level1Map[mapIndex];
+
+        if (tileVal != 0) {
+          tileVal -= 1;
+          sourceY = Math.floor(tileVal / atlasCol) * tileHeight;
+          sourceX = (tileVal % atlasCol) * tileHeight;
+
+          const identifiedTile = TileSet.tiles.find((tile) => {
+            return tile.id === tileVal;
+          });
+          if (identifiedTile.objectgroup != undefined) {
+            // console.log(identifiedTile);
+            for (const object of identifiedTile.objectgroup.objects) {
+              this.collisionWalls.push(
+                this.system.createPolygon(
+                  {
+                    x:
+                      row * tileOutputSize +
+                      utils.withGrid(28) -
+                      cameraPerson.x +
+                      object.x,
+                    y:
+                      col * tileOutputSize +
+                      utils.withGrid(10) -
+                      cameraPerson.y +
+                      object.y,
+                  },
+                  [
+                    { x: 0, y: 0 },
+                    { x: object.width, y: 0 },
+                    { x: object.width, y: object.height },
+                    { x: 0, y: object.height },
+                    // { x: 0, y: 0 },
+                    // { x: tileHeight, y: 0 },
+                    // { x: tileHeight, y: tileHeight },
+                    // { x: 0, y: tileHeight },
+                  ]
+                )
+              );
+            }
+          }
+          // ctx.drawImage(
+          //   this.tileSetImage,
+          //   sourceX,
+          //   sourceY,
+          //   tileHeight,
+          //   tileHeight,
+          //   row * tileOutputSize + utils.withGrid(28) - cameraPerson.x,
+          //   col * tileOutputSize + utils.withGrid(10) - cameraPerson.y,
+          //   updatedTileSize,
+          //   updatedTileSize
+          // );
+        }
+        mapIndex++;
+      }
+    }
+  }
+
+  drawCollisionBoxes(ctx, cameraPerson) {
+    // Collision?
+    ctx.strokeStyle = "#ffaaaf";
+    ctx.beginPath();
+
+    this.system.draw(ctx);
+
+    ctx.stroke();
+  }
+
   drawLowerImage(ctx, cameraPerson) {
     ctx.drawImage(
       this.lowerImage,
@@ -34,33 +147,33 @@ export class OverworldMap {
   }
 
   drawTileSet(ctx, cameraPerson) {
-    let tileSize = 16;
+    let tileHeight = DefaultTileHouse.tileheight;
     let tileOutputSize = 1;
-    let updatedTileSize = tileSize * tileOutputSize;
-    let mapColumn = 14;
-    let mapRow = 14;
-    let mapHeight = mapRow * tileSize;
-    let mapWidth = mapColumn * tileSize;
-    let level1Map = DefaultTileHouse.layers[0].data
+    let updatedTileSize = tileHeight * tileOutputSize;
+    let mapColumn = DefaultTileHouse.width;
+    let mapRow = DefaultTileHouse.height;
+    let mapHeight = mapRow * tileHeight;
+    let mapWidth = mapColumn * tileHeight;
+
     let mapIndex = 0;
     let sourceX = 0;
     let sourceY = 0;
     const atlasCol = 27;
 
-    for (let col = 0; col < mapHeight; col += tileSize) {
-      for (let row = 0; row < mapWidth; row += tileSize) {
-        let tileVal = level1Map[mapIndex];
+    for (let col = 0; col < mapHeight; col += tileHeight) {
+      for (let row = 0; row < mapWidth; row += tileHeight) {
+        let tileVal = this.level1Map[mapIndex];
 
         if (tileVal != 0) {
           tileVal -= 1;
-          sourceY = Math.floor(tileVal / atlasCol) * tileSize;
-          sourceX = (tileVal % atlasCol) * tileSize;
+          sourceY = Math.floor(tileVal / atlasCol) * tileHeight;
+          sourceX = (tileVal % atlasCol) * tileHeight;
           ctx.drawImage(
             this.tileSetImage,
             sourceX,
             sourceY,
-            tileSize,
-            tileSize,
+            tileHeight,
+            tileHeight,
             row * tileOutputSize + utils.withGrid(28) - cameraPerson.x,
             col * tileOutputSize + utils.withGrid(10) - cameraPerson.y,
             updatedTileSize,

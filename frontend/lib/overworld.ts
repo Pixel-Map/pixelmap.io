@@ -1,9 +1,8 @@
-import { GameObject } from "./gameObject";
 import { OverworldMap } from "./overworldMap";
 import { utils } from "./utils";
 import { Person } from "./person";
 import { DirectionInput } from "./directionInput";
-import { decompressTileCode } from "../utils/ImageUtils";
+import { Polygon, System } from "detect-collisions";
 
 export default class Overworld {
   public element: any;
@@ -26,6 +25,7 @@ export default class Overworld {
     // Example usage:
     let render = 0;
     const cameraPerson = this.map.gameObjects["hero"];
+    this.map.createCollisionBodies(this.ctx, cameraPerson);
     const engine = new FixedStepEngine(
       15,
       (deltaTime) => {
@@ -35,23 +35,25 @@ export default class Overworld {
         // console.log("Update", deltaTime);
 
         // Current Location == (Hero Location + Half Map Size) / Size of Tiles
-        const currentLocationX = Math.round((cameraPerson.x + utils.withGrid(7)) / 16)
-        const currentLocationY = Math.round((cameraPerson.y + utils.withGrid(7)) / 16)
-        console.log(`Player Current Location: (${currentLocationX}, ${currentLocationY})`)
+        const currentLocationX = Math.round(
+          (cameraPerson.x + utils.withGrid(7)) / 16
+        );
+        const currentLocationY = Math.round(
+          (cameraPerson.y + utils.withGrid(7)) / 16
+        );
+        // console.log(
+        //   `Player Current Location: (${currentLocationX}, ${currentLocationY})`
+        // );
         // Clear the Canvas
       },
       240,
       (deltaTime) => {
-        // console.log("Render", deltaTime);
-        // Draw bottom layer
+        this.handleInput(deltaTime);
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-
-
-        // this.map.drawLowerImage(this.ctx, cameraPerson);
         this.map.drawTileSet(this.ctx, cameraPerson);
-        // this.ctx.fillRect(50, 50, 100, 100);
-        // this.map.drawTile(this.ctx, this.tileImage, cameraPerson);
+        this.map.drawCollisionBoxes(this.ctx, cameraPerson);
+
         Object.values(this.map.gameObjects).forEach((object) => {
           object.update({
             arrow: this.directionInput.heldDirections,
@@ -66,13 +68,18 @@ export default class Overworld {
     engine.start();
   }
 
+  handleInput(deltaTime) {
+    Object.values(this.map.gameObjects).forEach((object) => {
+      object.update({
+        arrow: this.directionInput.heldDirections,
+        map: this.map,
+        delta: deltaTime,
+      });
+    });
+  }
+
   init() {
     this.ctx.imageSmoothingEnabled = false;
-    // const image = new Image();
-    // image.onload = () => {
-    //   this.ctx.drawImage(image, 0, 0);
-    // };
-    // image.src = "/assets/images/tileHouse1.png";
 
     const overworldMaps = {
       DemoRoom: {
@@ -84,17 +91,7 @@ export default class Overworld {
             y: utils.withGrid(10), // 10
           }),
         },
-        walls: [
-          // { x1: 22, x2: 31, y1: 14.5, y2: 25 }, // Bottom Left Wall
-          // { x1: 31.5, x2: 40, y1: 14.5, y2: 25 }, // Bottom Right Wall
-          // { x1: 22, x2: 40, y1: 15.5, y2: 25 }, // Bottom
-          // { x1: 34, x2: 37, y1: 11.5, y2: 25 }, // Bed
-          // { x1: 36, x2: 40, y1: 0, y2: 40 }, // Right Wall
-          // { x1: 22, x2: 26, y1: 0, y2: 40 }, // Right Wall
-          // { x1: 0, x2: 40, y1: 0, y2: 5 }, // Top Wall
-          // { x1: 24, x2: 27.5, y1: 3, y2: 7 }, // Pot
-          // { x1: 24, x2: 29.5, y1: 6, y2: 8.2 }, // Table
-        ],
+        walls: [],
       },
     };
 
