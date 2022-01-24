@@ -111,9 +111,9 @@ export class Sprite {
     }
   }
 
-  draw(ctx, cameraPerson) {
-    const x = this.gameObject.x - 8 + utils.withGrid(7.5) - cameraPerson.x;
-    const y = this.gameObject.y - 8 + utils.withGrid(7) - cameraPerson.y;
+  draw(ctx) {
+    const x = this.gameObject.x - 8 + utils.withGrid(7.5);
+    const y = this.gameObject.y - 8 + utils.withGrid(7);
 
     const [frameX, frameY] = this.frame;
 

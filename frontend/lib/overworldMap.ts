@@ -13,6 +13,7 @@ export class OverworldMap {
   private system: System;
   private level1Map;
   private collisionWalls: Polygon[];
+  private player: Polygon;
 
   constructor(props) {
     this.gameObjects = props.gameObjects;
@@ -48,26 +49,20 @@ export class OverworldMap {
     let sourceX = 0;
     let sourceY = 0;
     const atlasCol = 27;
-    const player = new Polygon(
+    this.player = new Polygon(
       {
-        x: cameraPerson.x - 1 + utils.withGrid(7.5) - cameraPerson.x,
-        y: cameraPerson.y + 7 + utils.withGrid(7) - cameraPerson.y,
+        x: cameraPerson.x - 1 + utils.withGrid(7.5),
+        y: cameraPerson.y + 7 + utils.withGrid(7),
       },
       [
         { x: 0, y: 0 },
-        { x: 10, y: 0 },
-        { x: 10, y: 6 },
-        { x: 0, y: 6 },
+        { x: 5, y: 0 },
+        { x: 5, y: 5 },
+        { x: 0, y: 5 },
       ]
     );
-    this.system.insert(player);
-    this.system.update();
-    this.system.checkOne(player, (result) => {
-      console.log(result);
-    });
+    this.system.insert(this.player);
 
-    const potentials = this.system.getPotentials(player);
-    console.log(potentials);
     for (let col = 0; col < mapHeight; col += tileHeight) {
       for (let row = 0; row < mapWidth; row += tileHeight) {
         let tileVal = this.level1Map[mapIndex];
@@ -86,50 +81,26 @@ export class OverworldMap {
               this.collisionWalls.push(
                 this.system.createPolygon(
                   {
-                    x:
-                      row * tileOutputSize +
-                      utils.withGrid(28) -
-                      cameraPerson.x +
-                      object.x,
-                    y:
-                      col * tileOutputSize +
-                      utils.withGrid(10) -
-                      cameraPerson.y +
-                      object.y,
+                    x: row * tileOutputSize + utils.withGrid(28) + object.x,
+                    y: col * tileOutputSize + utils.withGrid(10) + object.y,
                   },
                   [
                     { x: 0, y: 0 },
                     { x: object.width, y: 0 },
                     { x: object.width, y: object.height },
                     { x: 0, y: object.height },
-                    // { x: 0, y: 0 },
-                    // { x: tileHeight, y: 0 },
-                    // { x: tileHeight, y: tileHeight },
-                    // { x: 0, y: tileHeight },
                   ]
                 )
               );
             }
           }
-          // ctx.drawImage(
-          //   this.tileSetImage,
-          //   sourceX,
-          //   sourceY,
-          //   tileHeight,
-          //   tileHeight,
-          //   row * tileOutputSize + utils.withGrid(28) - cameraPerson.x,
-          //   col * tileOutputSize + utils.withGrid(10) - cameraPerson.y,
-          //   updatedTileSize,
-          //   updatedTileSize
-          // );
         }
         mapIndex++;
       }
     }
   }
 
-  drawCollisionBoxes(ctx, cameraPerson) {
-    // Collision?
+  drawCollisionBoxes(ctx) {
     ctx.strokeStyle = "#ffaaaf";
     ctx.beginPath();
 
@@ -138,15 +109,7 @@ export class OverworldMap {
     ctx.stroke();
   }
 
-  drawLowerImage(ctx, cameraPerson) {
-    ctx.drawImage(
-      this.lowerImage,
-      utils.withGrid(31) - cameraPerson.x,
-      utils.withGrid(8.5) - cameraPerson.y
-    );
-  }
-
-  drawTileSet(ctx, cameraPerson) {
+  drawTileSet(ctx) {
     let tileHeight = DefaultTileHouse.tileheight;
     let tileOutputSize = 1;
     let updatedTileSize = tileHeight * tileOutputSize;
@@ -174,8 +137,8 @@ export class OverworldMap {
             sourceY,
             tileHeight,
             tileHeight,
-            row * tileOutputSize + utils.withGrid(28) - cameraPerson.x,
-            col * tileOutputSize + utils.withGrid(10) - cameraPerson.y,
+            row * tileOutputSize + utils.withGrid(28),
+            col * tileOutputSize + utils.withGrid(10),
             updatedTileSize,
             updatedTileSize
           );
@@ -186,7 +149,6 @@ export class OverworldMap {
   }
 
   drawTile(ctx, tileImage, cameraPerson) {
-    // this.map.drawUpperImage(this.ctx, cameraPerson);
     let hex = decompressTileCode(tileImage);
 
     if (hex.length != 768) {
@@ -206,36 +168,19 @@ export class OverworldMap {
     }
   }
 
-  drawUpperImage(ctx, cameraPerson) {
-    ctx.drawImage(
-      this.upperImage,
-      utils.withGrid(28) - cameraPerson.x,
-      utils.withGrid(8.5) - cameraPerson.y
-    );
-  }
-
   isSpaceTaken(currentX, currentY, direction) {
     const { x, y } = utils.nextPosition(currentX, currentY, direction);
     const nextGridX = utils.getGridPosition(x);
     const nextGridY = utils.getGridPosition(y);
-    // console.log(
-    //   `Previous: ${utils.getGridPosition(currentX)},${utils.getGridPosition(
-    //     currentY
-    //   )}`
-    // );
-    // console.log(`Next: ${nextGridX},${nextGridY}`);
 
-    for (const wall of this.walls) {
-      if (
-        nextGridX > wall.x1 &&
-        nextGridX < wall.x2 &&
-        nextGridY > wall.y1 &&
-        nextGridY < wall.y2
-      ) {
+    // Update Player Bounding Box
+    this.player.setPosition(x - 1 + utils.withGrid(7.5), y + utils.withGrid(7));
+    this.system.update();
+    for (const collider of this.system.getPotentials(this.player)) {
+      if (this.system.checkCollision(this.player, collider)) {
         return true;
       }
     }
-
-    return this.walls[`${x},${y}`] || false;
+    return false;
   }
 }

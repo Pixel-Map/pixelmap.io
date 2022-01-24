@@ -27,30 +27,31 @@ export default class Overworld {
     const cameraPerson = this.map.gameObjects["hero"];
     this.map.createCollisionBodies(this.ctx, cameraPerson);
     const engine = new FixedStepEngine((deltaTime) => {
-      Object.values(this.map.gameObjects).forEach((object) => {
-        object.sprite.updateAnimationProgress(deltaTime);
-      });
-      const currentLocationX = Math.round(
-        (cameraPerson.x + utils.withGrid(7)) / 16
-      );
-      const currentLocationY = Math.round(
-        (cameraPerson.y + utils.withGrid(7)) / 16
-      );
       this.handleInput(deltaTime);
-      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-      this.map.drawTileSet(this.ctx, cameraPerson);
-      this.map.drawCollisionBoxes(this.ctx, cameraPerson);
-
-      Object.values(this.map.gameObjects).forEach((object) => {
-        object.update({
-          arrow: this.directionInput.heldDirections,
-          map: this.map,
-        });
-        object.sprite.draw(this.ctx, cameraPerson);
-      });
+      this.processGameLogic(deltaTime);
+      this.render(cameraPerson);
     });
     engine.start();
+  }
+
+  processGameLogic(deltaTime) {
+    Object.values(this.map.gameObjects).forEach((object) => {
+      object.sprite.updateAnimationProgress(deltaTime);
+    });
+  }
+
+  render(cameraPerson) {
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.ctx.save();
+    this.ctx.translate(-cameraPerson.x, -cameraPerson.y);
+    this.map.drawTileSet(this.ctx);
+
+    Object.values(this.map.gameObjects).forEach((object) => {
+      object.sprite.draw(this.ctx);
+    });
+    // this.map.drawCollisionBoxes(this.ctx);
+    this.ctx.restore();
   }
 
   handleInput(deltaTime) {
