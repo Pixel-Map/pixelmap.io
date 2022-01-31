@@ -26,7 +26,7 @@ import { SyncToS3Module } from './sync-to-s3/sync-to-s3.module';
     CacheModule.register({ isGlobal: true, ttl: 1000000, max: 100000 }),
     ConfigModule.forRoot({ isGlobal: true }),
     ScheduleModule.forRoot(),
-    MikroOrmModule.forFeature([Tile, DataHistory]),
+    MikroOrmModule.forFeature([Tile, DataHistory, PurchaseHistory]),
     MikroOrmModule.forRootAsync({
       useFactory: (configService: ConfigService) => ({
         metadataProvider: TsMorphMetadataProvider,

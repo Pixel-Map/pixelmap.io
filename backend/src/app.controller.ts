@@ -15,4 +15,14 @@ export class AppController {
   getFirstTilesWithImages() {
     return this.appService.getFirstTilesWithImages();
   }
+
+  @Get('/owners')
+  getOwners() {
+    return this.appService.getOwners();
+  }
+
+  @Get('/ogOwners')
+  getOgOwners() {
+    return this.appService.getOgOwners();
+  }
 }

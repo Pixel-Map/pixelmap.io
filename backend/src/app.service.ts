@@ -4,6 +4,7 @@ import { InjectRepository } from '@mikro-orm/nestjs';
 import { EntityRepository, QueryOrder } from '@mikro-orm/core';
 import { DataHistory } from './ingestor/entities/dataHistory.entity';
 import { decompressTileCode } from './renderer/utils/decompressTileCode';
+import { PurchaseHistory } from './ingestor/entities/purchaseHistory.entity';
 
 @Injectable()
 export class AppService {
@@ -12,11 +13,14 @@ export class AppService {
     private tile: EntityRepository<Tile>,
     @InjectRepository(DataHistory)
     private dataHistory: EntityRepository<DataHistory>,
+    @InjectRepository(PurchaseHistory)
+    private purchaseHistory: EntityRepository<PurchaseHistory>,
   ) {}
 
   public findAll(): Promise<Array<Tile>> {
     return this.tile.findAll();
   }
+
   async getFirstTilesWithImages() {
     const historyEvents = await this.dataHistory.findAll(['tile'], { time_stamp: QueryOrder.ASC });
     const tileAlreadyFound = new Map();
@@ -41,6 +45,27 @@ export class AppService {
     }
     console.log(timeCapsuleTiles.length);
     return timeCapsuleTiles;
+  }
+
+  async getOgOwners() {
+    const purchaseEvents = await this.purchaseHistory.findAll();
+    const openSeaListDate = new Date('2021-8-27');
+
+    const resultProductData = purchaseEvents.filter((a) => {
+      const date = new Date(a.timeStamp);
+      return date <= openSeaListDate;
+    });
+    const unique = [...new Set(resultProductData.map((tile) => tile.purchasedBy))];
+    console.log(unique.length);
+
+    return unique;
+  }
+
+  async getOwners() {
+    const tiles = await this.tile.findAll();
+    const unique = [...new Set(tiles.map((tile) => tile.owner))];
+    console.log('Number of Owners: ' + unique.length);
+    return unique;
   }
 }
 
