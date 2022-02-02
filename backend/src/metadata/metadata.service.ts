@@ -64,7 +64,13 @@ export class MetadataService {
 
   async updateTileMetadata(tile: Tile) {
     const tileMetaData = {
-      description: 'Official PixelMap (2016) Wrapped Tile',
+      description:
+        'Official PixelMap Wrapped Tile.  Created in 2016, PixelMap is considered the second oldest NFT, the ' +
+        'oldest verified collection on OpenSea, and provides the ability to create, display, and immortalize artwork ' +
+        'directly on the blockchain.  All tiles can be viewed at https://pixelmap.io, and customized by the owner ' +
+        '(image and URL are stored on-chain in the OG contract.  PixelMap was launched on November 17, 2016 - ' +
+        'https://etherscan.io/address/0x015a06a433353f8db634df4eddf0c109882a15ab.  For more information, visit the ' +
+        'Discord, at https://discord.gg/pixelmap.',
       external_url: tile.url,
       name: 'Tile #' + tile.id,
       attributes: [],

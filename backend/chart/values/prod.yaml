@@ -7,4 +7,4 @@ URLS:
   - "api.pixelmap.io"
   - "api.pixelmap.com"
 WEB3_URL: "wss://mainnet.infura.io/ws/v3/1e060d0190124285a48e3fe7165e3282"
-image: 389059433654.dkr.ecr.us-east-1.amazonaws.com/backend:1.2.20
+image: 389059433654.dkr.ecr.us-east-1.amazonaws.com/backend:1.2.21
