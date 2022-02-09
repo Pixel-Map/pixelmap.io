@@ -1,7 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
-import { ethers } from 'ethers';
-import { PixelMapEvent } from './entities/pixelMapEvent.entity';
 import { Tile } from './entities/tile.entity';
 import { DataHistory } from './entities/dataHistory.entity';
 import { PurchaseHistory } from './entities/purchaseHistory.entity';
@@ -13,8 +11,11 @@ import { exit } from '@nestjs/cli/actions';
 import { EntityRepository, MikroORM, QueryOrder } from '@mikro-orm/core';
 import { InjectRepository, UseRequestContext } from '@mikro-orm/nestjs';
 import { CurrentState, StatesToTrack } from './entities/currentState.entity';
-import { getEvents } from './utils/getEvents';
 import { updateAllTileData } from './utils/updateAllTileData';
+import { getTransactions } from './utils/getTransactions';
+import { PixelMapTransaction } from './entities/pixelMapTransaction.entity';
+import { ConfigService } from '@nestjs/config';
+
 const fs = require('fs');
 
 @Injectable()
@@ -22,13 +23,12 @@ export class IngestorService {
   private readonly logger = new Logger(IngestorService.name);
   private currentlyRunningSync = true;
   private currentlyIngestingEvents = false;
+  private currentlyIngestingTransactions = false;
   private updatingCurrentTileData = false;
 
   constructor(
     @InjectRepository(CurrentState)
     private currentState: EntityRepository<CurrentState>,
-    @InjectRepository(PixelMapEvent)
-    private pixelMapEvent: EntityRepository<PixelMapEvent>,
     @InjectRepository(Tile)
     private tile: EntityRepository<Tile>,
     @InjectRepository(DataHistory)
@@ -39,7 +39,10 @@ export class IngestorService {
     private wrappingHistory: EntityRepository<WrappingHistory>,
     @InjectRepository(TransferHistory)
     private transferHistory: EntityRepository<TransferHistory>,
+    @InjectRepository(PixelMapTransaction)
+    private pixelMapTransaction: EntityRepository<PixelMapTransaction>,
     private readonly orm: MikroORM,
+    private configService: ConfigService,
   ) {}
 
   async onApplicationBootstrap() {
@@ -54,15 +57,11 @@ export class IngestorService {
     }
 
     // Initialize Data if Empty
-    if ((await this.currentState.findOne({ state: StatesToTrack.INGESTION_LAST_DOWNLOADED_BLOCK })) == undefined) {
+    if ((await this.currentState.findOne({ state: StatesToTrack.INGESTION_LAST_ETHERSCAN_BLOCK })) == undefined) {
       this.logger.log('Starting fresh, start of events! (0)');
       await this.currentState.persistAndFlush([
         new CurrentState({
-          state: StatesToTrack.INGESTION_LAST_DOWNLOADED_BLOCK,
-          value: 2641527, // This is the block that PixelMap was created
-        }),
-        new CurrentState({
-          state: StatesToTrack.INGESTION_LAST_PROCESSED_PIXEL_MAP_EVENT,
+          state: StatesToTrack.INGESTION_LAST_PROCESSED_PIXEL_MAP_TX,
           value: 0,
         }),
         new CurrentState({
@@ -72,6 +71,10 @@ export class IngestorService {
         new CurrentState({
           state: StatesToTrack.RENDERER_LAST_PROCESSED_DATA_CHANGE,
           value: 0,
+        }),
+        new CurrentState({
+          state: StatesToTrack.INGESTION_LAST_ETHERSCAN_BLOCK,
+          value: 2641527,
         }),
       ]);
 
@@ -91,15 +94,17 @@ export class IngestorService {
     }
     this.currentlyIngestingEvents = false;
   }
+
   /**
    * initializeEthersJS initializes the PixelMap and PixelMapWrapper contracts
    */
 
   @Cron(new Date(Date.now() + 10000)) // Start 5 seconds after App startup
   async initialStartup() {
-    await this.syncBlocks();
+    // await this.syncBlocks();
+    await this.syncTransactions();
     this.currentlyRunningSync = false;
-    await this.resyncEveryMinute(); // Let's kick it off once so I don't have to wait a minute.
+    // await this.resyncEveryMinute(); // Let's kick it off once so I don't have to wait a minute.
   }
 
   @Cron('45 * * * * *')
@@ -109,66 +114,84 @@ export class IngestorService {
     } else {
       this.logger.debug('Syncing again, one moment.');
       this.currentlyRunningSync = true;
-      await this.syncBlocks();
+      await this.syncTransactions();
       this.currentlyRunningSync = false;
     }
   }
 
-  async syncBlocks() {
+  async syncTransactions() {
     const { provider } = initializeEthersJS();
-    const lastBlock = await this.currentState.findOne({ state: StatesToTrack.INGESTION_LAST_DOWNLOADED_BLOCK });
+    const lastBlock = await this.currentState.findOne({ state: StatesToTrack.INGESTION_LAST_ETHERSCAN_BLOCK });
     let mostRecentBlockNumber = await provider.getBlockNumber();
     mostRecentBlockNumber = mostRecentBlockNumber - 10; // Let's stay 10 away from latest in case of uncles etc.
 
     // Do batches of 1,000,000 max before saving!
-    if (mostRecentBlockNumber - lastBlock.value > 1000000) {
-      mostRecentBlockNumber = lastBlock.value + 1000000;
+    if (mostRecentBlockNumber - lastBlock.value > 100000) {
+      mostRecentBlockNumber = lastBlock.value + 100000;
     }
 
     // Download raw events
-    this.logger.log('Downloading raw events from block: ' + lastBlock.value + ' to ' + mostRecentBlockNumber);
-    let rawEvents: ethers.Event[] = [];
+    this.logger.log('Downloading raw transactions from block: ' + lastBlock.value + ' to ' + mostRecentBlockNumber);
+    let rawTXs = [];
     try {
-      rawEvents = await getEvents(lastBlock.value, mostRecentBlockNumber, this.logger);
-    } catch {
+      rawTXs = await getTransactions(
+        lastBlock.value,
+        mostRecentBlockNumber,
+        this.configService.get('ETHERSCAN_API_KEY'),
+        this.logger,
+      );
+    } catch (err) {
       this.logger.error('Error downloading raw events');
+      console.log(err);
       return;
     }
 
     // Process raw events and store them in the database
     this.logger.debug('Processing blocks from block: ' + lastBlock.value + ' to ' + mostRecentBlockNumber);
 
-    await this.processEvents(rawEvents);
+    await this.processTransactions(rawTXs);
     lastBlock.value = mostRecentBlockNumber + 1;
     await this.currentState.persistAndFlush(lastBlock);
 
     this.logger.debug('Finished syncing.  Will check again soon.');
   }
 
-  async processEvents(events) {
-    const { provider } = initializeEthersJS();
-    for (let i = 0; i < events.length; i++) {
-      const event = events[i];
-      const transaction = await provider.getTransaction(event.transactionHash);
-      if (await this.pixelMapEvent.findOne({ txHash: event.transactionHash, logIndex: parseInt(event.logIndex) })) {
-        this.logger.warn('Already indexed this event, skipping!');
+  async processTransactions(transactions) {
+    for (let i = 0; i < transactions.length; i++) {
+      const tx = transactions[i];
+      console.log('MOOOOOOOOOOOOOOOOOOO');
+      if (await this.pixelMapTransaction.findOne({ hash: tx.hash, transactionIndex: tx.transactionIndex })) {
+        this.logger.warn('Already indexed this tx, skipping!');
         return;
       } else {
-        this.logger.log('Saving event at block: ' + transaction.blockNumber);
-        const pixelMapEvent = new PixelMapEvent({
-          eventData: event,
-          txHash: event.transactionHash,
-          logIndex: parseInt(event.logIndex),
-          txData: transaction,
-          block: transaction.blockNumber,
+        this.logger.log('Saving tx at block: ' + tx.blockNumber);
+        const pixelMapTx = new PixelMapTransaction({
+          blockNumber: tx.blockNumber,
+          timeStamp: tx.timeStamp,
+          hash: tx.hash,
+          nonce: tx.nonce,
+          blockHash: tx.blockHash,
+          transactionIndex: tx.transactionIndex,
+          from: tx.from,
+          to: tx.to,
+          value: tx.value,
+          gas: tx.gas,
+          gasPrice: tx.gasPrice,
+          isError: tx.isError,
+          txreceipt_status: tx.txreceipt_status,
+          input: tx.input,
+          contractAddress: tx.contractAddress,
+          cumulativeGasUsed: tx.cumulativeGasUsed,
+          gasUsed: tx.gasUsed,
+          confirmations: tx.confirmations,
         });
-        await this.pixelMapEvent.persistAndFlush(pixelMapEvent);
+        await this.pixelMapTransaction.persistAndFlush(pixelMapTx);
       }
     }
-    await this.pixelMapEvent.flush();
+    await this.pixelMapTransaction.flush();
   }
 
-  @Cron('0 */3 * * *')
+  // @Cron('0 */3 * * *')
   @UseRequestContext()
   async updateCurrentTileData() {
     const { provider, pixelMap, pixelMapWrapper } = initializeEthersJS();
@@ -185,28 +208,41 @@ export class IngestorService {
 
   @Cron('1 * * * * *')
   @UseRequestContext()
-  async ingestEvents() {
-    if (!this.currentlyIngestingEvents) {
+  async ingestTransactions() {
+    if (!this.currentlyIngestingTransactions) {
       const { provider, pixelMap, pixelMapWrapper } = initializeEthersJS();
-      this.currentlyIngestingEvents = true;
-      const lastEvent = await this.currentState.findOne({
-        state: StatesToTrack.INGESTION_LAST_PROCESSED_PIXEL_MAP_EVENT,
+      this.currentlyIngestingTransactions = true;
+
+      const lastTx = await this.currentState.findOne({
+        state: StatesToTrack.INGESTION_LAST_PROCESSED_PIXEL_MAP_TX,
       });
 
-      const events = await this.pixelMapEvent.find({}, { orderBy: { id: QueryOrder.ASC } });
+      const transactions = await this.pixelMapTransaction.find({}, { orderBy: { id: QueryOrder.ASC } });
 
-      for (let i = lastEvent.value; i < events.length; i++) {
-        const decodedEvent = await decodeTransaction(pixelMap, pixelMapWrapper, events[i]);
-        await this.ingestEvent(decodedEvent);
-        const percent = Math.round((100 * (i + 1)) / events.length);
-        this.logger.verbose(
-          i + 1 + '/' + events.length + ' events processed (' + percent + '% complete) - ' + events[i].id,
-        );
-        lastEvent.value = i;
-        await this.currentState.persistAndFlush(lastEvent);
+      for (let i = lastTx.value; i < transactions.length; i++) {
+        if (transactions[i].isError == '1') {
+          this.logger.log('Skipping transaction that errored out: ' + transactions[i].hash);
+        } else {
+          const decodedTransaction = await decodeTransaction(pixelMap, pixelMapWrapper, transactions[i]);
+
+          await this.ingestEvent(decodedTransaction);
+          const percent = Math.round((100 * (i + 1)) / transactions.length);
+          this.logger.verbose(
+            i +
+              1 +
+              '/' +
+              transactions.length +
+              ' transactions processed (' +
+              percent +
+              '% complete) - ' +
+              transactions[i].id,
+          );
+          lastTx.value = i;
+          await this.currentState.persistAndFlush(lastTx);
+        }
       }
 
-      this.currentlyIngestingEvents = false;
+      this.currentlyIngestingTransactions = false;
     } else {
       this.logger.debug('Already ingesting, not starting again yet');
     }
@@ -291,6 +327,7 @@ export class IngestorService {
             ')',
         );
         if (decodedEvent.price <= 0) {
+          console.log(decodedEvent);
           throw 'Purchase cannot be 0 or less';
         }
         tile.purchaseHistory.add(
@@ -334,12 +371,22 @@ export class IngestorService {
         );
         await this.tile.persistAndFlush(tile);
         break;
+      case TransactionType.createContract:
+        this.logger.log('Contract created at block ' + decodedEvent.blockNumber);
+        break;
+      case TransactionType.getTile:
+        this.logger.log('GetTile called at block ' + decodedEvent.blockNumber);
+        break;
+      case TransactionType.notImportant:
+        this.logger.log('Something not important was called at block ' + decodedEvent.blockNumber);
+        break;
       default:
         this.logger.error('Failed to account for the following event:');
         console.log(decodedEvent);
         exit();
     }
   }
+
   async addWrappingHistory(decodedEvent: DecodedPixelMapTransaction, tile: Tile, wrapped: boolean) {
     if (await this.alreadyIndexedWrap(this.wrappingHistory, decodedEvent.txHash)) {
       const noun = wrapped ? 'wrapping' : 'unwrapping';

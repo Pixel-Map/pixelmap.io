@@ -1,17 +1,14 @@
-import { PixelMapEvent } from '../entities/pixelMapEvent.entity';
 import * as ogSampleBuyTile from './fixtures/og-sample-buyTile.json';
 import * as ogSampleSetTile from './fixtures/og-sample-setTile.json';
-import * as wrappingSample1 from './fixtures/sample-tileWrapped-e1.json';
-import * as wrappingSample2 from './fixtures/sample-tileWrapped-e2.json';
-import * as wrappingSample3 from './fixtures/sample-tileWrapped-e3.json';
+import * as wrappingSample1 from './fixtures/sample-tileWrapped.json';
 import * as setTileData from './fixtures/sample-setTileData.json';
 import * as unwrapping from './fixtures/sample-unwrap.json';
-import * as openseaPurchase from './fixtures/opensea-purchase.json';
-import * as delegatedBuyTile from './fixtures/delegated-buyTile.json';
+import * as safeTransferFrom from './fixtures/sample-safeTransferFrom.json';
 import * as transfer from './fixtures/sample-transfer.json';
 
 import { DecodedPixelMapTransaction, decodeTransaction, TransactionType } from './decodeTransaction';
 import { initializeEthersJS } from './initializeEthersJS';
+import { PixelMapTransaction } from '../entities/pixelMapTransaction.entity';
 
 describe('decodeTransaction', () => {
   const { provider, pixelMap, pixelMapWrapper } = initializeEthersJS();
@@ -20,8 +17,7 @@ describe('decodeTransaction', () => {
   // });
 
   it('returns a proper buyTile DecodedTransaction when given an OG contract buyTile event', async () => {
-    const event = Object.assign(new PixelMapEvent(), ogSampleBuyTile);
-
+    const event = Object.assign(new PixelMapTransaction(), ogSampleBuyTile);
     const decodedTransaction = await decodeTransaction(pixelMap, pixelMapWrapper, event);
     expect(decodedTransaction).toStrictEqual(
       new DecodedPixelMapTransaction({
@@ -33,35 +29,41 @@ describe('decodeTransaction', () => {
         timestamp: new Date('2016-11-17T04:41:08.000Z'),
         blockNumber: 2641570,
         txHash: '0x64feae306ab228a93a56fad5c4855e317958d9f5d8423168aecdc163756925b6',
-        logIndex: 1,
+        logIndex: 3,
       }),
     );
   });
 
   it('returns a proper setTile DecodedTransaction when given an OG contract setTile event', async () => {
-    const event = Object.assign(new PixelMapEvent(), ogSampleSetTile);
+    const event = Object.assign(new PixelMapTransaction(), ogSampleSetTile);
 
     const decodedTransaction = await decodeTransaction(pixelMap, pixelMapWrapper, event);
     expect(decodedTransaction).toStrictEqual(
       new DecodedPixelMapTransaction({
-        location: 1984,
+        location: 1985,
         type: TransactionType.setTile,
         price: 0,
         image:
-          // eslint-disable-next-line max-len
-          '5974964964974964964964964964964974964974974964974964965975965964964964964964964964974965964974964964964974974964965964964964964964964974964964964965972433543645974964964964964974753533544864964965971211212334865964964964964863641221224864964974964974973861114974964964961112435974965974964965970211212111111111211211111111210211214754974864652432432331111111111111111112222433444553753650115974974751110111111221111112435964961322324965974a7243232497010354486111496364111496486496596497122364486496111254486111597486375132476497496597011365496597142365486232496496497211576496497597111364496497597497496597496496496010475496496597497597496496597496596496497496597586597497497597497496597597496497496496596497496496597497496496496496496496496496496496496496496496496496',
-        url: 'www.ethereum.org',
-        from: '0xc20daa952d35677eb5dc40b8e0be84920f40ad68',
-        timestamp: new Date('2016-11-17T04:44:03.000Z'),
-        blockNumber: 2641577,
-        txHash: '0x5ea7c8839918bf46f41622c2ca576b1d3724014f7c9cb3a1243dcf6416dcf62d',
-        logIndex: 4,
+          '000000000000000000000000000bf59d49c48b37a3793be5000000000000000000bf5ad47937937937937937938c4be6000000000' +
+          '000bf58c47937937937937937937937a3bf69c5000000000ae47937937937937937937937937a30009c59c50000008c4793793793' +
+          '7937937937937937a3000bf69c59c5000ae47937937937937937937937938b3000cf69c59c5ae6bf5793793793793793793793793' +
+          '8b4000cf69c59c59c5bf6ae4793793793793793793793bf5000bf69c59c59c59c5bf68b37937937937937938b4bf5000bf6ad59c5' +
+          '9c59c59c5cf67937937937938b3bf5000000cf6ad59c59c59c59c5ae60007937a3bf5bf5000000000bf69c59c59c59c59c59c5cf6' +
+          '000000000000000000000cf69c59c59c59c59c59c5ae6000000000000000000cf69c59c59c59c59c59c59c59c5cf6000000cf6cf6' +
+          'bf69c59c59c59c59c59c59c59c59c5bf6000000000000cf69c59c59c59c59c59c59c59c5cf6000000000000000000000000bf6be6' +
+          'ad5ad5bf6bf6cf6000000000000000000',
+        url: 'www.bitfinex.com/?refcode=Sw264GOhVk',
+        from: '0x52dc81ef890f6f4ceeea4c0f0d8ebc32e049074a',
+        timestamp: new Date('2017-07-04T19:13:47.000Z'),
+        blockNumber: 3974343,
+        txHash: '0x44920bf6ec91d5f97eed7567d88bab564c56869a3e08536360896af9a4719671',
+        logIndex: 82,
       }),
     );
   });
 
   it('returns a wrappedTile DecodedTransaction when given the first (1/3) wrapping event', async () => {
-    const event = Object.assign(new PixelMapEvent(), wrappingSample1);
+    const event = Object.assign(new PixelMapTransaction(), wrappingSample1);
     const decodedTransaction = await decodeTransaction(pixelMap, pixelMapWrapper, event);
     expect(decodedTransaction).toStrictEqual(
       new DecodedPixelMapTransaction({
@@ -72,47 +74,13 @@ describe('decodeTransaction', () => {
         timestamp: new Date('2021-08-26T21:08:49.000Z'),
         blockNumber: 13103379,
         txHash: '0x3feba41d9ccc7c7078e820438d11481bbc4bf3f8b0fd3ab023eea205d14a85f2',
-        logIndex: 166,
-      }),
-    );
-  });
-
-  it('returns a wrappedTile DecodedTransaction when given the second (2/3) wrapping event', async () => {
-    const event = Object.assign(new PixelMapEvent(), wrappingSample2);
-    const decodedTransaction = await decodeTransaction(pixelMap, pixelMapWrapper, event);
-    expect(decodedTransaction).toStrictEqual(
-      new DecodedPixelMapTransaction({
-        location: 3459,
-        type: TransactionType.wrap,
-        price: 4,
-        from: '0x4aeb32e16dcac00b092596adc6cd4955efdee290',
-        timestamp: new Date('2021-08-26T21:08:49.000Z'),
-        blockNumber: 13103379,
-        txHash: '0x3feba41d9ccc7c7078e820438d11481bbc4bf3f8b0fd3ab023eea205d14a85f2',
-        logIndex: 167,
-      }),
-    );
-  });
-
-  it('returns a wrappedTile DecodedTransaction when given the third (3/3) wrapping event', async () => {
-    const event = Object.assign(new PixelMapEvent(), wrappingSample3);
-    const decodedTransaction = await decodeTransaction(pixelMap, pixelMapWrapper, event);
-    expect(decodedTransaction).toStrictEqual(
-      new DecodedPixelMapTransaction({
-        location: 3459,
-        type: TransactionType.wrap,
-        price: 4,
-        from: '0x4aeb32e16dcac00b092596adc6cd4955efdee290',
-        timestamp: new Date('2021-08-26T21:08:49.000Z'),
-        blockNumber: 13103379,
-        txHash: '0x3feba41d9ccc7c7078e820438d11481bbc4bf3f8b0fd3ab023eea205d14a85f2',
-        logIndex: 168,
+        logIndex: 103,
       }),
     );
   });
 
   it('returns an unwrapTile DecodedTransaction when given an unwrapping event', async () => {
-    const event = Object.assign(new PixelMapEvent(), unwrapping);
+    const event = Object.assign(new PixelMapTransaction(), unwrapping);
     const decodedTransaction = await decodeTransaction(pixelMap, pixelMapWrapper, event);
     expect(decodedTransaction).toStrictEqual(
       new DecodedPixelMapTransaction({
@@ -123,49 +91,12 @@ describe('decodeTransaction', () => {
         timestamp: new Date('2021-08-27T05:04:12.000Z'),
         blockNumber: 13105522,
         txHash: '0x4a3359f5b5ed5500fd88847e44b67a6b70fc433ba70a303613fe963f5a97ac45',
-        logIndex: 123,
+        logIndex: 73,
       }),
     );
   });
-
-  it('returns a buyTile DecodedTransaction when given an OpenSea purchase transfer event', async () => {
-    const event = Object.assign(new PixelMapEvent(), openseaPurchase);
-    const decodedTransaction = await decodeTransaction(pixelMap, pixelMapWrapper, event);
-    expect(decodedTransaction).toStrictEqual(
-      new DecodedPixelMapTransaction({
-        location: 222,
-        type: TransactionType.buyTile,
-        price: 6,
-        from: '0x59165f6219936b1e6a970c44f750d588d1f5d558',
-        to: '0x60ceef10f9dd4a5d7874f22f461048ea96f475f6',
-        timestamp: new Date('2021-08-26T22:35:01.000Z'),
-        blockNumber: 13103747,
-        txHash: '0xb054bf1c08cb269c51e773e3f5d2135a27885087904bfa89389bdbdd1240a71e',
-        logIndex: 458,
-      }),
-    );
-  });
-
-  it('returns a buyTile DecodedTransaction when given a delegated purchase transfer event', async () => {
-    const event = Object.assign(new PixelMapEvent(), delegatedBuyTile);
-    const decodedTransaction = await decodeTransaction(pixelMap, pixelMapWrapper, event);
-    expect(decodedTransaction).toStrictEqual(
-      new DecodedPixelMapTransaction({
-        location: 896,
-        type: TransactionType.buyTile,
-        price: 3.55,
-        from: '0x480F108332590c60eb50b3ecC22909309c8E721d',
-        to: '0xb17bFA989e00c7b0d17e52d3e90Db440d2d7Ee5f',
-        timestamp: new Date('2021-08-26T22:35:01.000Z'),
-        txHash: '0x84f4aec966f7e2de2b4139d0dfd510d28e9c1e7b318b69d7b96b5fdeb0eb7ec4',
-        blockNumber: 13105460,
-        logIndex: 43,
-      }),
-    );
-  });
-
   it('returns a transfer DecodedTransaction when given a transfer event', async () => {
-    const event = Object.assign(new PixelMapEvent(), transfer);
+    const event = Object.assign(new PixelMapTransaction(), transfer);
     const decodedTransaction = await decodeTransaction(pixelMap, pixelMapWrapper, event);
     expect(decodedTransaction).toStrictEqual(
       new DecodedPixelMapTransaction({
@@ -177,24 +108,48 @@ describe('decodeTransaction', () => {
         timestamp: new Date('2021-08-27T06:05:00.000Z'),
         txHash: '0x2bb3203913d34d29338c90343fae99b4af1dcebf9bd58db5310bac7fc3f9d6ff',
         blockNumber: 13105786,
-        logIndex: 122,
+        logIndex: 85,
+      }),
+    );
+  });
+
+  it('returns a transfer DecodedTransaction when given a safeTransferFrom event', async () => {
+    const event = Object.assign(new PixelMapTransaction(), safeTransferFrom);
+    const decodedTransaction = await decodeTransaction(pixelMap, pixelMapWrapper, event);
+    expect(decodedTransaction).toStrictEqual(
+      new DecodedPixelMapTransaction({
+        location: 1541,
+        type: TransactionType.transfer,
+        price: 0,
+        from: '0xd20ce27f650598c2d790714b4f6a7222b8ddce22',
+        to: '0xd317a3744f60c5cbcde7c82df90a6513409198a2',
+        timestamp: new Date('2021-08-27T13:02:50.000Z'),
+        txHash: '0xffec1a259ca648a0c64b38161abddd7a0bac9a6e5a6d69a8a55c29734b5a0432',
+        blockNumber: 13107569,
+        logIndex: 25,
       }),
     );
   });
 
   it('returns a proper setTile DecodedTransaction when given a wrapper setTileData event', async () => {
-    const event = Object.assign(new PixelMapEvent(), setTileData);
+    const event = Object.assign(new PixelMapTransaction(), setTileData);
     const decodedTransaction = await decodeTransaction(pixelMap, pixelMapWrapper, event);
     expect(decodedTransaction).toStrictEqual(
       new DecodedPixelMapTransaction({
         location: 1371,
         type: TransactionType.setTile,
         image:
-          // eslint-disable-next-line max-len
-          '000666fff999000666666666666999666000fff000ccc333fff666666ccc999333666666666999333999000fff666999000666999333ccc333333333666999666999ccc000666999999000ccc333fff000999ccc000ccc333003333ccc9996663339993333339cc9cc699666ccc66669c69c9cc33333366666666666636c69c69c36936969c9cc9cc9cc9cf333666666999999999ccc39c33636939c69c9cc9cf9cf9cc6663336666666666660009cc33636933669c69c669ccffff66633366666666633366633333636936939c699ccf9cc999333666666666666333ccc33336636936969c9ccccf666666999666666666666333000ccc33339969c69c9cfccf333000333666999666333ccc666000333666666000000999333ccccccccc333999999999333333333666999ffffffccc333fffccc666999ccc666000cccccc333ccc000999ccc333333ccc333ccc000999666fff333999333999666666333666666999666000ccc000ccc000fff000999666666666666666666000999ccc333',
+          '000666fff999000666666666666999666000fff000ccc333fff666666ccc999333666666666999333999000fff6669990006669993' +
+          '33ccc333333333666999666999ccc000666999999000ccc333fff000999ccc000ccc333003333ccc9996663339993333339cc9cc69' +
+          '9666ccc66669c69c9cc33333366666666666636c69c69c36936969c9cc9cc9cc9cf333666666999999999ccc39c33636939c69c9cc' +
+          '9cf9cf9cc6663336666666666660009cc33636933669c69c669ccffff66633366666666633366633333636936939c699ccf9cc9993' +
+          '33666666666666333ccc33336636936969c9ccccf666666999666666666666333000ccc33339969c69c9cfccf33300033366699966' +
+          '6333ccc666000333666666000000999333ccccccccc333999999999333333333666999ffffffccc333fffccc666999ccc666000ccc' +
+          'ccc333ccc000999ccc333333ccc333ccc000999666fff333999333999666666333666666999666000ccc000ccc000fff0009996666' +
+          '66666666666666000999ccc333',
         url: 'https://twitter.com/ScreenieBabies',
         from: '0xe6ee1b79627243ee40ec929fe2573e63d70b10c4',
-        timestamp: new Date('2021-09-07T17:31:36.000Z'),
+        timestamp: new Date('2021-08-27T06:45:59.000Z'),
         blockNumber: 13180007,
         txHash: '0x4b7639a49c4652b51b9b265c40be13a6654ef4c8f91d6729737d316e64801485',
         logIndex: 37,

@@ -1,48 +1,21 @@
 {
-  "id": 1,
-  "txHash": "0x64feae306ab228a93a56fad5c4855e317958d9f5d8423168aecdc163756925b6",
-  "logIndex": 1,
-  "eventData": {
-    "data": "0x00000000000000000000000000000000000000000000000000000000000007c0",
-    "topics": [
-      "0xb497d17d9ddaf07c831248da6ed8174689abdc4370285e618e350f29f5aff9a0"
-    ],
-    "address": "0x015a06a433353f8db634df4eddf0c109882a15ab",
-    "removed": false,
-    "logIndex": "0x1",
-    "blockHash": "0x9a57668e96f6cd78e65409020a56c0b9111aa482e7588babd9587ac13876ddd2",
-    "blockNumber": "0x284ea2",
-    "transactionHash": "0x64feae306ab228a93a56fad5c4855e317958d9f5d8423168aecdc163756925b6",
-    "transactionIndex": "0x3"
-  },
-  "txData": {
-    "r": "0x3ac076ad0eccd4135bafa95c7141df814298c235d772f41e28657c944100f4ce",
-    "s": "0x4585c344064d82e2637c7bdefcb4a94a42e67f3eec93099f8754fd42edc3c453",
-    "v": 27,
-    "to": "0x015A06a433353f8db634dF4eDdF0C109882A15AB",
-    "data": "0x329ce29e00000000000000000000000000000000000000000000000000000000000007c0",
-    "from": "0xc20dAA952d35677eb5DC40b8e0Be84920f40aD68",
-    "hash": "0x64feae306ab228a93a56fad5c4855e317958d9f5d8423168aecdc163756925b6",
-    "type": 0,
-    "nonce": 3,
-    "value": {
-      "hex": "0x1bc16d674ec80000",
-      "type": "BigNumber"
-    },
-    "chainId": 0,
-    "creates": null,
-    "gasLimit": {
-      "hex": "0x02645c",
-      "type": "BigNumber"
-    },
-    "gasPrice": {
-      "hex": "0x04a817c800",
-      "type": "BigNumber"
-    },
-    "blockHash": "0x9a57668e96f6cd78e65409020a56c0b9111aa482e7588babd9587ac13876ddd2",
-    "accessList": null,
-    "blockNumber": 2641570,
-    "confirmations": 10967857,
-    "transactionIndex": 3
-  }
+  "id": 2,
+  "blockNumber": "2641570",
+  "timeStamp": "1479357668",
+  "hash": "0x64feae306ab228a93a56fad5c4855e317958d9f5d8423168aecdc163756925b6",
+  "nonce": "3",
+  "blockHash": "0x9a57668e96f6cd78e65409020a56c0b9111aa482e7588babd9587ac13876ddd2",
+  "transactionIndex": "3",
+  "from": "0xc20daa952d35677eb5dc40b8e0be84920f40ad68",
+  "to": "0x015a06a433353f8db634df4eddf0c109882a15ab",
+  "value": "2000000000000000000",
+  "gas": "156764",
+  "gasPrice": "20000000000",
+  "isError": "0",
+  "txreceipt_status": "",
+  "input": "0x329ce29e00000000000000000000000000000000000000000000000000000000000007c0",
+  "contractAddress": "0x015A06a433353f8db634dF4eDdF0C109882A15AB",
+  "cumulativeGasUsed": "133034",
+  "gasUsed": "56764",
+  "confirmations": "11519463"
 }

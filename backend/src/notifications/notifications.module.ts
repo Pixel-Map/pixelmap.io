@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
-import { PixelMapEvent } from '../ingestor/entities/pixelMapEvent.entity';
+
 import { DataHistory } from '../ingestor/entities/dataHistory.entity';
 import { WrappingHistory } from '../ingestor/entities/wrappingHistory.entity';
 import { PurchaseHistory } from '../ingestor/entities/purchaseHistory.entity';
@@ -10,6 +10,7 @@ import { DiscordModule, TransformPipe, ValidationPipe } from 'discord-nestjs';
 import { HttpModule } from '@nestjs/axios';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { CurrentState } from '../ingestor/entities/currentState.entity';
+import { PixelMapTransaction } from '../ingestor/entities/pixelMapTransaction.entity';
 
 @Module({
   providers: [NotificationsService],
@@ -17,7 +18,7 @@ import { CurrentState } from '../ingestor/entities/currentState.entity';
     HttpModule,
     MikroOrmModule.forFeature([
       CurrentState,
-      PixelMapEvent,
+      PixelMapTransaction,
       DataHistory,
       WrappingHistory,
       PurchaseHistory,

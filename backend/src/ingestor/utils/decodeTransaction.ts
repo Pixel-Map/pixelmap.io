@@ -1,7 +1,7 @@
-import { PixelMapEvent } from '../entities/pixelMapEvent.entity';
 import { ethers } from 'ethers';
-import { EventType, getEventType } from './getEventType';
-import { getTimestamp } from './getTimestamp';
+import { PixelMapTransaction } from '../entities/pixelMapTransaction.entity';
+import { getTransactionDescription } from './getTransactionDescription';
+import { getCurrentOwner } from './getCurrentOwner';
 
 export enum TransactionType {
   setTile,
@@ -9,12 +9,16 @@ export enum TransactionType {
   wrap,
   unwrap,
   transfer,
+  createContract,
+  getTile,
+  notImportant,
 }
 
 export class DecodedPixelMapTransaction {
   public constructor(init?: Partial<DecodedPixelMapTransaction>) {
     Object.assign(this, init);
   }
+
   location: number;
   type: TransactionType;
   price: number;
@@ -31,210 +35,141 @@ export class DecodedPixelMapTransaction {
 export async function decodeTransaction(
   pixelMap: ethers.Contract,
   pixelMapWrapper: ethers.Contract,
-  event: PixelMapEvent,
+  transaction: PixelMapTransaction,
 ): Promise<DecodedPixelMapTransaction> {
-  const eventType = await getEventType(event);
-  // console.log(JSON.stringify(event));
+  // Contract Creation Event
+  if (
+    transaction.hash.toLowerCase() == '0x79e41799591e99ffb0aad02d270ac92328e441d0d6a0e49fd6cb9948efb40656' ||
+    transaction.hash.toLowerCase() == '0x7982bdc73900590ee3d1239341c6390eebcc2ee2b39041d382ee7762ce7586db'
+  ) {
+    return new DecodedPixelMapTransaction({
+      type: TransactionType.createContract,
+      blockNumber: parseInt(transaction.blockNumber),
+    });
+  }
 
-  let parsedTransaction: ethers.utils.TransactionDescription;
-  let tileLocation: number; // Which tile is it?
-  const timestamp = await getTimestamp(event.txData.blockNumber);
-  switch (eventType) {
-    case EventType.TileUpdated:
-      if (event.txData.to.toLowerCase() === pixelMapWrapper.address.toLowerCase()) {
-        // If the transfer is TO the PixelMapWrapper, this could be a wrap/minting of ERC721.
-        parsedTransaction = pixelMapWrapper.interface.parseTransaction(event.txData);
-        tileLocation = parsedTransaction.args._locationID.toNumber();
-        switch (parsedTransaction.name) {
-          case 'wrap':
-            return new DecodedPixelMapTransaction({
-              location: tileLocation,
-              type: TransactionType.wrap,
-              price: parseFloat(ethers.utils.formatEther(parsedTransaction.value)),
-              from: event.txData.from.toLowerCase(),
-              timestamp: timestamp,
-              txHash: event.txHash,
-              blockNumber: event.txData.blockNumber,
-              logIndex: event.logIndex,
-            });
-          case 'unwrap':
-            return new DecodedPixelMapTransaction({
-              location: tileLocation,
-              type: TransactionType.unwrap,
-              price: parseFloat(ethers.utils.formatEther(parsedTransaction.value)),
-              from: event.txData.from.toLowerCase(),
-              timestamp: timestamp,
-              txHash: event.txHash,
-              blockNumber: event.txData.blockNumber,
-              logIndex: event.logIndex,
-            });
-          case 'setTileData':
-            return new DecodedPixelMapTransaction({
-              location: tileLocation,
-              type: TransactionType.setTile,
-              image: parsedTransaction.args._image,
-              url: parsedTransaction.args._url,
-              from: event.txData.from.toLowerCase(),
-              timestamp: timestamp,
-              txHash: event.txHash,
-              blockNumber: event.txData.blockNumber,
-              logIndex: event.logIndex,
-            });
-          default:
-            throw new Error(`Unknown transaction type: ${parsedTransaction.name}`);
-        }
-      } else {
-        try {
-          parsedTransaction = pixelMap.interface.parseTransaction(event.txData);
-          tileLocation = parsedTransaction.args.location.toNumber();
-          if (parsedTransaction.name == 'buyTile') {
-            const previousData = await pixelMap.tiles(tileLocation, { blockTag: event.txData.blockNumber - 1 });
-
-            // The first owner was myself.
-            let owner = previousData.owner;
-            if (owner == '0x0000000000000000000000000000000000000000') {
-              owner = '0x4f4b7e7edf5ec41235624ce207a6ef352aca7050';
-            }
-
-            // If owned by wrapper
-            if (owner.toLowerCase() == '0x050dc61dfb867e0fe3cf2948362b6c0f3faf790b'.toLowerCase()) {
-              owner = await pixelMapWrapper.ownerOf(tileLocation, { blockTag: event.txData.blockNumber - 1 });
-            }
-
-            return new DecodedPixelMapTransaction({
-              location: tileLocation,
-              type: TransactionType.buyTile,
-              price: parseFloat(ethers.utils.formatEther(parsedTransaction.value)),
-              from: event.txData.from.toLowerCase(),
-              to: owner,
-              timestamp: timestamp,
-              txHash: event.txHash,
-              blockNumber: event.txData.blockNumber,
-              logIndex: event.logIndex,
-            });
-          }
-
-          if (parsedTransaction.name == 'setTile') {
-            return new DecodedPixelMapTransaction({
-              location: tileLocation,
-              type: TransactionType.setTile,
-              image: parsedTransaction.args.image,
-              url: parsedTransaction.args.url,
-              price: parseFloat(ethers.utils.formatEther(parsedTransaction.args.price)),
-              from: event.txData.from.toLowerCase(),
-              timestamp: timestamp,
-              txHash: event.txHash,
-              blockNumber: event.txData.blockNumber,
-              logIndex: event.logIndex,
-            });
-          }
-        } catch (exception) {
-          // console.log('Unable to parse using normal methods, figuring out via block comparison');
-          const parsedLog = await pixelMap.interface.parseLog(event.eventData);
-          const tileId = parsedLog.args.location.toNumber();
-          const tilePriorToUpdate = await pixelMap.tiles(tileId, { blockTag: event.block - 1 }).catch();
-          const tileAfterUpdate = await pixelMap.tiles(tileId, { blockTag: event.block }).catch();
-          if (tilePriorToUpdate.owner != tileAfterUpdate.owner) {
-            // Tis a buyTile!
-            return new DecodedPixelMapTransaction({
-              type: TransactionType.buyTile,
-              location: tileId,
-              from: tileAfterUpdate.owner,
-              to: tilePriorToUpdate.owner,
-              price: parseFloat(ethers.utils.formatEther(tilePriorToUpdate.price)),
-              timestamp: new Date('2021-08-26T22:35:01.000Z'),
-              blockNumber: event.block,
-              txHash: event.txHash,
-              logIndex: event.logIndex,
-            });
-          } else {
-            // Tis a setTile!
-            throw 'Implement my friend';
-          }
-        }
-      }
-      break;
-    case EventType.Transfer:
-      const price = parseFloat(ethers.utils.formatEther(event.txData.value));
-      if (event.txData.to.toLowerCase() === pixelMapWrapper.address.toLowerCase()) {
-        parsedTransaction = pixelMapWrapper.interface.parseTransaction(event.txData);
-
-        if (parsedTransaction.args._locationID) {
-          tileLocation = parsedTransaction.args._locationID.toNumber();
-
-          // If the transfer is TO the PixelMapWrapper, this is a wrap/minting of ERC721.
-          return new DecodedPixelMapTransaction({
-            location: tileLocation,
-            type: TransactionType.wrap,
-            price: price,
-            from: event.txData.from.toLowerCase(),
-            timestamp: timestamp,
-            txHash: event.txHash,
-            blockNumber: event.txData.blockNumber,
-            logIndex: event.logIndex,
-          });
-        } else {
-          tileLocation = parsedTransaction.args.tokenId.toNumber();
-        }
-      }
-      const parsedLog = pixelMapWrapper.interface.parseLog(event.eventData);
-      // If not a wrap, is it a sale?
-      if (price > 0) {
-        return new DecodedPixelMapTransaction({
-          location: parsedLog.args.tokenId.toNumber(),
-          type: TransactionType.buyTile,
-          price: price,
-          from: parsedLog.args.to.toLowerCase(),
-          to: parsedLog.args.from.toLowerCase(),
-          timestamp: timestamp,
-          txHash: event.txHash,
-          blockNumber: event.txData.blockNumber,
-          logIndex: event.logIndex,
-        });
-      }
-      // Must have just been a regular transfer!
+  const txDescription = getTransactionDescription(pixelMap, pixelMapWrapper, transaction);
+  const tileLocation = parseInt(txDescription.args[0]);
+  const timestamp = new Date(parseInt(transaction.timeStamp) * 1000);
+  switch (txDescription.functionFragment.name) {
+    case 'buyTile':
+      const owner = await getCurrentOwner(pixelMap, pixelMapWrapper, transaction, tileLocation);
       return new DecodedPixelMapTransaction({
-        location: parsedLog.args.tokenId.toNumber(),
-        type: TransactionType.transfer,
-        price: price,
-        from: parsedLog.args.to.toLowerCase(),
-        to: parsedLog.args.from.toLowerCase(),
+        location: tileLocation,
+        type: TransactionType.buyTile,
+        price: parseFloat(ethers.utils.formatEther(transaction.value)),
+        from: transaction.from.toLowerCase(),
+        to: owner,
         timestamp: timestamp,
-        txHash: event.txHash,
-        blockNumber: event.txData.blockNumber,
-        logIndex: event.logIndex,
+        txHash: transaction.hash,
+        blockNumber: parseInt(transaction.blockNumber),
+        logIndex: parseInt(transaction.transactionIndex),
       });
-    case EventType.Wrapped:
-      parsedTransaction = pixelMapWrapper.interface.parseTransaction(event.txData);
-      tileLocation = parsedTransaction.args._locationID.toNumber();
+    case 'setTile':
+      return new DecodedPixelMapTransaction({
+        location: tileLocation,
+        type: TransactionType.setTile,
+        price: parseFloat(ethers.utils.formatEther(transaction.value)),
+        image: txDescription.args[1],
+        url: txDescription.args[2],
+        from: transaction.from.toLowerCase(),
+        timestamp: timestamp,
+        txHash: transaction.hash,
+        blockNumber: parseInt(transaction.blockNumber),
+        logIndex: parseInt(transaction.transactionIndex),
+      });
+    case 'wrap':
       return new DecodedPixelMapTransaction({
         location: tileLocation,
         type: TransactionType.wrap,
-        price: parseFloat(ethers.utils.formatEther(parsedTransaction.value)),
-        from: event.txData.from.toLowerCase(),
+        price: parseFloat(ethers.utils.formatEther(transaction.value)),
+        from: transaction.from.toLowerCase(),
         timestamp: timestamp,
-        txHash: event.txHash,
-        blockNumber: event.txData.blockNumber,
-        logIndex: event.logIndex,
+        txHash: transaction.hash,
+        blockNumber: parseInt(transaction.blockNumber),
+        logIndex: parseInt(transaction.transactionIndex),
       });
-    case EventType.Unwrapped:
-      parsedTransaction = pixelMapWrapper.interface.parseTransaction(event.txData);
-      tileLocation = parsedTransaction.args._locationID.toNumber();
+    case 'unwrap':
       return new DecodedPixelMapTransaction({
         location: tileLocation,
         type: TransactionType.unwrap,
-        price: parseFloat(ethers.utils.formatEther(parsedTransaction.value)),
-        from: event.txData.from.toLowerCase(),
+        price: parseFloat(ethers.utils.formatEther(transaction.value)),
+        from: transaction.from.toLowerCase(),
         timestamp: timestamp,
-        txHash: event.txHash,
-        blockNumber: event.txData.blockNumber,
-        logIndex: event.logIndex,
+        txHash: transaction.hash,
+        blockNumber: parseInt(transaction.blockNumber),
+        logIndex: parseInt(transaction.transactionIndex),
+      });
+    case 'transferFrom':
+      return new DecodedPixelMapTransaction({
+        location: parseInt(txDescription.args[2]),
+        type: TransactionType.transfer,
+        price: parseFloat(ethers.utils.formatEther(transaction.value)),
+        from: txDescription.args[1].toLowerCase(),
+        to: txDescription.args[0].toLowerCase(),
+        timestamp: timestamp,
+        txHash: transaction.hash,
+        blockNumber: parseInt(transaction.blockNumber),
+        logIndex: parseInt(transaction.transactionIndex),
+      });
+    case 'safeTransferFrom':
+      return new DecodedPixelMapTransaction({
+        location: parseInt(txDescription.args[2]),
+        type: TransactionType.transfer,
+        price: parseFloat(ethers.utils.formatEther(transaction.value)),
+        from: txDescription.args[1].toLowerCase(),
+        to: txDescription.args[0].toLowerCase(),
+        timestamp: timestamp,
+        txHash: transaction.hash,
+        blockNumber: parseInt(transaction.blockNumber),
+        logIndex: parseInt(transaction.transactionIndex),
+      });
+    case 'setTileData':
+      return new DecodedPixelMapTransaction({
+        location: tileLocation,
+        type: TransactionType.setTile,
+        image: txDescription.args._image,
+        url: txDescription.args._url,
+        from: transaction.from.toLowerCase(),
+        timestamp: timestamp,
+        txHash: transaction.hash,
+        blockNumber: parseInt(transaction.blockNumber),
+        logIndex: parseInt(transaction.transactionIndex),
+      });
+    case 'getTile':
+      return new DecodedPixelMapTransaction({
+        type: TransactionType.getTile,
+        blockNumber: parseInt(transaction.blockNumber),
+      });
+    case 'setBaseTokenURI':
+      return new DecodedPixelMapTransaction({
+        type: TransactionType.notImportant,
+        blockNumber: parseInt(transaction.blockNumber),
+      });
+    case 'setTokenExtension':
+      return new DecodedPixelMapTransaction({
+        type: TransactionType.notImportant,
+        blockNumber: parseInt(transaction.blockNumber),
+      });
+    case 'setApprovalForAll':
+      return new DecodedPixelMapTransaction({
+        type: TransactionType.notImportant,
+        blockNumber: parseInt(transaction.blockNumber),
+      });
+    case 'withdrawETH':
+      return new DecodedPixelMapTransaction({
+        type: TransactionType.notImportant,
+        blockNumber: parseInt(transaction.blockNumber),
+      });
+    case 'approve':
+      return new DecodedPixelMapTransaction({
+        type: TransactionType.notImportant,
+        blockNumber: parseInt(transaction.blockNumber),
       });
     default:
-      // console.log(JSON.stringify(event));
-      // console.log(event);
-      throw 'IDK Clown';
+      console.log(JSON.stringify(transaction));
+      console.log(transaction);
+      console.log(txDescription);
+      throw 'Unknown Transaction Type!';
   }
-
-  throw 'Unable to decode transaction.';
 }

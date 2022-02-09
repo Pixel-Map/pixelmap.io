@@ -26,6 +26,7 @@ specifiers:
   '@types/supertest': ^2.0.11
   '@typescript-eslint/eslint-plugin': ^5.8.0
   '@typescript-eslint/parser': ^5.8.0
+  axios: ^0.25.0
   bignumber.js: ^9.0.2
   cache-manager: ^3.6.0
   canvas: ^2.8.0
@@ -73,6 +74,7 @@ dependencies:
   '@nestjs/platform-express': 8.2.4_4074b1ae164556f5db19ac4b8b5667b7
   '@nestjs/schedule': 1.0.2_89be6bb8102e541c46529b8f98da1114
   '@pixelmap/common': 0.0.7
+  axios: 0.25.0
   bignumber.js: 9.0.2
   cache-manager: 3.6.0
   canvas: 2.8.0
@@ -3736,7 +3738,7 @@ packages:
   /axios/0.21.4:
     resolution: {integrity: sha512-ut5vewkiu8jjGBdqpM44XxjuCjq9LAKeHVmoVfHVzy8eHgxxq8SbAVQNovDA8mVi05kP0Ea/n/UzcSHcTJQfNg==}
     dependencies:
-      follow-redirects: 1.14.6
+      follow-redirects: 1.14.7
     transitivePeerDependencies:
       - debug
     dev: false
@@ -3744,7 +3746,7 @@ packages:
   /axios/0.21.4_debug@4.3.3:
     resolution: {integrity: sha512-ut5vewkiu8jjGBdqpM44XxjuCjq9LAKeHVmoVfHVzy8eHgxxq8SbAVQNovDA8mVi05kP0Ea/n/UzcSHcTJQfNg==}
     dependencies:
-      follow-redirects: 1.14.6_debug@4.3.3
+      follow-redirects: 1.14.7_debug@4.3.3
     transitivePeerDependencies:
       - debug
     dev: false
@@ -3760,7 +3762,15 @@ packages:
   /axios/0.24.0:
     resolution: {integrity: sha512-Q6cWsys88HoPgAaFAVUb0WpPk0O8iTeisR9IMqy9G8AbO4NlpVknrnQS03zzF9PGAWgO3cgletO3VjV/P7VztA==}
     dependencies:
-      follow-redirects: 1.14.6
+      follow-redirects: 1.14.7
+    transitivePeerDependencies:
+      - debug
+    dev: false
+
+  /axios/0.25.0:
+    resolution: {integrity: sha512-cD8FOb0tRH3uuEe6+evtAbgJtfxr7ly3fQjYcMcuPlgkwVS9xboaVIpcDV+cYQe+yGykgwZCs1pzjntcGa6l5g==}
+    dependencies:
+      follow-redirects: 1.14.7
     transitivePeerDependencies:
       - debug
     dev: false
@@ -5478,8 +5488,18 @@ packages:
         optional: true
     dev: false
 
-  /follow-redirects/1.14.6_debug@4.3.3:
-    resolution: {integrity: sha512-fhUl5EwSJbbl8AR+uYL2KQDxLkdSjZGR36xy46AO7cOMTrCMON6Sa28FmAnC2tRTDbd/Uuzz3aJBv7EBN7JH8A==}
+  /follow-redirects/1.14.7:
+    resolution: {integrity: sha512-+hbxoLbFMbRKDwohX8GkTataGqO6Jb7jGwpAlwgy2bIz25XtRm7KEzJM76R1WiNT5SwZkX4Y75SwBolkpmE7iQ==}
+    engines: {node: '>=4.0'}
+    peerDependencies:
+      debug: '*'
+    peerDependenciesMeta:
+      debug:
+        optional: true
+    dev: false
+
+  /follow-redirects/1.14.7_debug@4.3.3:
+    resolution: {integrity: sha512-+hbxoLbFMbRKDwohX8GkTataGqO6Jb7jGwpAlwgy2bIz25XtRm7KEzJM76R1WiNT5SwZkX4Y75SwBolkpmE7iQ==}
     engines: {node: '>=4.0'}
     peerDependencies:
       debug: '*'

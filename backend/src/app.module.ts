@@ -7,7 +7,6 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { TsMorphMetadataProvider } from '@mikro-orm/reflection';
 import { DataHistory } from './ingestor/entities/dataHistory.entity';
-import { PixelMapEvent } from './ingestor/entities/pixelMapEvent.entity';
 import { PurchaseHistory } from './ingestor/entities/purchaseHistory.entity';
 import { Tile } from './ingestor/entities/tile.entity';
 import { TransferHistory } from './ingestor/entities/transferHistory.entity';
@@ -20,6 +19,7 @@ import { MetadataModule } from './metadata/metadata.module';
 import { OpenseaModule } from './opensea/opensea.module';
 import { SyncToS3Service } from './sync-to-s3/sync-to-s3.service';
 import { SyncToS3Module } from './sync-to-s3/sync-to-s3.module';
+import { PixelMapTransaction } from './ingestor/entities/pixelMapTransaction.entity';
 
 @Module({
   imports: [
@@ -30,7 +30,15 @@ import { SyncToS3Module } from './sync-to-s3/sync-to-s3.module';
     MikroOrmModule.forRootAsync({
       useFactory: (configService: ConfigService) => ({
         metadataProvider: TsMorphMetadataProvider,
-        entities: [CurrentState, DataHistory, PixelMapEvent, PurchaseHistory, Tile, TransferHistory, WrappingHistory],
+        entities: [
+          CurrentState,
+          DataHistory,
+          PurchaseHistory,
+          Tile,
+          TransferHistory,
+          WrappingHistory,
+          PixelMapTransaction,
+        ],
         type: 'postgresql',
         dbName: configService.get<string>('DATABASE_NAME'),
         host: configService.get<string>('DATABASE_HOST'),

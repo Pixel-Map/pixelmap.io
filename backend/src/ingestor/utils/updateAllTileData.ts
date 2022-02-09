@@ -31,10 +31,7 @@ export async function getCurrentTileData(tileId: number, pixelMap: Contract, pix
 
 // Returns true if the tile is wrapped
 function isWrapped(owner: string) {
-  if (owner.toLowerCase() == '0x050dc61dfb867e0fe3cf2948362b6c0f3faf790b') {
-    return true;
-  }
-  return false;
+  return owner.toLowerCase() == '0x050dc61dfb867e0fe3cf2948362b6c0f3faf790b';
 }
 
 // getOwner returns the real owner of a given tile.
