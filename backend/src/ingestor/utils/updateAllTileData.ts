@@ -10,11 +10,16 @@ export async function updateAllTileData(
   tileRepo: EntityRepository<Tile>,
 ) {
   for (let i = 0; i < 3970; i++) {
-    const tile = await tileRepo.findOne({ id: i });
-    const updatedTileData = await getCurrentTileData(i, pixelMap, pixelMapWrapper);
-    Object.assign(tile, updatedTileData);
-    logger.verbose('Updating with current data for tile: ' + i);
-    await tileRepo.persistAndFlush(tile);
+    try {
+      const tile = await tileRepo.findOne({ id: i });
+      const updatedTileData = await getCurrentTileData(i, pixelMap, pixelMapWrapper);
+      Object.assign(tile, updatedTileData);
+      logger.verbose('Updating with current data for tile: ' + i);
+      await tileRepo.persistAndFlush(tile);
+    } catch (error) {
+      console.log(error);
+      logger.verbose('Unable to fetch current data,skipping!');
+    }
   }
 }
 

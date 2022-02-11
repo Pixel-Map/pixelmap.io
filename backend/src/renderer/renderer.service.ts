@@ -69,6 +69,16 @@ export class RendererService {
           let imageData = '';
           if (image) {
             imageData = decompressTileCode(tiles[i].image);
+          } else {
+            imageData =
+              '000200310310310310310310310310310310310310310000200853b75b76b76b76b76b76b76b76b76b76b76b86a75311310b' +
+              '75dbadbbdbbdbbdbbdbbdbbdbbdbbdbbdbbdbbca8331310b76dbbdbbdaadbbdbbdaadaadbbdbbdaadabdbbca8331310b76db' +
+              'bdaadaadbbdbbdaadaadbbdbbdaadaadbbca8331310b76dbbdbbdbbb86a75ca8daab76b76daadaadbbca8331310b76dbbdbb' +
+              'dbba75952b86b86953a65daadaadbbca8331310b76dbbdaadaaca8b86954954b75ca8daadaadbbca8331310b76dbbdaadaad' +
+              'aab86954953b75da9daadaadbbca8331310b76dbbdbbdbbb76953b75b75a54b76daadaadbbca8331310b76dbbdbbdbbb76a6' +
+              '5ca8da9b76a65daadaadbbca8331310b76dbbdaadaadaadaadaadaadaadaadaadaadbbca8331310b76dbbdabdaadaadaadaa' +
+              'daadaadaadaadaadbbca8332310b86dbbdbbdbbdbbdbbdbbdbbdbbdbbdbbdbbebbda9432310a75ca8ca8ca8ca8ca8ca8ca8c' +
+              'a8ca8ca8ca8ca8b86321000311331331331331331331331331331331331331320000';
           }
 
           if (imageData.length == 768) {

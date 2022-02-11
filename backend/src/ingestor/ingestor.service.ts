@@ -191,7 +191,7 @@ export class IngestorService {
     await this.pixelMapTransaction.flush();
   }
 
-  // @Cron('0 */3 * * *')
+  @Cron('0 */3 * * *')
   @UseRequestContext()
   async updateCurrentTileData() {
     const { provider, pixelMap, pixelMapWrapper } = initializeEthersJS();

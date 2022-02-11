@@ -22,8 +22,8 @@ export class OpenseaService {
     private configService: ConfigService,
   ) {}
 
-  // Update OpenSea prices every 15 minutes
-  @Cron('1 * * * *')
+  // Update OpenSea prices every 2 hours
+  @Cron('* */2 * * *')
   @UseRequestContext()
   async updateOpenSeaPrices() {
     if (!this.updatingOpenSeaPrices) {
@@ -43,7 +43,7 @@ export class OpenseaService {
                   '/?force_update=true',
                 {
                   headers: {
-                    Authorization: `Bearer ${openseaAPIKey}`,
+                    'X-API-KEY': openseaAPIKey,
                   },
                 },
               )
