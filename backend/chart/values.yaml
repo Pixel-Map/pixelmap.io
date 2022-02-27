@@ -11,7 +11,6 @@ DATABASE_HOST: "postgres-postgresql.prod.svc.cluster.local"
 DISCORD_TOKEN: ""
 ETHERSCAN_API_KEY: ""
 OPENSEA_API_KEY: ""
-SYNC_TO_AWS: "false"
 
 replicaCount: 1
 imagePullSecrets: [ ]
