@@ -69,7 +69,8 @@ export class RendererService {
           let imageData = '';
           if (image) {
             imageData = decompressTileCode(tiles[i].image);
-          } else {
+          }
+          if (imageData.length != 768) {
             imageData =
               '000200310310310310310310310310310310310310310000200853b75b76b76b76b76b76b76b76b76b76b76b86a75311310b' +
               '75dbadbbdbbdbbdbbdbbdbbdbbdbbdbbdbbdbbca8331310b76dbbdbbdaadbbdbbdaadaadbbdbbdaadabdbbca8331310b76db' +
@@ -91,6 +92,9 @@ export class RendererService {
               // Cache it so we don't re-render needlessly!
               await this.cacheManager.set('image-' + String(tiles[i].id), imageData);
             }
+          } else {
+            console.log(imageData);
+            throw "Somehow imagedata wasn't 768 bytes long!";
           }
         }
         await renderFullMap(previousTiles, 'cache/tilemap.png');
