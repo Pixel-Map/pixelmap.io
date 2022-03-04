@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
-import timeCapsule from "../../public/assets/images/found-capsule.png";
+
 import {
   fetchSingleTile,
   fetchTiles,
@@ -56,7 +56,11 @@ const TimeCapsule = () => {
             </h3>
 
             <div className="clear-both">
-              <Image className="w-full h-auto" src={timeCapsule} alt="Portal" />
+              <img
+                className="w-full h-auto"
+                src={"assets/images/found-capsule.png"}
+                alt="Portal"
+              />
             </div>
           </div>
           <section className="nes-container is-dark">

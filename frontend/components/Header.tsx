@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 
 import { useWeb3React } from "@web3-react/core";
@@ -6,7 +5,6 @@ import useEagerConnect from "../hooks/useEagerConnect";
 
 import Account from "./Account";
 import SearchBar from "./SearchBar";
-import logo from "../public/assets/images/logo.png";
 
 const navigation = [
   { name: "Wrapper", link: "/wrap" },
@@ -33,7 +31,11 @@ export default function Header() {
               <Link href="/">
                 <a className="w-8 h-8 md:h-10 md:w-10">
                   <span className="sr-only">PixelMap</span>
-                  <Image className="w-full h-auto" src={logo} alt="PixelMap" />
+                  <img
+                    className="w-full h-auto"
+                    src="/assets/images/logo.png"
+                    alt="PixelMap"
+                  />
                 </a>
               </Link>
             </div>

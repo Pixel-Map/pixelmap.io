@@ -7,6 +7,7 @@ import styles from "../styles/components/Map.module.scss";
 import getConfig from "next/config";
 import Image from "next/image";
 import { PixelMapTile } from "@pixelmap/common/types/PixelMapTile";
+
 const { publicRuntimeConfig } = getConfig();
 
 export default function Map(props: any) {
@@ -79,11 +80,12 @@ export default function Map(props: any) {
           </div>
 
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <Image
+          <img
             className="absolute inset-0 z-10"
             src="https://pixelmap.art/tilemap.png"
             alt="PixelMap Map"
-            layout="fill"
+            height={"100%"}
+            width={"100%"}
           />
         </div>
       </div>

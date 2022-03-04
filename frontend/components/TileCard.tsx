@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import portal from "../public/assets/images/portal.gif";
 import {
   shortenIfHex,
   formatPrice,
@@ -8,7 +7,6 @@ import {
   cleanUrl,
 } from "../utils/misc";
 import TileImage from "./TileImage";
-import Image from "next/image";
 import { PixelMapTile } from "@pixelmap/common/types/PixelMapTile";
 import { fetchSingleTile } from "../utils/api";
 import { PixelMapImage } from "@pixelmap/common/types/PixelMapImage";
@@ -86,7 +84,7 @@ export default function TileCard({ tile, large }: TileCardProps) {
               <p>Previous Images:</p>
               {tileExtended.historical_images.map(
                 (image: PixelMapImage, idx: number) => (
-                  <Image
+                  <img
                     onMouseEnter={() => {
                       setTileImage(image.image);
                     }}
@@ -104,11 +102,10 @@ export default function TileCard({ tile, large }: TileCardProps) {
         <div className="flex justify-between items-center">
           <Link href={`/house/${encodeURIComponent(tile.id)}`}>
             <div className="nes-btn is-primary flex items-center justify-between md:px-5.5 py-1 md:py-1">
-              <Image
-                className="w-full h-auto"
-                width={30}
-                height={30}
-                src={portal}
+              <img
+                width="30px"
+                height="30px"
+                src="/assets/images/portal.gif"
                 alt="Portal"
               />
               <div className="font-bold md:px-3">{"Enter Tile"}</div>
