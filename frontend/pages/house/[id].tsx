@@ -8,7 +8,6 @@ import styles from "../../styles/pages/Home.module.scss";
 import tileHouseStyle from "../../styles/pages/TileHouse.module.scss";
 import Header from "../../components/Header";
 import { PixelMapTile } from "@pixelmap/common/types/PixelMapTile";
-import Overworld from "../../lib/overworld";
 
 const House = () => {
   const canvasRef = useRef(null);
@@ -26,8 +25,6 @@ const House = () => {
     fetchSingleTile(id).then((_tile) => {
       setTile(_tile);
       setFetching(false);
-      const overworld = new Overworld(canvasRef, _tile);
-      overworld.init();
     });
   }, [, id]);
 
@@ -65,14 +62,13 @@ const House = () => {
           </>
         )}
         <div className="place-content-center ">
-          <div className={tileHouseStyle.gameContainer}>
-            <canvas
-              className="game-canvas"
-              width="352"
-              height="224"
-              ref={canvasRef}
-            />
-          </div>
+          <p>
+            <iframe
+              src="https://game.pixelmap.io"
+              width="1280"
+              height="720"
+            ></iframe>
+          </p>
         </div>
       </div>
     </>
