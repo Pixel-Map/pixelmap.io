@@ -1,2 +1,1 @@
-worker: pnpm start:prod
-
+worker: node dist/src/main
