@@ -45,6 +45,9 @@ import { PixelMapTransaction } from './ingestor/entities/pixelMapTransaction.ent
         port: 5432,
         user: configService.get<string>('DATABASE_USERNAME'),
         password: configService.get<string>('DATABASE_PASSWORD'),
+        driverOptions: {
+          connection: { ssl: { rejectUnauthorized: false } },
+        },
       }),
       inject: [ConfigService],
     }),
