@@ -1,2 +1,2 @@
-worker: pnpm start
+worker: pnpm start:prod
 
