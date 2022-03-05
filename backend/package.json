@@ -28,6 +28,7 @@
     ]
   },
   "dependencies": {
+    "@nestjs/cli": "^8.1.6",
     "@aws-sdk/signature-v4-crt": "^3.31.0",
     "@mikro-orm/cli": "^4.5.9",
     "@mikro-orm/core": "^4.5.9",
@@ -63,7 +64,6 @@
     "webpack": "^5.0.0"
   },
   "devDependencies": {
-    "@nestjs/cli": "^8.1.6",
     "@nestjs/schematics": "^8.0.5",
     "@nestjs/testing": "^8.2.4",
     "@types/cache-manager": "^3.4.2",
