@@ -1,8 +1,12 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const sharp = require('sharp');
+const mkdirp = require('mkdirp');
+const path = require('path');
+const removeFilePart = (dirname) => path.parse(dirname).dir;
 
 export async function renderImage(tileImageData: string, outputPath: string) {
   if (tileImageData.length >= 768) {
+    await mkdirp(removeFilePart(outputPath));
     // OWN IMAGE
 
     const imageDataArray = tileImageData.match(/.{1,3}/g);

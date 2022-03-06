@@ -39,6 +39,7 @@ specifiers:
   ethers: ^5.5.2
   graceful-fs: ^4.2.8
   jest: ^27.4.5
+  mkdirp: ^1.0.4
   node-base91: ^0.3.4
   pako: ^2.0.4
   pg: ^8.7.1
@@ -84,6 +85,7 @@ dependencies:
   discord.js: 13.3.1
   ethers: 5.5.2
   graceful-fs: 4.2.8
+  mkdirp: 1.0.4
   node-base91: 0.3.4
   pako: 2.0.4
   pg: 8.7.1
