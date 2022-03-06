@@ -31,8 +31,6 @@
     "node": "17.x"
   },
   "dependencies": {
-    "source-map-support": "^0.5.21",
-    "@nestjs/cli": "^8.1.6",
     "@aws-sdk/signature-v4-crt": "^3.31.0",
     "@mikro-orm/cli": "^4.5.9",
     "@mikro-orm/core": "^4.5.9",
@@ -41,6 +39,7 @@
     "@mikro-orm/reflection": "^4.5.9",
     "@mikro-orm/sqlite": "^4.5.9",
     "@nestjs/axios": "^0.0.3",
+    "@nestjs/cli": "^8.1.6",
     "@nestjs/common": "^8.2.4",
     "@nestjs/config": "^1.1.5",
     "@nestjs/core": "^8.2.4",
@@ -56,7 +55,6 @@
     "discord.js": "^13.3.1",
     "ethers": "^5.5.2",
     "graceful-fs": "^4.2.8",
-    "jimp": "^0.16.1",
     "node-base91": "^0.3.4",
     "pako": "^2.0.4",
     "pg": "^8.7.1",
@@ -64,6 +62,8 @@
     "rimraf": "^3.0.2",
     "rxjs": "^7.4.0",
     "s3-sync-client": "^2.1.0",
+    "sharp": "^0.30.2",
+    "source-map-support": "^0.5.21",
     "uuid": "^8.3.2",
     "webpack": "^5.0.0"
   },
