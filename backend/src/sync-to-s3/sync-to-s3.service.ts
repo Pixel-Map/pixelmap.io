@@ -25,7 +25,7 @@ export class SyncToS3Service {
             secretAccessKey: this.configService.get('AWS_SECRET_ACCESS_KEY'),
           },
         });
-        if (this.configService.get<string>('SYNC_TO_AWS') == 'true') {
+        if (this.configService.get<boolean>('SYNC_TO_AWS')) {
           this.logger.verbose('Syncing to AWS!');
           const sync = await client.sync('cache', 's3://pixelmap.art', {
             del: false,
