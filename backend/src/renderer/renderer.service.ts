@@ -52,7 +52,7 @@ export class RendererService {
 
             if (imageData.length == 768) {
               this.logger.verbose('Saving image of tile: ' + tileData.tile.id);
-              await renderImage(imageData, 'cache/' + tileData.tile.id + '/' + tileData.blockNumber + '.png');
+              await renderImage(imageData, 512, 512, 'cache/' + tileData.tile.id + '/' + tileData.blockNumber + '.png');
               await renderFullMap(previousTiles, 'cache/fullmap/' + tileData.blockNumber + '.png');
               this.logger.verbose(
                 'Rendered image for tile: ' + tileData.tile.id + '(' + i + ' of ' + tileDataChange.length + ')',
@@ -88,7 +88,8 @@ export class RendererService {
               // this.logger.verbose('Already rendered previously, skipping!');
             } else {
               this.logger.verbose('Saving latest image of tile: ' + i);
-              await renderImage(imageData, 'cache/' + i + '/latest.png');
+              await renderImage(imageData, 512, 512, 'cache/' + i + '/latest.png');
+              await renderImage(imageData, 48, 48, 'cache/' + i + '/zserv.png');
               // Cache it so we don't re-render needlessly!
               await this.cacheManager.set('image-' + String(tiles[i].id), imageData);
             }

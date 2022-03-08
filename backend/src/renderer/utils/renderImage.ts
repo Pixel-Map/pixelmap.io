@@ -4,7 +4,7 @@ const mkdirp = require('mkdirp');
 const path = require('path');
 const removeFilePart = (dirname) => path.parse(dirname).dir;
 
-export async function renderImage(tileImageData: string, outputPath: string) {
+export async function renderImage(tileImageData: string, sizeX: number, sizeY: number, outputPath: string) {
   if (tileImageData.length >= 768) {
     await mkdirp(removeFilePart(outputPath));
     // OWN IMAGE
@@ -42,7 +42,7 @@ export async function renderImage(tileImageData: string, outputPath: string) {
         height: 16,
         channels: 3,
       },
-    }).resize(512, 512, { kernel: sharp.kernel.nearest });
+    }).resize(sizeX, sizeY, { kernel: sharp.kernel.nearest });
     await image.toFile(outputPath);
   } else {
     console.log('Not saving image, invalid image data found!');
