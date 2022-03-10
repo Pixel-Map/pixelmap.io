@@ -33,7 +33,7 @@ export class NotificationsService {
     this.logger.log(`Logged in as ${this.client.user.tag}!`);
   }
 
-  @Cron('1 * * * * *', {
+  @Cron('10 * * * * *', {
     name: 'processDiscordEvents',
   })
   @UseRequestContext()
