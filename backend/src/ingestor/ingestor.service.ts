@@ -159,7 +159,6 @@ export class IngestorService {
   async processTransactions(transactions) {
     for (let i = 0; i < transactions.length; i++) {
       const tx = transactions[i];
-      console.log('MOOOOOOOOOOOOOOOOOOO');
       if (await this.pixelMapTransaction.findOne({ hash: tx.hash, transactionIndex: tx.transactionIndex })) {
         this.logger.warn('Already indexed this tx, skipping!');
         return;
