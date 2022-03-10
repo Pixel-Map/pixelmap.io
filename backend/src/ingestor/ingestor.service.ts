@@ -65,7 +65,7 @@ export class IngestorService {
           value: 0,
         }),
         new CurrentState({
-          state: StatesToTrack.NOTIFICATIONS_LAST_PROCESSED_PURCHASE_ID,
+          state: StatesToTrack.NOTIFICATIONS_LAST_PROCESSED_TILE_CHANGE,
           value: 0,
         }),
         new CurrentState({
