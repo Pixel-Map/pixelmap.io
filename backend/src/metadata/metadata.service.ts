@@ -130,6 +130,12 @@ export class MetadataService {
     } else {
       tileMetaData.image = 'https://pixelmap.art/blank.png';
     }
+    const stolen = [1494, 2794, 1495, 1492, 1491, 1493, 2795, 2793, 1496];
+    if (stolen.includes(tile.id)) {
+      tileMetaData.image = 'https://pixelmap.art/stolen.png';
+      tileMetaData.description = 'This tile has been stolen.  Please do not purchase, as funds will go to a bad person';
+    }
+
     // Write metadata for OpenSea
     const jsonMetaData = JSON.stringify(tileMetaData);
 
