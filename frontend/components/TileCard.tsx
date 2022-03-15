@@ -21,11 +21,20 @@ export default function TileCard({ tile, large }: TileCardProps) {
   const [tileExtended, setTile] = useState<PixelMapTile>();
   const [fetching, setFetching] = useState(false);
   const [tileImage, setTileImage] = useState(tile.image);
+  const [sortedHistoricalImages, setSortedHistoricalImages] =
+    useState<PixelMapTile[]>();
   useEffect(() => {
     setFetching(true);
 
     fetchSingleTile(tile.id.toString()).then((_tile) => {
       setTile(_tile);
+
+      const unsortedArray = [..._tile.historical_images];
+      setSortedHistoricalImages(
+        unsortedArray.sort(function (a, b) {
+          return b.blockNumber - a.blockNumber;
+        })
+      );
       setFetching(false);
     });
   }, [, tile.id.toString()]);
@@ -82,7 +91,7 @@ export default function TileCard({ tile, large }: TileCardProps) {
           tileExtended.historical_images.length > 0 && (
             <>
               <p>Previous Images:</p>
-              {tileExtended.historical_images.map(
+              {sortedHistoricalImages.map(
                 (image: PixelMapImage, idx: number) => (
                   <img
                     onMouseEnter={() => {
