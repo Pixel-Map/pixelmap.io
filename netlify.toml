@@ -1,6 +1,6 @@
 # example netlify.toml
 [build]
-  command = "cd frontend && yarn && yarn build && yarn export"
+  command = "cd frontend && yarn && yarn build"
   functions = "netlify/functions"
   publish = "frontend/.next"
 
