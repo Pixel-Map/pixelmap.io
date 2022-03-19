@@ -8,8 +8,6 @@ import getConfig from "next/config";
 import Image from "next/image";
 import { PixelMapTile } from "@pixelmap/common/types/PixelMapTile";
 
-const { publicRuntimeConfig } = getConfig();
-
 export default function Map(props: any) {
   const [showOwned, setShowOwned] = useState(false);
   const [showForSale, setShowForSale] = useState(false);

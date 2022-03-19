@@ -1,8 +1,6 @@
 import getConfig from "next/config";
 import { PixelMapTile } from "@pixelmap/common/types/PixelMapTile";
 
-const { publicRuntimeConfig } = getConfig();
-
 export const fetchTiles = async () => {
   try {
     const res = await fetch("https://pixelmap.art/tiledata.json");

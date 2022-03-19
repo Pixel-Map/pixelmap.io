@@ -28,7 +28,7 @@ function Edit() {
   const [imageEditorTile, setImageEditorTile] = useState<PixelMapTile>({
     id: 0,
   });
-  const { publicRuntimeConfig } = getConfig();
+
   const { account, library } = useWeb3React();
 
   useEffect(() => {
