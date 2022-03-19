@@ -37,6 +37,7 @@
     "tailwindcss": "^2.2.9"
   },
   "devDependencies": {
+    "@netlify/plugin-nextjs": "^4.2.7",
     "@testing-library/jest-dom": "^5.14.1",
     "@testing-library/react": "^12.1.2",
     "@tippyjs/react": "^4.2.5",
