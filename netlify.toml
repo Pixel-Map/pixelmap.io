@@ -2,7 +2,7 @@
 [build]
   command = "cd frontend && yarn && yarn build && yarn export"
   functions = "netlify/functions"
-  publish = "frontend/out"
+  publish = "frontend/.next"
 
   ## Uncomment to use this redirect for Single Page Applications like create-react-app.
   ## Not needed for static site generators.
