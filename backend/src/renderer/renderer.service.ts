@@ -50,7 +50,7 @@ export class RendererService {
           const imageData = decompressTileCode(tileData.image.trim());
 
           if (imageData.length == 768) {
-            this.logger.verbose('Saving image of tile: ' + tileData.tile.id);
+            this.logger.verbose('Saving image of tile: ' + tileData.tile.id + ' at block: ' + tileData.blockNumber);
             await renderImage(imageData, 512, 512, 'cache/' + tileData.tile.id + '/' + tileData.blockNumber + '.png');
             await renderFullMap(previousTiles, 'cache/fullmap/' + tileData.blockNumber + '.png');
             this.logger.verbose(
