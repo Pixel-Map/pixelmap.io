@@ -31,6 +31,7 @@ export class RendererService {
   async renderImages() {
     if (!this.currentlyReadingImages) {
       try {
+        this.logger.log('Starting to update images again...');
         const previousTiles = [];
         // Reload latest data
         const tiles = await this.tileData.find({}, [], { id: QueryOrder.ASC });
@@ -44,21 +45,19 @@ export class RendererService {
         const tileDataChange = await this.dataHistory.find({}, ['tile'], { id: QueryOrder.ASC });
         for (let i = lastEvent.value; i < tileDataChange.length; i++) {
           const tileData = tileDataChange[i];
-          if (previousTiles[tileData.tile.id] == tileData.image) {
-            this.logger.verbose("Image didn't change, not re-rendering");
-          } else {
-            previousTiles[tileData.tile.id] = tileData.image;
-            const imageData = decompressTileCode(tileData.image.trim());
 
-            if (imageData.length == 768) {
-              this.logger.verbose('Saving image of tile: ' + tileData.tile.id);
-              await renderImage(imageData, 512, 512, 'cache/' + tileData.tile.id + '/' + tileData.blockNumber + '.png');
-              await renderFullMap(previousTiles, 'cache/fullmap/' + tileData.blockNumber + '.png');
-              this.logger.verbose(
-                'Rendered image for tile: ' + tileData.tile.id + '(' + i + ' of ' + tileDataChange.length + ')',
-              );
-            }
+          previousTiles[tileData.tile.id] = tileData.image;
+          const imageData = decompressTileCode(tileData.image.trim());
+
+          if (imageData.length == 768) {
+            this.logger.verbose('Saving image of tile: ' + tileData.tile.id);
+            await renderImage(imageData, 512, 512, 'cache/' + tileData.tile.id + '/' + tileData.blockNumber + '.png');
+            await renderFullMap(previousTiles, 'cache/fullmap/' + tileData.blockNumber + '.png');
+            this.logger.verbose(
+              'Rendered image for tile: ' + tileData.tile.id + '(' + i + ' of ' + tileDataChange.length + ')',
+            );
           }
+
           lastEvent.value = i + 1;
         }
 
