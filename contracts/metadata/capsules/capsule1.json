@@ -1,0 +1,16 @@
+{
+  "image_url": "ipfs://QmWyQtQdayMvTqDaXsiqiH2d38tF954jhASTHNgXh8WgJB",
+  "name": "The OG 18x18",
+  "description": "This time capsule was recorded on October 22, 2021, to celebrate the very first 18x18 (324) tiles that were updated with an image.",
+  "external_url": "https://pixelmap.io/",
+  "properties": [
+    {
+      "trait_type": "Celebrated On",
+      "value": "October 22, 2021"
+    },
+    {
+      "trait_type": "Reason",
+      "value": "Tiles Updated"
+    }
+  ]
+}
