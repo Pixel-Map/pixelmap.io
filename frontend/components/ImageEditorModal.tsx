@@ -13,6 +13,12 @@ export default function ImageEditorModal({isOpen, setIsOpen, tile, changeImage})
     col: 1,
     row: 1
   });
+  
+  const [{maxColors, colorDepth, pixelSize}, setCompression] = useState({
+    maxColors: 64,
+    colorDepth: 12,
+    pixelSize: 16
+  });
 
   const handleImageChange = (src: any) => {
     setImg(src);
@@ -36,6 +42,33 @@ export default function ImageEditorModal({isOpen, setIsOpen, tile, changeImage})
 
   function openModal() {
     setIsOpen(true)
+  }
+
+  function updateMaxColors(newMaxColors) {
+    if(!newMaxColors || isNaN(newMaxColors)) newMaxColors = null;
+    else if(newMaxColors > 256) newMaxColors = 256;
+    else if(newMaxColors < 1) newMaxColors = 1;
+    setCompression({
+      maxColors: newMaxColors,
+      colorDepth: colorDepth,
+      pixelSize: pixelSize
+    });
+  }
+
+  function updateColorDepth(newColorDepth) {
+    setCompression({
+      maxColors: maxColors,
+      colorDepth: newColorDepth,
+      pixelSize: pixelSize
+    });
+  }
+
+  function updatePixelSize(newPixelSize) {
+    setCompression({
+      maxColors: maxColors,
+      colorDepth: colorDepth,
+      pixelSize: newPixelSize
+    });
   }
 
   return (
@@ -71,15 +104,35 @@ export default function ImageEditorModal({isOpen, setIsOpen, tile, changeImage})
             </div>
           </div>
 
-          <div className="my-12 ">
+          <div className="my-5">
             <ImageDisplay 
               image={img} 
               cols={col} 
               rows={row} 
+              maxColors={(!maxColors) ? 256 : maxColors} 
+              colorDepth={colorDepth} 
+              pixelSize={pixelSize} 
               handleTileSelect={handleTileSelect} 
             />
           </div>
 
+          <div className="mt-2">
+            <button type="button" className={"mx-2 comp-inp" + (pixelSize==4 ? " comp-inp-sel" : "")} onClick={() => { updatePixelSize(4); }}>4x4</button>
+            <button type="button" className={"mx-2 comp-inp" + (pixelSize==8 ? " comp-inp-sel" : "")} onClick={() => { updatePixelSize(8); }}>8x8</button>
+            <button type="button" className={"mx-2 comp-inp" + (pixelSize==16 ? " comp-inp-sel" : "")} onClick={() => { updatePixelSize(16); }}>16x16</button>
+            <div className="mx-4 lg:inline-block"></div>
+            
+            <button type="button" className={"mx-2 comp-inp" + (colorDepth==4 ? " comp-inp-sel" : "")} onClick={() => { updateColorDepth(4); }}>4bit</button>
+            <button type="button" className={"mx-2 comp-inp" + (colorDepth==8 ? " comp-inp-sel" : "")} onClick={() => { updateColorDepth(8); }}>8bit</button>
+            <button type="button" className={"mx-2 comp-inp" + (colorDepth==12 ? " comp-inp-sel" : "")} onClick={() => { updateColorDepth(12); }}>12bit</button>
+            <div className="mx-4 lg:inline-block"></div>
+            
+            <div className="comp-inp">
+              <input type="number" min="1" max="256" className="comp-inp-num" value={maxColors} onChange={() => { updateMaxColors((event.target as HTMLInputElement).value); }}></input>
+              <label className="comp-inp-num-label">Colors</label>
+            </div>
+          </div>
+          
           <div className="mt-4 flex justify-end">
             <button
               type="button"
