@@ -7,6 +7,9 @@ type Props = {
   image: string;
   cols: number;
   rows: number;
+  maxColors: number;
+  colorDepth: number;
+  pixelSize: number;
   handleTileSelect;
 }
 
