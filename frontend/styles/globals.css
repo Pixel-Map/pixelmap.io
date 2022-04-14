@@ -40,3 +40,34 @@ html, body, #__next {
 .min-h-80 {
   min-height: 80vh;
 }
+
+.comp-inp {
+  display: inline-block;
+  position: relative;
+  margin: 1px;
+  padding: 0px 6px;
+  cursor: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAzElEQVRYR+2X0Q6AIAhF5f8/2jYXZkwEjNSVvVUjDpcrGgT7FUkI2D9xRfQETwNIiWO85wfINfQUEyxBG2ArsLwC0jioGt5zFcwF4OYDPi/mBYKm4t0U8ATgRm3ThFoAqkhNgWkA0jJLvaOVSs7j3qMnSgXWBMiWPXe94QqMBMBc1VZIvaTu5u5pQewq0EqNZvIEMCmxAawK0DNkay9QmfFNAJUXfgGgUkLaE7j/h8fnASkxHTz0DGIBMCnBeeM7AArpUd3mz2x3C7wADglA8BcWMZhZAAAAAElFTkSuQmCC) 14 0,pointer;
+}
+.comp-inp.comp-inp-sel {
+  border: solid 1px #fff;
+  border-radius: 4px;
+  margin: 0px;
+}
+.comp-inp .comp-inp-num {
+  color: #212529;
+  font-weight: 600;
+  padding: 0px 0px 0px 4px;
+  border-radius: 4px;
+  width: 104px;
+}
+.comp-inp .comp-inp-num::-webkit-inner-spin-button {
+  cursor: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAzElEQVRYR+2X0Q6AIAhF5f8/2jYXZkwEjNSVvVUjDpcrGgT7FUkI2D9xRfQETwNIiWO85wfINfQUEyxBG2ArsLwC0jioGt5zFcwF4OYDPi/mBYKm4t0U8ATgRm3ThFoAqkhNgWkA0jJLvaOVSs7j3qMnSgXWBMiWPXe94QqMBMBc1VZIvaTu5u5pQewq0EqNZvIEMCmxAawK0DNkay9QmfFNAJUXfgGgUkLaE7j/h8fnASkxHTz0DGIBMCnBeeM7AArpUd3mz2x3C7wADglA8BcWMZhZAAAAAElFTkSuQmCC) 14 0,pointer;
+}
+.comp-inp .comp-inp-num-label {
+  position: absolute;
+  left: 40px;
+  top: 0px;
+  color: #212529;
+  font-weight: 600;
+  pointer-events: none;
+}
