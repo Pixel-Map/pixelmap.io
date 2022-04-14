@@ -128,7 +128,7 @@ export default function ImageEditorModal({isOpen, setIsOpen, tile, changeImage})
             <div className="mx-4 lg:inline-block"></div>
             
             <div className="comp-inp">
-              <input type="number" min="1" max="256" className="comp-inp-num" value={maxColors} onChange={() => { updateMaxColors(event.target.value); }}></input>
+              <input type="number" min="1" max="256" className="comp-inp-num" value={maxColors} onChange={() => { updateMaxColors((event.target as HTMLInputElement).value); }}></input>
               <label className="comp-inp-num-label">Colors</label>
             </div>
           </div>

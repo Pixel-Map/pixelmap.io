@@ -63,7 +63,7 @@ export default function ImageDisplay({image, cols, rows, maxColors, colorDepth, 
     return tileArray;
   }
   
-  function processDataSize(tileCodes: Array<string>): number {
+  function processDataSize(tileCodes: Array<string[]>): number[] {
     let dataSizeBytes = 0;
     let dataSizeStorage = 0;
 	for(let i=0; i<tileCodes.length; i++) {
