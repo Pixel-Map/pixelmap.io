@@ -52,7 +52,7 @@
     "canvas": "^2.8.0",
     "compression": "^1.7.4",
     "discord-nestjs": "^1.2.1",
-    "discord.js": "^13.3.1",
+    "discord.js": "^12.5.3",
     "ethers": "^5.6.0",
     "graceful-fs": "^4.2.8",
     "mkdirp": "^1.0.4",
