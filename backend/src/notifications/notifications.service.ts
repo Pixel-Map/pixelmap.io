@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { EntityRepository, MikroORM, QueryOrder } from '@mikro-orm/core';
 import { InjectRepository, UseRequestContext } from '@mikro-orm/nestjs';
-import { DiscordClientProvider, Once } from 'discord-nestjs';
+import { DiscordClientProvider, Once } from '@discord-nestjs/core';
 import { MessageEmbed, TextChannel } from 'discord.js';
 import { lastValueFrom } from 'rxjs';
 import { HttpService } from '@nestjs/axios';
@@ -27,7 +27,7 @@ export class NotificationsService {
     private readonly orm: MikroORM,
   ) {}
 
-  @Once({ event: 'ready' })
+  @Once('ready')
   async onReady(): Promise<void> {
     this.client = await this.discordProvider.getClient();
     this.logger.log(`Logged in as ${this.client.user.tag}!`);
