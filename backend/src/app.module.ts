@@ -20,6 +20,8 @@ import { OpenseaModule } from './opensea/opensea.module';
 import { SyncToS3Service } from './sync-to-s3/sync-to-s3.service';
 import { SyncToS3Module } from './sync-to-s3/sync-to-s3.module';
 import { PixelMapTransaction } from './ingestor/entities/pixelMapTransaction.entity';
+import {DiscordModule, registerGuardGlobally, registerPipeGlobally} from "@discord-nestjs/core";
+import {TransformPipe, ValidationPipe} from "@discord-nestjs/common";
 
 @Module({
   imports: [
@@ -51,6 +53,28 @@ import { PixelMapTransaction } from './ingestor/entities/pixelMapTransaction.ent
       }),
       inject: [ConfigService],
     }),
+    DiscordModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        token: configService.get<string>('DISCORD_TOKEN'),
+        discordClientOptions: {
+          intents: ['GUILD_MESSAGES', 'GUILD_MESSAGE_REACTIONS'],
+        },
+        commandPrefix: '!',
+        allowGuilds: ['745366351929016363'],
+        denyGuilds: ['520622812742811698'],
+        allowCommands: [
+          {
+            name: 'some',
+            channels: ['745366352386326572'],
+            users: ['261863053329563648'],
+            channelType: ['dm'],
+          },
+        ],
+        // and other discord options
+      }),
+      inject: [ConfigService],
+    }),
     IngestorModule,
     NotificationsModule,
     RendererModule,
@@ -59,6 +83,14 @@ import { PixelMapTransaction } from './ingestor/entities/pixelMapTransaction.ent
     SyncToS3Module,
   ],
   controllers: [AppController],
-  providers: [AppService, MetadataService, SyncToS3Service],
+  providers: [
+    AppService,
+    MetadataService,
+    SyncToS3Service,
+    {
+      provide: registerPipeGlobally(),
+      useClass: TransformPipe,
+    },
+  ],
 })
 export class AppModule {}

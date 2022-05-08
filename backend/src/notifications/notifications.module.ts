@@ -25,29 +25,7 @@ import { TransformPipe, ValidationPipe } from '@discord-nestjs/common';
       PurchaseHistory,
       TransferHistory,
     ]),
-    DiscordModule.forRootAsync({
-      imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
-        token: configService.get<string>('DISCORD_TOKEN'),
-        discordClientOptions: {
-          intents: ['GUILD_MESSAGES', 'GUILD_MESSAGE_REACTIONS'],
-        },
-        commandPrefix: '!',
-        allowGuilds: ['745366351929016363'],
-        denyGuilds: ['520622812742811698'],
-        allowCommands: [
-          {
-            name: 'some',
-            channels: ['745366352386326572'],
-            users: ['261863053329563648'],
-            channelType: ['dm'],
-          },
-        ],
-        usePipes: [TransformPipe, ValidationPipe],
-        // and other discord options
-      }),
-      inject: [ConfigService],
-    }),
+    DiscordModule.forFeature(),
   ],
 })
 export class NotificationsModule {}
