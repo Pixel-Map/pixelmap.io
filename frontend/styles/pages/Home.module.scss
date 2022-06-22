@@ -1,13 +1,56 @@
-.bgDay {
+.springBgDay {
   @apply bg-gray-900;
   background: url("/assets/images/springDay.png") no-repeat center;
   background-size: cover;
   background-attachment: fixed;
 }
 
-.bgNight {
+.springBgNight {
   @apply bg-gray-900;
   background: url("/assets/images/springNight.png") no-repeat center;
+  background-size: cover;
+  background-attachment: fixed;
+}
+
+// I don't have a summer image, use spring
+.summerBgDay {
+  @apply bg-gray-900;
+  background: url("/assets/images/springDay.png") no-repeat center;
+  background-size: cover;
+  background-attachment: fixed;
+}
+
+.summerBgNight {
+  @apply bg-gray-900;
+  background: url("/assets/images/springNight.png") no-repeat center;
+  background-size: cover;
+  background-attachment: fixed;
+}
+
+.fallBgDay {
+  @apply bg-gray-900;
+  background: url("/assets/images/fallDay.png") no-repeat center;
+  background-size: cover;
+  background-attachment: fixed;
+}
+
+.fallBgNight {
+  @apply bg-gray-900;
+  background: url("/assets/images/fallNight.png") no-repeat center;
+  background-size: cover;
+  background-attachment: fixed;
+}
+
+.winterBgDay {
+  @apply bg-gray-900;
+  background: url("/assets/images/winterDay.png") no-repeat center;
+  background-size: cover;
+  background-attachment: fixed;
+}
+
+.winterBgNight {
+  @apply bg-gray-900;
+  background: url("/assets/images/winterNight.png") no-repeat center;
   background-size: cover;
   background-attachment: fixed;
 }
