@@ -22,14 +22,13 @@ function Home({ tiles }) {
   )
 }
 
-export async function getStaticProps() {
+export async function getServerSideProps() {
   const tiles = await fetchTiles();
 
   return {
     props: {
       tiles: tiles
-    },
-    revalidate: 60
+    }
   }
 
 }
