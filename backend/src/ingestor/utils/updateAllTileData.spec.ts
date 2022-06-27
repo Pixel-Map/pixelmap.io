@@ -17,7 +17,7 @@ it('returns the current right information for an unwrapped tile', async () => {
 it('returns the current right information for a wrapped tile', async () => {
   const { provider, pixelMap, pixelMapWrapper } = initializeEthersJS();
   const tileData = await getCurrentTileData(3967, pixelMap, pixelMapWrapper);
-  expect(tileData.owner).toBe('0x1Ead4F16D3D59023325C3D85dd4C363AC1600150');
+  expect(tileData.owner).toBe('0xD317A3744F60c5cbcDe7c82DF90a6513409198A2');
   expect(tileData.url).toBe('');
   expect(tileData.wrapped).toBe(true);
   expect(tileData.image).toBe(
