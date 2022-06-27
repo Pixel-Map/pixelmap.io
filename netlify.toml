@@ -6,11 +6,6 @@
 
   ## Uncomment to use this redirect for Single Page Applications like create-react-app.
   ## Not needed for static site generators.
-  [[redirects]]
-    from = "https://discord.pixelmap.io"
-    to = "https://discord.gg/ykypwTEkzk"
-    status = 200
-    force = true # COMMENT: ensure that we always redirect
 
   ## (optional) Settings for Netlify Dev
   ## https://github.com/netlify/cli/blob/main/docs/netlify-dev.md#project-detection
