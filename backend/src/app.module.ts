@@ -20,8 +20,8 @@ import { OpenseaModule } from './opensea/opensea.module';
 import { SyncToS3Service } from './sync-to-s3/sync-to-s3.service';
 import { SyncToS3Module } from './sync-to-s3/sync-to-s3.module';
 import { PixelMapTransaction } from './ingestor/entities/pixelMapTransaction.entity';
-import {DiscordModule, registerGuardGlobally, registerPipeGlobally} from "@discord-nestjs/core";
-import {TransformPipe, ValidationPipe} from "@discord-nestjs/common";
+import { DiscordModule, registerPipeGlobally } from '@discord-nestjs/core';
+import { TransformPipe } from '@discord-nestjs/common';
 
 @Module({
   imports: [

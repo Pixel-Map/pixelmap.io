@@ -45,3 +45,16 @@ export const fetchTimeCapsuleTiles = async () => {
     return [];
   }
 };
+
+export const fetchAllTilesEver = async () => {
+  try {
+    const res = await fetch("https://pixelmap.art/allimages.json");
+    const tiles: Array<TimeCapsuleTile> = await res.json();
+
+    // By returning { props: { posts } }, the Blog component
+    // will receive `posts` as a prop at build time
+    return tiles;
+  } catch (err) {
+    return [];
+  }
+};
