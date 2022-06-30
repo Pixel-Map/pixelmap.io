@@ -23,6 +23,7 @@ function TileUpdatesLog() {
   const [hovered, setHovered] = useState(false);
   const toggleHover = () => setHovered(!hovered);
 
+  // @ts-ignore
   return (
     <>
       <style jsx>{`
@@ -187,7 +188,7 @@ function TileUpdatesLog() {
                     }`}
                     onMouseEnter={toggleHover}
                     onMouseLeave={toggleHover}
-                    onClick={(e) => handleTests(e.target.id, index)} //NEW
+                    onClick={(e: any) => handleTests(e.target.id, index)} //NEW
                   >
                     <div className="front">
                       <img src={ownedTile.image_url} alt="" />
