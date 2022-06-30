@@ -16,6 +16,11 @@ export class AppController {
     return this.appService.getFirstTilesWithImages();
   }
 
+  @Get('/allimages')
+  allImages() {
+    return this.appService.allImages();
+  }
+
   @Get('/owners')
   getOwners() {
     return this.appService.getOwners();

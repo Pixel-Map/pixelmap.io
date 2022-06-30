@@ -47,6 +47,37 @@ export class AppService {
     return timeCapsuleTiles;
   }
 
+  async allImages() {
+    const historyEvents = await this.dataHistory.findAll(['tile'], { time_stamp: QueryOrder.ASC });
+    const lastTileImage = new Map();
+
+    // Initialize Map
+    for (let i = 0; i <= 3970; i++) {
+      lastTileImage.set(i, false);
+    }
+
+    let orderTileWasFound = 1;
+    const allImages = [];
+    for (let i = 0; i < historyEvents.length; i++) {
+      const event = historyEvents[i];
+      if (lastTileImage.get(event.tile.id) == event.image) {
+      } else {
+        if (isValidImage(event.image)) {
+          lastTileImage.set(event.tile.id, event.image);
+          allImages.push({
+            tileId: event.tile.id,
+            timeStamp: event.timeStamp,
+            orderImageSetOnTile: orderTileWasFound,
+            currentOwner: event.updatedBy,
+            image: event.image,
+          });
+          orderTileWasFound++;
+        }
+      }
+    }
+    return allImages;
+  }
+
   async getOgOwners() {
     const purchaseEvents = await this.purchaseHistory.findAll();
     const openSeaListDate = new Date('2021-8-27');
