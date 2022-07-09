@@ -1,4 +1,3 @@
-import getConfig from "next/config";
 import { PixelMapTile } from "@pixelmap/common/types/PixelMapTile";
 
 export const fetchTiles = async () => {

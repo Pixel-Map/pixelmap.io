@@ -3,14 +3,11 @@ import Head from "next/head";
 import { useRouter } from "next/router";
 
 import {
-  fetchSingleTile,
-  fetchTiles,
   fetchTimeCapsuleTiles,
   TimeCapsuleTile,
 } from "../../utils/api";
 
 import styles from "../../styles/pages/Home.module.scss";
-import Image from "next/image";
 import Header from "../../components/Header";
 
 const TimeCapsule = () => {

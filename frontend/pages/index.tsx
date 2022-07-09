@@ -3,8 +3,16 @@ import Head from 'next/head'
 import Map from '../components/Map';
 import { fetchTiles } from '../utils/api';
 import Layout from "../components/Layout";
+import {useEffect, useState} from "react";
+import {PixelMapTile} from "@pixelmap/common/types/PixelMapTile";
 
-function Home({ tiles }) {
+function Home() {
+  const [tiles, setTiles] = useState<PixelMapTile[]>([]);
+  useEffect(() => {
+    fetchTiles().then((_tiles) => {
+      setTiles(_tiles);
+    });
+  }, []);
 
   return (
     <>
@@ -15,23 +23,11 @@ function Home({ tiles }) {
         </Head>
 
         <main className="py-8 md:py-12 lg:py-16">
-          <Map tiles={tiles} />
+          {tiles && <Map tiles={tiles} />}
         </main>
       </Layout>
     </>
   )
-}
-
-export async function getStaticProps() {
-  const tiles = await fetchTiles();
-
-  return {
-    props: {
-      tiles: tiles
-    },
-    revalidate: 60
-  }
-
 }
 
 export default Home;
