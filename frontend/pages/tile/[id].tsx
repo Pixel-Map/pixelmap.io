@@ -60,4 +60,22 @@ const Tile = () => {
   );
 };
 
+export async function getStaticPaths() {
+  const paths = [];
+  for (let i = 0; i < 3970; i++) {
+    paths.push({ params: { id: i.toString() } });
+  }
+  return {
+    paths: paths,
+    fallback: false, // can also be true or 'blocking'
+  };
+}
+
+export async function getStaticProps(context) {
+  return {
+    // Passed to the page component as props
+    props: { post: {} },
+  };
+}
+
 export default Tile;
