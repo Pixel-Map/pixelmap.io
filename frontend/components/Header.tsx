@@ -8,7 +8,7 @@ import SearchBar from "./SearchBar";
 
 const navigation = [
   { name: "Wrapper", link: "/wrap" },
-  { name: "Discord", href: "https://discord.gg/r4C9rGgx", target: "_blank" },
+  { name: "Discord", href: "https://discord.pixelmap.io/", target: "_blank" },
   { name: "About", link: "/about" },
   { name: "Tile Updates Log", link: "/tileupdateslog" },
 ];
