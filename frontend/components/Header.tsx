@@ -11,6 +11,7 @@ const navigation = [
   { name: "Discord", href: "https://discord.pixelmap.io/", target: "_blank" },
   { name: "About", link: "/about" },
   { name: "Tile Updates Log", link: "/tileupdateslog" },
+  { name: "LTD Order Form", link: "/ltd" },
 ];
 
 export default function Header() {
