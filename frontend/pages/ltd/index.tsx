@@ -14,7 +14,7 @@ import { useRouter } from "next/router";
 function LTD() {
   const router = useRouter();
 
-  const { account, library } = useWeb3React();
+  const { account } = useWeb3React();
   const formOptions = { default: [] };
   const triedToEagerConnect = useEagerConnect();
   const { register, control, handleSubmit, reset, formState, watch } =
@@ -68,18 +68,7 @@ function LTD() {
     control,
   });
 
-  function serialize(obj) {
-    var str = [];
-    for (var p in obj)
-      str.push(encodeURIComponent(p) + "=" + encodeURIComponent(obj[p]));
-    return str.join("&");
-  }
-
   function onSubmit(data) {
-    // console.log(JSON.stringify(data, null, 4));
-    // console.log(serialize(data));
-    // console.log(encodeURIComponent(JSON.stringify(data)));
-    // router.push(`/ltd/order?${serialize(data)}`);
     console.log(data);
     router.push({
       pathname: "/ltd/order",
@@ -87,6 +76,7 @@ function LTD() {
         tileHeight: data.tileHeight,
         tileWidth: data.tileWidth,
         tiles: data.tiles,
+        account: account.toLowerCase(),
       },
     });
   }
@@ -152,6 +142,7 @@ function LTD() {
                         <label>Width (In Tiles)</label>
                         <select
                           name="tileWidth"
+                          key={tileWidth + "x" + tileHeight}
                           {...register("tileWidth")}
                           className={`form-control ${
                             errors.tileWidth ? "is-invalid" : ""
