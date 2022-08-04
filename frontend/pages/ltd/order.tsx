@@ -14,9 +14,8 @@ import { useRouter } from "next/router";
 function Order() {
   const router = useRouter();
   const { query } = useRouter();
-  const { account, library } = useWeb3React();
+
   const formOptions = { default: [] };
-  const triedToEagerConnect = useEagerConnect();
   const { register, control, handleSubmit, reset, formState, watch } =
     // @ts-ignore
     useForm(formOptions);
@@ -76,15 +75,14 @@ function Order() {
     control,
   });
 
-  function serialize(obj) {
-    var str = [];
-    for (var p in obj)
-      str.push(encodeURIComponent(p) + "=" + encodeURIComponent(obj[p]));
-    return str.join("&");
-  }
-
-  function onSubmit(data) {
-    router.push(`/ltd?${serialize(data)}`);
+  function copyToClipboard() {
+    navigator.clipboard.writeText(window.location.href).then(() => {
+      // Alert the user that the action took place.
+      // Nobody likes hidden stuff being done under the hood!
+      alert(
+        "Copied URL to clipboard, please send to LTD.INC to complete your order!"
+      );
+    });
   }
 
   // @ts-ignore
@@ -108,7 +106,7 @@ function Order() {
                   LTD PixelMap Order Summary
                 </span>
               </h3>
-              <form onSubmit={handleSubmit(onSubmit)}>
+              <form>
                 <div className="card m-3">
                   <h5 className="card-header">
                     Owners Name {router.query.account}
@@ -163,14 +161,16 @@ function Order() {
                         ))}
                     </tbody>
                   </table>
-
-                  <div className="card-footer text-center border-top-0">
-                    <button type="submit" className="btn btn-primary mr-1">
-                      Copy URL
-                    </button>
-                  </div>
                 </div>
               </form>
+              <div className="card-footer text-center border-top-0">
+                <button
+                  onClick={copyToClipboard}
+                  className="btn btn-primary mr-1"
+                >
+                  Copy URL
+                </button>
+              </div>
             </div>
           </div>
         </main>

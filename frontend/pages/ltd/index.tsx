@@ -108,7 +108,7 @@ function LTD() {
               <form onSubmit={handleSubmit(onSubmit)}>
                 <div className="card m-3">
                   <h5 className="card-header">
-                    React Hook Form 7 - Dynamic Form Example
+                    LTD.INC NFT Infused Print Order Form
                   </h5>
                   {!account && (
                     <div className="nes-container mt-4 bg-yellow-300 text-center">
