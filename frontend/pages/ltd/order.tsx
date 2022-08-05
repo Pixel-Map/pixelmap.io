@@ -126,15 +126,13 @@ function Order() {
                               </a>
                             </td>
                             <td>
-                              {
-                                // @ts-ignore
-                                mapOfTiles.get(parseInt(tileNumber)) &&
-                                  mapOfTiles.get(parseInt(tileNumber))
-                                    .historical_images[
+                              {mapOfTiles.get(parseInt(tileNumber)) &&
+                                mapOfTiles
+                                  .get(parseInt(tileNumber))
+                                  .historical_images[
                                     mapOfTiles.get(parseInt(tileNumber))
                                       .historical_images.length - 1
-                                  ].date
-                              }
+                                  ].date.toString()}
                             </td>
                             <td>
                               {mapOfTiles.get(parseInt(tileNumber)) &&
