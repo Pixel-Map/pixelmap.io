@@ -2,6 +2,7 @@ import { Contract, ethers } from 'ethers';
 import { Logger } from '@nestjs/common';
 import { EntityRepository } from '@mikro-orm/core';
 import { Tile } from '../entities/tile.entity';
+import { initializeEthersJS } from './initializeEthersJS';
 
 export async function updateAllTileData(
   pixelMap: Contract,
@@ -24,13 +25,18 @@ export async function updateAllTileData(
 }
 
 export async function getCurrentTileData(tileId: number, pixelMap: Contract, pixelMapWrapper: Contract) {
+  const { provider } = initializeEthersJS();
   const tileData = await pixelMap.tiles(tileId);
+  const owner = await getOwner(tileData.owner, tileId, pixelMapWrapper);
+  const ens = await provider.lookupAddress(owner);
+
   return {
     image: tileData.image,
     url: tileData.url,
     price: parseFloat(ethers.utils.formatEther(tileData.price)),
     wrapped: isWrapped(tileData.owner),
-    owner: await getOwner(tileData.owner, tileId, pixelMapWrapper),
+    owner: owner,
+    ens: ens ? ens : '',
   };
 }
 
