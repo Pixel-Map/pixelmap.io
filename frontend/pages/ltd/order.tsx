@@ -2,10 +2,8 @@ import React, { useEffect, useState } from "react";
 
 import Head from "next/head";
 import Layout from "../../components/Layout";
-import { useForm, useFieldArray } from "react-hook-form";
-import Account from "../../components/Account";
-import useEagerConnect from "../../hooks/useEagerConnect";
-import { useWeb3React } from "@web3-react/core";
+import { useForm } from "react-hook-form";
+
 import { fetchSingleTile, fetchTiles } from "../../utils/api";
 import { PixelMapTile } from "@pixelmap/common/types/PixelMapTile";
 
@@ -16,20 +14,17 @@ function Order() {
   const { query } = useRouter();
 
   const formOptions = { default: [] };
-  const { register, control, handleSubmit, reset, formState, watch } =
+  const { formState, watch } =
     // @ts-ignore
     useForm(formOptions);
   const { errors } = formState;
-  const tileWidth = watch("tileWidth", 1);
-  const tileHeight = watch("tileHeight", 1);
+  const [tileWidth, setTileWidth] = useState<number>(0);
+  const [tileHeight, setTileHeight] = useState<number>(0);
+
   const [tiles, setTiles] = useState<PixelMapTile[]>([]);
 
   // If single tile chosen, convert it to an array, else use the array
-
-  const chosenTiles =
-    typeof router.query.tiles == "string"
-      ? [router.query.tiles]
-      : router.query.tiles;
+  const [chosenTiles, setChosenTiles] = useState<string[]>([]);
 
   const [mapOfTiles, setMapOfTiles] = useState(new Map<number, PixelMapTile>());
   const [finishedLoading, setFinishedLoading] = useState(false);
@@ -43,37 +38,29 @@ function Order() {
   }, []);
 
   useEffect(() => {
-    if (chosenTiles) {
-      for (const tileId of chosenTiles) {
-        fetchSingleTile(tileId).then((tile) => {
-          setMapOfTiles(mapOfTiles.set(tile.id, tile));
-        });
-      }
-      setFinishedLoading(true);
-    }
-  });
+    if (router.isReady) {
+      const cTiles =
+        typeof router.query.tiles == "string"
+          ? [router.query.tiles]
+          : router.query.tiles;
+      // @ts-ignore
+      setTileHeight(router.query.tileHeight);
+      // @ts-ignore
+      setTileWidth(router.query.tileWidth);
 
-  useEffect(() => {
-    // update field array when ticket number changed
-    const totalTiles = parseInt(tileHeight) + parseInt(tileWidth);
-    const newVal = totalTiles || 0;
-    const oldVal = fields.length;
-    if (newVal > oldVal) {
-      // append tickets to field array
-      for (let i = oldVal; i < newVal; i++) {
-        append(0);
-      }
-    } else {
-      // remove tickets from field array
-      for (let i = oldVal; i > newVal; i--) {
-        remove(i - 1);
-      }
+      setChosenTiles(cTiles);
+      updateChosenTiles(cTiles).then(() => {
+        setFinishedLoading(true);
+      });
     }
-  }, [tileHeight, tileWidth]);
-  const { fields, append, remove } = useFieldArray({
-    name: "tickets",
-    control,
-  });
+  }, [router.isReady, router.query.tiles]);
+
+  async function updateChosenTiles(tiles) {
+    for (const chosenTile of tiles) {
+      const tile = await fetchSingleTile(chosenTile);
+      setMapOfTiles(mapOfTiles.set(tile.id, tile));
+    }
+  }
 
   function copyToClipboard() {
     navigator.clipboard.writeText(window.location.href).then(() => {
@@ -109,7 +96,11 @@ function Order() {
               <form>
                 <div className="card m-3">
                   <h5 className="card-header">
-                    Owners Name {router.query.account}
+                    Owners Name {router.query.account} <br />
+                    Dimensions: {tileWidth}x{tileHeight} <br />
+                    {tiles && chosenTiles && finishedLoading && (
+                      <>ENS: {mapOfTiles.get(parseInt(chosenTiles[0])).ens}</>
+                    )}
                   </h5>
 
                   <table>
@@ -137,7 +128,12 @@ function Order() {
                             <td>
                               {
                                 // @ts-ignore
-                                tiles && tiles[tileNumber]?.lastUpdated
+                                mapOfTiles.get(parseInt(tileNumber)) &&
+                                  mapOfTiles.get(parseInt(tileNumber))
+                                    .historical_images[
+                                    mapOfTiles.get(parseInt(tileNumber))
+                                      .historical_images.length - 1
+                                  ].date
                               }
                             </td>
                             <td>
