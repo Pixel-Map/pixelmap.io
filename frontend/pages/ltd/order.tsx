@@ -126,13 +126,17 @@ function Order() {
                               </a>
                             </td>
                             <td>
-                              {mapOfTiles.get(parseInt(tileNumber)) &&
-                                mapOfTiles
-                                  .get(parseInt(tileNumber))
-                                  .historical_images[
+                              {new Date(
+                                mapOfTiles.get(parseInt(tileNumber)) &&
+                                  mapOfTiles.get(parseInt(tileNumber))
+                                    .historical_images[
                                     mapOfTiles.get(parseInt(tileNumber))
                                       .historical_images.length - 1
-                                  ].date.toString()}
+                                  ].date
+                              ).toLocaleString("en-US", {
+                                timeZone: "UTC",
+                              })}{" "}
+                              UTC
                             </td>
                             <td>
                               {mapOfTiles.get(parseInt(tileNumber)) &&
