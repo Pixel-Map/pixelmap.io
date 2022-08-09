@@ -88,6 +88,7 @@ export class RendererService {
             } else {
               this.logger.verbose('Saving latest image of tile: ' + i);
               await renderImage(imageData, 512, 512, 'cache/' + i + '/latest.png');
+              await renderImage(imageData, 2048, 2048, 'cache/' + i + '/large.png');
               await renderImage(imageData, 48, 48, 'cache/' + i + '/zserv.png');
               // Cache it so we don't re-render needlessly!
               await this.cacheManager.set('image-' + String(tiles[i].id), imageData);
