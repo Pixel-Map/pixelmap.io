@@ -120,7 +120,7 @@ function Order() {
                           <tr key={i}>
                             <td>
                               <a
-                                href={`https://pixelmap.art/${tileNumber}/latest.png`}
+                                href={`https://pixelmap.art/${tileNumber}/large.png`}
                               >
                                 {tileNumber}
                               </a>
