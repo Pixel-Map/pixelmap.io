@@ -109,7 +109,7 @@ export default function TileCard({ tile, large }: TileCardProps) {
       </div>
       <div className={`px-4 py-3 bg-gray-50 ${large ? "md:px-8 md:py-4" : ""}`}>
         <div className="flex justify-between items-center">
-          <Link href={`/house/${encodeURIComponent(tile.id)}`}>
+          <Link href={`https://game.pixelmap.io`}>
             <div className="nes-btn is-primary flex items-center justify-between md:px-5.5 py-1 md:py-1">
               <img
                 width="30px"
