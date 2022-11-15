@@ -5,7 +5,7 @@ export function getHistoricalImages(tile: Tile) {
   const _imagesAlreadySeen = [];
   const historical_images: PixelMapImage[] = [];
   for (const dataHistory of tile.dataHistory) {
-    if (dataHistory.image.length >= 768 || dataHistory.image.startsWith('b#')) {
+    if (dataHistory.image.length >= 768 || dataHistory.image.startsWith('b#') || dataHistory.image.startsWith('c#')) {
       if (!_imagesAlreadySeen.includes(dataHistory.image)) {
         _imagesAlreadySeen.push(dataHistory.image);
         historical_images.push({
