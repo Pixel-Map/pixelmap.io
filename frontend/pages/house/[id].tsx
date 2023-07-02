@@ -64,7 +64,7 @@ const House = () => {
         <div className="place-content-center ">
           <p>
             <iframe
-              src="https://game.pixelmap.io"
+              src="https://homestead-adventure.com/"
               width="1280"
               height="720"
             ></iframe>
