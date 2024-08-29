@@ -28,7 +28,7 @@
     ]
   },
   "engines": {
-    "node": "22.x",
+    "node": "15.x",
     "npm": "10.x"
   },
   "dependencies": {
@@ -52,7 +52,7 @@
     "axios": "^0.25.0",
     "bignumber.js": "^9.0.2",
     "cache-manager": "^3.6.0",
-    "canvas": "^2.8.0",
+    "canvas": "^2.11.2",
     "compression": "^1.7.4",
     "discord.js": "^13.3.1",
     "ethers": "^5.6.0",
