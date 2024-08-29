@@ -28,7 +28,7 @@
     ]
   },
   "engines": {
-    "node": "22.x"
+    "node": "18.x"
   },
   "dependencies": {
     "@aws-sdk/signature-v4-crt": "^3.31.0",
