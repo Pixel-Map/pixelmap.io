@@ -28,7 +28,7 @@
     ]
   },
   "engines": {
-    "node": "15.x",
+    "node": "20.x",
     "npm": "10.x"
   },
   "dependencies": {
