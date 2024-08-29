@@ -12,3 +12,4 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 * `cdk deploy`      deploy this stack to your default AWS account/region
 * `cdk diff`        compare deployed stack with current state
 * `cdk synth`       emits the synthesized CloudFormation template
+* `cdk deploy --parameters ipaddress=1.2.3.4/32` deploy the stack with the given IP address whitelisted

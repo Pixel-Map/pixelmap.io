@@ -1,6 +1,7 @@
-import { Logger } from "@nestjs/common";
+import type { Logger } from "@nestjs/common";
 import axios from "axios";
 import { sortEvents } from "./sortEvents";
+import type { AxiosRequestConfig } from "axios";
 
 // Get transactions from Etherscan API
 export async function getTransactions(
@@ -34,6 +35,7 @@ export async function getTransactions(
 						apikey: etherscanAPIKey,
 					},
 				},
+				logger,
 			);
 
 			await sleep(RATE_LIMIT_DELAY);
@@ -50,6 +52,7 @@ export async function getTransactions(
 						apikey: etherscanAPIKey,
 					},
 				},
+				logger,
 			);
 
 			// Check if the API responses are valid
@@ -87,12 +90,7 @@ export async function getTransactions(
 			allTransactions.push(...wrapperTransactions);
 
 			logger.log(
-				"Scanning (inclusive) from: " +
-					currentBlock +
-					" to " +
-					toBlock +
-					".  Total transactions so far: " +
-					allTransactions.length,
+				`Scanning (inclusive) from: ${currentBlock} to ${toBlock}.  Total transactions so far: ${allTransactions.length}`,
 			);
 			currentBlock = toBlock + 1;
 		} catch (error) {
@@ -111,7 +109,11 @@ export async function getTransactions(
 	return sortEvents(allTransactions);
 }
 
-async function makeRateLimitedRequest(url: string, config: any) {
+async function makeRateLimitedRequest(
+	url: string,
+	config: AxiosRequestConfig,
+	logger: Logger,
+) {
 	const MAX_RETRIES = 3;
 	let retries = 0;
 
@@ -120,11 +122,17 @@ async function makeRateLimitedRequest(url: string, config: any) {
 			const response = await axios.get(url, config);
 			if (response.data.status === "1" && Array.isArray(response.data.result)) {
 				return response;
-			} else {
-				throw new Error(
-					response.data.message || "Invalid response from Etherscan",
-				);
 			}
+			if (response.data.message === "No transactions found") {
+				logger.log(
+					`No transactions found for block range: ${config.params.startblock} to ${config.params.endblock}`,
+				);
+				// Return an empty result array instead of throwing an error
+				return { data: { result: [] } };
+			}
+			throw new Error(
+				response.data.message || "Invalid response from Etherscan",
+			);
 		} catch (error) {
 			retries++;
 			if (retries >= MAX_RETRIES) {
