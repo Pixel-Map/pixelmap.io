@@ -6,6 +6,6 @@ CONTRACT_WRAPPER_ADDRESS: "0x050dc61dfb867e0fe3cf2948362b6c0f3faf790b"
 URLS:
   - "api.pixelmap.io"
   - "api.pixelmap.com"
-WEB3_URL: "wss://mainnet.infura.io/ws/v3/1e060d0190124285a48e3fe7165e3282"
+WEB3_URL: # Pass in via CLI
 image: 389059433654.dkr.ecr.us-east-1.amazonaws.com/backend:1.3.2
 SYNC_TO_AWS: "true"

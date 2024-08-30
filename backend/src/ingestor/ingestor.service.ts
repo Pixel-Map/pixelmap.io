@@ -194,6 +194,7 @@ export class IngestorService {
   @UseRequestContext()
   async updateCurrentTileData() {
     const { provider, pixelMap, pixelMapWrapper } = initializeEthersJS();
+    console.log('Updating current tile data');
     if (!this.updatingCurrentTileData) {
       this.updatingCurrentTileData = true;
       try {

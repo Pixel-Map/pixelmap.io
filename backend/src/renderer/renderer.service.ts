@@ -81,17 +81,16 @@ export class RendererService {
               'a8ca8ca8ca8ca8b86321000311331331331331331331331331331331331331320000';
           }
 
-          if (imageData.length == 768) {
-            const lastRender = await this.cacheManager.get('image-' + String(tiles[i].id));
-            if (lastRender == imageData) {
+          if (imageData.length === 768) {
+            const lastRender = await this.cacheManager.get(`image-${String(tiles[i].id)}`);
+            if (lastRender === imageData) {
               // this.logger.verbose('Already rendered previously, skipping!');
             } else {
-              this.logger.verbose('Saving latest image of tile: ' + i);
-              await renderImage(imageData, 512, 512, 'cache/' + i + '/latest.png');
-              await renderImage(imageData, 2048, 2048, 'cache/' + i + '/large.png');
-              await renderImage(imageData, 48, 48, 'cache/' + i + '/zserv.png');
+              this.logger.verbose(`Saving latest image of tile: ${i}`);
+              await renderImage(imageData, 512, 512, `cache/${i}/latest.png`);
+              await renderImage(imageData, 2048, 2048, `cache/${i}/large.png`);
               // Cache it so we don't re-render needlessly!
-              await this.cacheManager.set('image-' + String(tiles[i].id), imageData);
+              await this.cacheManager.set(`image-${String(tiles[i].id)}`, imageData);
             }
           } else {
             console.log(imageData);
@@ -103,7 +102,7 @@ export class RendererService {
         await this.currentState.persistAndFlush(lastEvent);
         this.currentlyReadingImages = false;
       } catch (e) {
-        this.logger.error('Error rendering images: ' + e);
+        this.logger.error(`Error rendering images: ${e}`);
         this.currentlyReadingImages = false;
       }
     } else {
