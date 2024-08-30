@@ -26,7 +26,7 @@ export class OpenseaService {
 	) {}
 
 	// Update OpenSea prices every 2 hours
-	@Cron("* */2 * * *")
+	@Cron("0 */2 * * *")
 	@UseRequestContext()
 	async updateOpenSeaPrices() {
 		if (!this.updatingOpenSeaPrices) {

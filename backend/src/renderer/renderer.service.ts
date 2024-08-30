@@ -26,7 +26,7 @@ export class RendererService {
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
-  @Cron('1 * * * * *')
+  @Cron('0 */30 * * * *')
   @UseRequestContext()
   async renderImages() {
     if (!this.currentlyReadingImages) {
