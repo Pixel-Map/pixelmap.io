@@ -3,5 +3,10 @@
 		"parser": {
 			"unsafeParameterDecoratorsEnabled": true
 		}
+	},
+	"linter": {
+		"rules": {
+			"style": {}
+		}
 	}
 }
