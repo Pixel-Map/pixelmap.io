@@ -199,7 +199,7 @@ export class SyncToS3Service {
 	async getOwners() {
 		const tiles = await this.tile.findAll();
 		const unique = [...new Set(tiles.map((tile) => tile.owner))];
-		console.log(`Number of Owners: ${unique.length}`);
+		this.logger.debug(`Number of Owners: ${unique.length}`);
 		return unique;
 	}
 }

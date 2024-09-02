@@ -123,7 +123,8 @@ export class IngestorService {
 		// await this.resyncEveryMinute(); // Let's kick it off once so I don't have to wait a minute.
 	}
 
-	@Cron("45 * * * * *")
+	// Every 15 minutes
+	@Cron("0 */15 * * * *")
 	@CreateRequestContext()
 	async resyncEveryMinute() {
 		this.logger.log("Resyncing transactions");
