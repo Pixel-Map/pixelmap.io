@@ -32,7 +32,7 @@ export async function updateAllTileData(
 				Object.assign(tile, updatedData);
 			}
 
-			await tileRepo.persistAndFlush(tiles);
+			await tileRepo.getEntityManager().persistAndFlush(tiles);
 			logger.verbose(
 				`Updated tiles ${i} to ${Math.min(i + batchSize - 1, 3969)}`,
 			);

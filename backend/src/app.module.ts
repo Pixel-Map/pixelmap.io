@@ -1,4 +1,5 @@
-import { CacheModule, Module } from "@nestjs/common";
+import { Module } from "@nestjs/common";
+import { CacheModule } from "@nestjs/cache-manager";
 import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
 import { ScheduleModule } from "@nestjs/schedule";
@@ -20,8 +21,9 @@ import { OpenseaModule } from "./opensea/opensea.module";
 import { SyncToS3Service } from "./sync-to-s3/sync-to-s3.service";
 import { SyncToS3Module } from "./sync-to-s3/sync-to-s3.module";
 import { PixelMapTransaction } from "./ingestor/entities/pixelMapTransaction.entity";
-import { DiscordModule, registerPipeGlobally } from "@discord-nestjs/core";
-import { TransformPipe } from "@discord-nestjs/common";
+import { DiscordModule } from "@discord-nestjs/core";
+import { GatewayIntentBits } from "discord.js";
+import { PostgreSqlDriver } from "@mikro-orm/postgresql";
 
 @Module({
 	imports: [
@@ -41,7 +43,7 @@ import { TransformPipe } from "@discord-nestjs/common";
 					WrappingHistory,
 					PixelMapTransaction,
 				],
-				type: "postgresql",
+				driver: PostgreSqlDriver,
 				dbName: configService.get<string>("DATABASE_NAME"),
 				host: configService.get<string>("DATABASE_HOST"),
 				port: 5432,
@@ -58,7 +60,11 @@ import { TransformPipe } from "@discord-nestjs/common";
 			useFactory: async (configService: ConfigService) => ({
 				token: configService.get<string>("DISCORD_TOKEN"),
 				discordClientOptions: {
-					intents: ["GUILD_MESSAGES", "GUILD_MESSAGE_REACTIONS"],
+					intents: [
+						GatewayIntentBits.Guilds,
+						GatewayIntentBits.GuildMessages,
+						GatewayIntentBits.GuildMessageReactions,
+					], // Update this line
 				},
 				commandPrefix: "!",
 				allowGuilds: ["745366351929016363"],
@@ -83,14 +89,6 @@ import { TransformPipe } from "@discord-nestjs/common";
 		SyncToS3Module,
 	],
 	controllers: [AppController],
-	providers: [
-		AppService,
-		MetadataService,
-		SyncToS3Service,
-		{
-			provide: registerPipeGlobally(),
-			useClass: TransformPipe,
-		},
-	],
+	providers: [AppService, MetadataService, SyncToS3Service],
 })
 export class AppModule {}

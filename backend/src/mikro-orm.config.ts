@@ -5,7 +5,7 @@ import { TransferHistory } from "./ingestor/entities/transferHistory.entity";
 import { WrappingHistory } from "./ingestor/entities/wrappingHistory.entity";
 import { CurrentState } from "./ingestor/entities/currentState.entity";
 import { PixelMapTransaction } from "./ingestor/entities/pixelMapTransaction.entity";
-
+import { PostgreSqlDriver } from "@mikro-orm/postgresql";
 export default {
 	entities: [
 		DataHistory,
@@ -16,7 +16,7 @@ export default {
 		WrappingHistory,
 		PixelMapTransaction,
 	],
-	type: "postgresql",
+	driver: PostgreSqlDriver,
 	dbName: process.env.DATABASE_NAME,
 	host: process.env.DATABASE_HOST,
 	port: 5432,

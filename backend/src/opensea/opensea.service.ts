@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository, UseRequestContext } from "@mikro-orm/nestjs";
+import { InjectRepository } from "@mikro-orm/nestjs";
+import { CreateRequestContext } from "@mikro-orm/core";
 import { Tile } from "../ingestor/entities/tile.entity";
 // biome-ignore lint/style/useImportType: <explanation>
 import { EntityRepository, MikroORM, QueryOrder } from "@mikro-orm/core";
@@ -18,7 +19,7 @@ export class OpenseaService {
 	private updatingOpenSeaPrices = false;
 
 	constructor(
-		@InjectRepository(Tile)  
+		@InjectRepository(Tile)
 		private tileData: EntityRepository<Tile>,
 		private httpService: HttpService,
 		private readonly orm: MikroORM,
@@ -27,12 +28,14 @@ export class OpenseaService {
 
 	// Update OpenSea prices every 2 hours
 	@Cron("0 */2 * * *")
-	@UseRequestContext()
+	@CreateRequestContext()
 	async updateOpenSeaPrices() {
 		if (!this.updatingOpenSeaPrices) {
 			this.updatingOpenSeaPrices = true;
 			const openseaAPIKey = this.configService.get("OPENSEA_API_KEY");
-			const tiles = await this.tileData.find({}, [], { id: QueryOrder.ASC });
+			const tiles = await this.tileData.findAll({
+				orderBy: { id: QueryOrder.ASC },
+			});
 			const limit = 15; //max 30 items for token_ids
 
 			for (let id = 0; id <= 3969; id += 1) {
@@ -107,7 +110,7 @@ export class OpenseaService {
 					} catch (e) {
 						this.logger.error(e);
 					}
-					await this.tileData.flush();
+					await this.tileData.getEntityManager().flush();
 					await sleep(1000); //throttle requests to prevent rate limiting with OS
 				}
 			} catch (err) {

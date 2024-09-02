@@ -4,14 +4,14 @@ import { getTransactionDescription } from "./getTransactionDescription";
 import { getCurrentOwner } from "./getCurrentOwner";
 
 export enum TransactionType {
-	setTile,
-	buyTile,
-	wrap,
-	unwrap,
-	transfer,
-	createContract,
-	getTile,
-	notImportant,
+	setTile = 0,
+	buyTile = 1,
+	wrap = 2,
+	unwrap = 3,
+	transfer = 4,
+	createContract = 5,
+	getTile = 6,
+	notImportant = 7,
 }
 
 export class DecodedPixelMapTransaction {
@@ -58,7 +58,7 @@ export async function decodeTransaction(
 	const tileLocation = Number.parseInt(txDescription.args[0]);
 	const timestamp = new Date(Number.parseInt(transaction.timeStamp) * 1000);
 	switch (txDescription.name) {
-		case "buyTile":
+		case "buyTile": {
 			const owner = await getCurrentOwner(
 				pixelMap,
 				pixelMapWrapper,
@@ -76,6 +76,7 @@ export async function decodeTransaction(
 				blockNumber: Number.parseInt(transaction.blockNumber),
 				logIndex: Number.parseInt(transaction.transactionIndex),
 			});
+		}
 		case "setTile":
 			return new DecodedPixelMapTransaction({
 				location: tileLocation,
