@@ -22,7 +22,10 @@
 	},
 	"mikro-orm": {
 		"useTsNode": true,
-		"configPaths": ["./src/mikro-orm.config.ts", "./dist/mikro-orm.config.js"]
+		"configPaths": [
+			"./src/mikro-orm.config.ts",
+			"./dist/mikro-orm.config.js"
+		]
 	},
 	"engines": {
 		"node": "20.x",
@@ -65,6 +68,7 @@
 		"@mikro-orm/cli": "^6.0.2",
 		"@nestjs/testing": "^10.4.1",
 		"@types/cache-manager": "^3.4.2",
+		"@types/jest": "^29.5.12",
 		"@types/node": "^16.11.17",
 		"@types/supertest": "^2.0.11",
 		"@typescript-eslint/eslint-plugin": "^5.8.0",
@@ -82,13 +86,19 @@
 		"typescript": "^5.5.4"
 	},
 	"jest": {
-		"moduleFileExtensions": ["js", "json", "ts"],
+		"moduleFileExtensions": [
+			"js",
+			"json",
+			"ts"
+		],
 		"rootDir": "src",
 		"testRegex": ".*\\.spec\\.ts$",
 		"transform": {
 			"^.+\\.(t|j)s$": "ts-jest"
 		},
-		"collectCoverageFrom": ["**/*.(t|j)s"],
+		"collectCoverageFrom": [
+			"**/*.(t|j)s"
+		],
 		"coverageDirectory": "../coverage",
 		"testEnvironment": "node"
 	}
