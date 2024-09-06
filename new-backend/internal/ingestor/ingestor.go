@@ -1,0 +1,126 @@
+package ingestor
+
+import (
+	"context"
+	"database/sql"
+	sqldb "database/sql"
+	"fmt"
+	"math/big"
+	"strconv"
+	"time"
+
+	"go.uber.org/zap"
+	db "pixelmap.io/backend/internal/db"
+)
+
+type Ingestor struct {
+	logger          *zap.Logger
+	queries         *db.Queries
+	etherscanClient *EtherscanClient
+}
+
+func NewIngestor(logger *zap.Logger, sqlDB *sql.DB, apiKey string) *Ingestor {
+	return &Ingestor{
+		logger:          logger,
+		queries:         db.New(sqlDB), // This should now work correctly
+		etherscanClient: NewEtherscanClient(apiKey, logger),
+	}
+}
+
+func (i *Ingestor) IngestTransactions(ctx context.Context) error {
+	startBlock := int64(2641527)
+	latestBlock, err := i.etherscanClient.GetLatestBlockNumber()
+	if err != nil {
+		i.logger.Error("Failed to get latest block number", zap.Error(err))
+		return fmt.Errorf("failed to get latest block number: %w", err)
+	}
+
+	i.logger.Info("Starting transaction ingestion",
+		zap.Int64("startBlock", startBlock),
+		zap.Uint64("latestBlock", latestBlock))
+
+	endBlock := int64(latestBlock) - 10 // As requested, to avoid uncles
+
+	for currentBlock := startBlock; currentBlock <= endBlock; currentBlock += 10000 {
+		blockEnd := currentBlock + 9999
+		if blockEnd > endBlock {
+			blockEnd = endBlock
+		}
+
+		i.logger.Debug("Fetching transactions",
+			zap.Int64("from", currentBlock),
+			zap.Int64("to", blockEnd))
+
+		transactions, err := i.etherscanClient.GetTransactions(ctx, currentBlock, blockEnd)
+		if err != nil {
+			i.logger.Warn("Error fetching transactions",
+				zap.Error(err),
+				zap.Int64("from", currentBlock),
+				zap.Int64("to", blockEnd))
+
+			if err.Error() == "API error: No transactions found" {
+				i.logger.Info("No transactions found in block range",
+					zap.Int64("from", currentBlock),
+					zap.Int64("to", blockEnd))
+				continue
+			}
+			// If it's any other error, return it
+			return fmt.Errorf("failed to get transactions for blocks %d-%d: %w", currentBlock, blockEnd, err)
+		}
+
+		i.logger.Info("Processing transactions",
+			zap.Int("count", len(transactions)),
+			zap.Int64("from", currentBlock),
+			zap.Int64("to", blockEnd))
+
+		for _, tx := range transactions {
+			if err := i.processTransaction(ctx, &tx); err != nil {
+				i.logger.Error("Failed to process transaction", zap.Error(err), zap.String("hash", tx.Hash))
+				continue
+			}
+		}
+
+		i.logger.Info("Processed blocks", zap.Int64("from", currentBlock), zap.Int64("to", blockEnd))
+	}
+
+	i.logger.Info("Finished ingesting transactions", zap.Int64("endBlock", endBlock))
+
+	return nil
+}
+
+func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransaction) error {
+	// Convert types and insert into database
+	blockNumber, _ := new(big.Int).SetString(tx.BlockNumber, 10)
+	timeStamp, _ := new(big.Int).SetString(tx.TimeStamp, 10)
+	nonce, _ := new(big.Int).SetString(tx.Nonce, 10)
+	value, _ := new(big.Int).SetString(tx.Value, 10)
+	gas, _ := new(big.Int).SetString(tx.Gas, 10)
+	gasPrice, _ := new(big.Int).SetString(tx.GasPrice, 10)
+	cumulativeGasUsed, _ := new(big.Int).SetString(tx.CumulativeGasUsed, 10)
+	gasUsed, _ := new(big.Int).SetString(tx.GasUsed, 10)
+	confirmations, _ := new(big.Int).SetString(tx.Confirmations, 10)
+
+	transactionIndex, _ := strconv.Atoi(tx.TransactionIndex)
+	_, err := i.queries.InsertPixelMapTransaction(ctx, db.InsertPixelMapTransactionParams{
+		BlockNumber:       blockNumber.Int64(),
+		TimeStamp:         time.Unix(timeStamp.Int64(), 0),
+		Hash:              tx.Hash,
+		Nonce:             nonce.Int64(),
+		BlockHash:         tx.BlockHash,
+		TransactionIndex:  int32(transactionIndex),
+		From:              tx.From,
+		To:                tx.To,
+		Value:             value.String(),
+		Gas:               gas.Int64(),
+		GasPrice:          gasPrice.Int64(),
+		IsError:           tx.IsError == "1",
+		TxreceiptStatus:   sqldb.NullBool{Bool: tx.TxreceiptStatus == "1", Valid: true},
+		Input:             tx.Input,
+		ContractAddress:   sqldb.NullString{String: tx.ContractAddress, Valid: tx.ContractAddress != ""},
+		CumulativeGasUsed: cumulativeGasUsed.Int64(),
+		GasUsed:           gasUsed.Int64(),
+		Confirmations:     confirmations.Int64(),
+	})
+
+	return err
+}
