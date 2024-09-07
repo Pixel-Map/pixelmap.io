@@ -110,45 +110,47 @@ func (c *EtherscanClient) GetTransactions(ctx context.Context, startBlock, endBl
 		"apikey":     c.apiKey,
 	}
 
-	var resp EtherscanResponse
-	if err := c.makeRequestWithRetry(ctx, params, &resp); err != nil {
+	var rawResp json.RawMessage
+	if err := c.makeRequestWithRetry(ctx, params, &rawResp); err != nil {
 		return nil, err
+	}
+
+	// Try to unmarshal as an array first
+	var transactions []EtherscanTransaction
+	err := json.Unmarshal(rawResp, &transactions)
+	if err == nil {
+		return transactions, nil
+	}
+
+	// If array unmarshal fails, try as EtherscanResponse
+	var resp EtherscanResponse
+	if err := json.Unmarshal(rawResp, &resp); err != nil {
+		c.logger.Error("Failed to unmarshal response",
+			zap.Error(err),
+			zap.String("rawResponse", string(rawResp)))
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
 	if resp.Status != "1" {
 		return nil, fmt.Errorf("API error: %s (Message: %s)", resp.Status, resp.Message)
 	}
 
-	transactions, ok := resp.Result.([]interface{})
+	// Handle the case where Result is a string (error message)
+	if resultStr, ok := resp.Result.(string); ok {
+		return nil, fmt.Errorf("API returned an error in Result: %s", resultStr)
+	}
+
+	// Handle the case where Result is an array of transactions
+	transactions, ok := resp.Result.([]EtherscanTransaction)
 	if !ok {
-		return nil, fmt.Errorf("unexpected result type for transactions")
+		return nil, fmt.Errorf("unexpected result type for transactions: %T", resp.Result)
 	}
 
-	var result []EtherscanTransaction
-	for _, tx := range transactions {
-		txMap, ok := tx.(map[string]interface{})
-		if !ok {
-			return nil, fmt.Errorf("unexpected transaction format")
-		}
-
-		var ethTx EtherscanTransaction
-		txJSON, err := json.Marshal(txMap)
-		if err != nil {
-			return nil, fmt.Errorf("failed to marshal transaction: %w", err)
-		}
-
-		if err := json.Unmarshal(txJSON, &ethTx); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal transaction: %w", err)
-		}
-
-		result = append(result, ethTx)
+	if len(transactions) == 0 {
+		return nil, fmt.Errorf("no transactions found")
 	}
 
-	if len(result) == 0 {
-		return nil, fmt.Errorf("API error: No transactions found")
-	}
-
-	return result, nil
+	return transactions, nil
 }
 
 func (c *EtherscanClient) makeRequest(ctx context.Context, params map[string]string, result interface{}) error {

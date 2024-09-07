@@ -1,15 +1,15 @@
 -- name: GetCurrentState :one
-SELECT * FROM current_states
+SELECT * FROM current_state
 WHERE state = $1 LIMIT 1;
 
 -- name: UpdateCurrentState :exec
-INSERT INTO current_states (state, value)
+INSERT INTO current_state (state, value)
 VALUES ($1, $2)
 ON CONFLICT (state) DO UPDATE
 SET value = EXCLUDED.value;
 
 -- name: InsertPixelMapTransaction :one
-INSERT INTO pixel_map_transactions (
+INSERT INTO pixel_map_transaction (
     block_number, time_stamp, hash, nonce, block_hash, transaction_index,
     "from", "to", value, gas, gas_price, is_error, txreceipt_status,
     input, contract_address, cumulative_gas_used, gas_used, confirmations
@@ -19,6 +19,13 @@ INSERT INTO pixel_map_transactions (
 RETURNING id;
 
 -- name: GetLatestBlockNumber :one
-SELECT COALESCE(MAX(block_number), 0) FROM pixel_map_transactions;
+SELECT COALESCE(MAX(block_number), 0) FROM pixel_map_transaction;
 
--- Add more queries as needed for other tables
+-- name: GetLastProcessedBlock :one
+SELECT value::BIGINT FROM current_state 
+WHERE state = 'INGESTION_LAST_ETHERSCAN_BLOCK';
+
+-- name: UpdateLastProcessedBlock :exec
+INSERT INTO current_state (state, value) 
+VALUES ('INGESTION_LAST_ETHERSCAN_BLOCK', $1)
+ON CONFLICT (state) DO UPDATE SET value = EXCLUDED.value;

@@ -28,7 +28,18 @@ func NewIngestor(logger *zap.Logger, sqlDB *sql.DB, apiKey string) *Ingestor {
 }
 
 func (i *Ingestor) IngestTransactions(ctx context.Context) error {
+	// Retrieve the last processed block from the database
+	lastProcessedBlock, err := i.queries.GetLastProcessedBlock(ctx)
+	if err != nil && err != sql.ErrNoRows {
+		i.logger.Error("Failed to get last processed block", zap.Error(err))
+		return fmt.Errorf("failed to get last processed block: %w", err)
+	}
+
 	startBlock := int64(2641527)
+	if lastProcessedBlock > startBlock {
+		startBlock = lastProcessedBlock + 1
+	}
+
 	latestBlock, err := i.etherscanClient.GetLatestBlockNumber()
 	if err != nil {
 		i.logger.Error("Failed to get latest block number", zap.Error(err))
@@ -76,8 +87,14 @@ func (i *Ingestor) IngestTransactions(ctx context.Context) error {
 		for _, tx := range transactions {
 			if err := i.processTransaction(ctx, &tx); err != nil {
 				i.logger.Error("Failed to process transaction", zap.Error(err), zap.String("hash", tx.Hash))
-				continue
+				return fmt.Errorf("failed to process transaction %s: %w", tx.Hash, err)
 			}
+		}
+
+		// Update the last processed block in the database
+		if err := i.queries.UpdateLastProcessedBlock(ctx, blockEnd); err != nil {
+			i.logger.Error("Failed to update last processed block", zap.Error(err), zap.Int64("block", blockEnd))
+			return fmt.Errorf("failed to update last processed block: %w", err)
 		}
 
 		i.logger.Info("Processed blocks", zap.Int64("from", currentBlock), zap.Int64("to", blockEnd))
@@ -116,7 +133,7 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 		IsError:           tx.IsError == "1",
 		TxreceiptStatus:   sqldb.NullBool{Bool: tx.TxreceiptStatus == "1", Valid: true},
 		Input:             tx.Input,
-		ContractAddress:   sqldb.NullString{String: tx.ContractAddress, Valid: tx.ContractAddress != ""},
+		ContractAddress:   tx.ContractAddress,
 		CumulativeGasUsed: cumulativeGasUsed.Int64(),
 		GasUsed:           gasUsed.Int64(),
 		Confirmations:     confirmations.Int64(),

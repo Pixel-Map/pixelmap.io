@@ -12,19 +12,31 @@ import (
 )
 
 const getCurrentState = `-- name: GetCurrentState :one
-SELECT state, value FROM current_states
+SELECT state, value FROM current_state
 WHERE state = $1 LIMIT 1
 `
 
-func (q *Queries) GetCurrentState(ctx context.Context, state StateToTrack) (CurrentState, error) {
+func (q *Queries) GetCurrentState(ctx context.Context, state string) (CurrentState, error) {
 	row := q.db.QueryRowContext(ctx, getCurrentState, state)
 	var i CurrentState
 	err := row.Scan(&i.State, &i.Value)
 	return i, err
 }
 
+const getLastProcessedBlock = `-- name: GetLastProcessedBlock :one
+SELECT value::BIGINT FROM current_state 
+WHERE state = 'INGESTION_LAST_ETHERSCAN_BLOCK'
+`
+
+func (q *Queries) GetLastProcessedBlock(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, getLastProcessedBlock)
+	var value int64
+	err := row.Scan(&value)
+	return value, err
+}
+
 const getLatestBlockNumber = `-- name: GetLatestBlockNumber :one
-SELECT COALESCE(MAX(block_number), 0) FROM pixel_map_transactions
+SELECT COALESCE(MAX(block_number), 0) FROM pixel_map_transaction
 `
 
 func (q *Queries) GetLatestBlockNumber(ctx context.Context) (interface{}, error) {
@@ -35,7 +47,7 @@ func (q *Queries) GetLatestBlockNumber(ctx context.Context) (interface{}, error)
 }
 
 const insertPixelMapTransaction = `-- name: InsertPixelMapTransaction :one
-INSERT INTO pixel_map_transactions (
+INSERT INTO pixel_map_transaction (
     block_number, time_stamp, hash, nonce, block_hash, transaction_index,
     "from", "to", value, gas, gas_price, is_error, txreceipt_status,
     input, contract_address, cumulative_gas_used, gas_used, confirmations
@@ -46,24 +58,24 @@ RETURNING id
 `
 
 type InsertPixelMapTransactionParams struct {
-	BlockNumber       int64          `json:"block_number"`
-	TimeStamp         time.Time      `json:"time_stamp"`
-	Hash              string         `json:"hash"`
-	Nonce             int64          `json:"nonce"`
-	BlockHash         string         `json:"block_hash"`
-	TransactionIndex  int32          `json:"transaction_index"`
-	From              string         `json:"from"`
-	To                string         `json:"to"`
-	Value             string         `json:"value"`
-	Gas               int64          `json:"gas"`
-	GasPrice          int64          `json:"gas_price"`
-	IsError           bool           `json:"is_error"`
-	TxreceiptStatus   sql.NullBool   `json:"txreceipt_status"`
-	Input             string         `json:"input"`
-	ContractAddress   sql.NullString `json:"contract_address"`
-	CumulativeGasUsed int64          `json:"cumulative_gas_used"`
-	GasUsed           int64          `json:"gas_used"`
-	Confirmations     int64          `json:"confirmations"`
+	BlockNumber       int64        `json:"block_number"`
+	TimeStamp         time.Time    `json:"time_stamp"`
+	Hash              string       `json:"hash"`
+	Nonce             int64        `json:"nonce"`
+	BlockHash         string       `json:"block_hash"`
+	TransactionIndex  int32        `json:"transaction_index"`
+	From              string       `json:"from"`
+	To                string       `json:"to"`
+	Value             string       `json:"value"`
+	Gas               int64        `json:"gas"`
+	GasPrice          int64        `json:"gas_price"`
+	IsError           bool         `json:"is_error"`
+	TxreceiptStatus   sql.NullBool `json:"txreceipt_status"`
+	Input             string       `json:"input"`
+	ContractAddress   string       `json:"contract_address"`
+	CumulativeGasUsed int64        `json:"cumulative_gas_used"`
+	GasUsed           int64        `json:"gas_used"`
+	Confirmations     int64        `json:"confirmations"`
 }
 
 func (q *Queries) InsertPixelMapTransaction(ctx context.Context, arg InsertPixelMapTransactionParams) (int32, error) {
@@ -93,18 +105,29 @@ func (q *Queries) InsertPixelMapTransaction(ctx context.Context, arg InsertPixel
 }
 
 const updateCurrentState = `-- name: UpdateCurrentState :exec
-INSERT INTO current_states (state, value)
+INSERT INTO current_state (state, value)
 VALUES ($1, $2)
 ON CONFLICT (state) DO UPDATE
 SET value = EXCLUDED.value
 `
 
 type UpdateCurrentStateParams struct {
-	State StateToTrack `json:"state"`
-	Value int64        `json:"value"`
+	State string `json:"state"`
+	Value int64  `json:"value"`
 }
 
 func (q *Queries) UpdateCurrentState(ctx context.Context, arg UpdateCurrentStateParams) error {
 	_, err := q.db.ExecContext(ctx, updateCurrentState, arg.State, arg.Value)
+	return err
+}
+
+const updateLastProcessedBlock = `-- name: UpdateLastProcessedBlock :exec
+INSERT INTO current_state (state, value) 
+VALUES ('INGESTION_LAST_ETHERSCAN_BLOCK', $1)
+ON CONFLICT (state) DO UPDATE SET value = EXCLUDED.value
+`
+
+func (q *Queries) UpdateLastProcessedBlock(ctx context.Context, value int64) error {
+	_, err := q.db.ExecContext(ctx, updateLastProcessedBlock, value)
 	return err
 }

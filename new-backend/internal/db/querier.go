@@ -9,10 +9,12 @@ import (
 )
 
 type Querier interface {
-	GetCurrentState(ctx context.Context, state StateToTrack) (CurrentState, error)
+	GetCurrentState(ctx context.Context, state string) (CurrentState, error)
+	GetLastProcessedBlock(ctx context.Context) (int64, error)
 	GetLatestBlockNumber(ctx context.Context) (interface{}, error)
 	InsertPixelMapTransaction(ctx context.Context, arg InsertPixelMapTransactionParams) (int32, error)
 	UpdateCurrentState(ctx context.Context, arg UpdateCurrentStateParams) error
+	UpdateLastProcessedBlock(ctx context.Context, value int64) error
 }
 
 var _ Querier = (*Queries)(nil)

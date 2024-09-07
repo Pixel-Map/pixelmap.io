@@ -1,16 +1,17 @@
 -- 001_initial_schema.sql
 
-CREATE TYPE state_to_track AS ENUM (
-    'INGESTION_LAST_PROCESSED_PIXEL_MAP_TX',
-    'INGESTION_LAST_ETHERSCAN_BLOCK',
-    'NOTIFICATIONS_LAST_PROCESSED_TILE_CHANGE',
-    'RENDERER_LAST_PROCESSED_DATA_CHANGE'
-);
+-- CREATE TYPE state_to_track AS ENUM (
+--     'INGESTION_LAST_PROCESSED_PIXEL_MAP_TX',
+--     'INGESTION_LAST_ETHERSCAN_BLOCK',
+--     'NOTIFICATIONS_LAST_PROCESSED_TILE_CHANGE',
+--     'RENDERER_LAST_PROCESSED_DATA_CHANGE'
+-- );
 
-CREATE TABLE current_states (
-    state state_to_track PRIMARY KEY,
+CREATE TABLE current_state (
+    state VARCHAR(255) PRIMARY KEY,
     value BIGINT NOT NULL DEFAULT 0
 );
+
 
 CREATE TABLE tiles (
     id SERIAL PRIMARY KEY,
@@ -37,7 +38,7 @@ CREATE TABLE data_histories (
     UNIQUE(tile_id, tx)
 );
 
-CREATE TABLE pixel_map_transactions (
+CREATE TABLE pixel_map_transaction (
     id SERIAL PRIMARY KEY,
     block_number BIGINT NOT NULL,
     time_stamp TIMESTAMP NOT NULL,
@@ -53,7 +54,7 @@ CREATE TABLE pixel_map_transactions (
     is_error BOOLEAN NOT NULL,
     txreceipt_status BOOLEAN,
     input TEXT NOT NULL,
-    contract_address VARCHAR(42),
+    contract_address VARCHAR(42) NOT NULL,
     cumulative_gas_used BIGINT NOT NULL,
     gas_used BIGINT NOT NULL,
     confirmations BIGINT NOT NULL,

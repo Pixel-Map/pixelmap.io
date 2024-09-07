@@ -6,58 +6,12 @@ package db
 
 import (
 	"database/sql"
-	"database/sql/driver"
-	"fmt"
 	"time"
 )
 
-type StateToTrack string
-
-const (
-	StateToTrackINGESTIONLASTPROCESSEDPIXELMAPTX     StateToTrack = "INGESTION_LAST_PROCESSED_PIXEL_MAP_TX"
-	StateToTrackINGESTIONLASTETHERSCANBLOCK          StateToTrack = "INGESTION_LAST_ETHERSCAN_BLOCK"
-	StateToTrackNOTIFICATIONSLASTPROCESSEDTILECHANGE StateToTrack = "NOTIFICATIONS_LAST_PROCESSED_TILE_CHANGE"
-	StateToTrackRENDERERLASTPROCESSEDDATACHANGE      StateToTrack = "RENDERER_LAST_PROCESSED_DATA_CHANGE"
-)
-
-func (e *StateToTrack) Scan(src interface{}) error {
-	switch s := src.(type) {
-	case []byte:
-		*e = StateToTrack(s)
-	case string:
-		*e = StateToTrack(s)
-	default:
-		return fmt.Errorf("unsupported scan type for StateToTrack: %T", src)
-	}
-	return nil
-}
-
-type NullStateToTrack struct {
-	StateToTrack StateToTrack `json:"state_to_track"`
-	Valid        bool         `json:"valid"` // Valid is true if StateToTrack is not NULL
-}
-
-// Scan implements the Scanner interface.
-func (ns *NullStateToTrack) Scan(value interface{}) error {
-	if value == nil {
-		ns.StateToTrack, ns.Valid = "", false
-		return nil
-	}
-	ns.Valid = true
-	return ns.StateToTrack.Scan(value)
-}
-
-// Value implements the driver Valuer interface.
-func (ns NullStateToTrack) Value() (driver.Value, error) {
-	if !ns.Valid {
-		return nil, nil
-	}
-	return string(ns.StateToTrack), nil
-}
-
 type CurrentState struct {
-	State StateToTrack `json:"state"`
-	Value int64        `json:"value"`
+	State string `json:"state"`
+	Value int64  `json:"value"`
 }
 
 type DataHistory struct {
@@ -74,25 +28,25 @@ type DataHistory struct {
 }
 
 type PixelMapTransaction struct {
-	ID                int32          `json:"id"`
-	BlockNumber       int64          `json:"block_number"`
-	TimeStamp         time.Time      `json:"time_stamp"`
-	Hash              string         `json:"hash"`
-	Nonce             int64          `json:"nonce"`
-	BlockHash         string         `json:"block_hash"`
-	TransactionIndex  int32          `json:"transaction_index"`
-	From              string         `json:"from"`
-	To                string         `json:"to"`
-	Value             string         `json:"value"`
-	Gas               int64          `json:"gas"`
-	GasPrice          int64          `json:"gas_price"`
-	IsError           bool           `json:"is_error"`
-	TxreceiptStatus   sql.NullBool   `json:"txreceipt_status"`
-	Input             string         `json:"input"`
-	ContractAddress   sql.NullString `json:"contract_address"`
-	CumulativeGasUsed int64          `json:"cumulative_gas_used"`
-	GasUsed           int64          `json:"gas_used"`
-	Confirmations     int64          `json:"confirmations"`
+	ID                int32        `json:"id"`
+	BlockNumber       int64        `json:"block_number"`
+	TimeStamp         time.Time    `json:"time_stamp"`
+	Hash              string       `json:"hash"`
+	Nonce             int64        `json:"nonce"`
+	BlockHash         string       `json:"block_hash"`
+	TransactionIndex  int32        `json:"transaction_index"`
+	From              string       `json:"from"`
+	To                string       `json:"to"`
+	Value             string       `json:"value"`
+	Gas               int64        `json:"gas"`
+	GasPrice          int64        `json:"gas_price"`
+	IsError           bool         `json:"is_error"`
+	TxreceiptStatus   sql.NullBool `json:"txreceipt_status"`
+	Input             string       `json:"input"`
+	ContractAddress   string       `json:"contract_address"`
+	CumulativeGasUsed int64        `json:"cumulative_gas_used"`
+	GasUsed           int64        `json:"gas_used"`
+	Confirmations     int64        `json:"confirmations"`
 }
 
 type PurchaseHistory struct {
