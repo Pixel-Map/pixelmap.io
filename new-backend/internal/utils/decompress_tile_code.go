@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+
+	"github.com/golang-module/dongle"
+
 	"strings"
 )
 
@@ -329,7 +332,7 @@ func bytesToHexString(data []byte) string {
 }
 
 func decodeAndInflate(str string) ([]byte, error) {
-	decoded, err := base91Decode(str)
+	decoded, err := DecodeBase91(str)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode base91: %w", err)
 	}
@@ -409,32 +412,8 @@ func get8bitColor(s string) ([3]byte, error) {
 	return colors8bit[index], nil
 }
 
-func base91Decode(s string) ([]byte, error) {
-	n := 0
-	b := 0
-	result := make([]byte, 0, len(s))
-
-	for i, ch := range s {
-		d := strings.IndexRune(base91Alphabet, ch)
-		if d == -1 {
-			return nil, fmt.Errorf("invalid character in Base91 string at position %d: %c", i, ch)
-		}
-
-		b |= d << n
-		n += 13
-
-		if n > 13 {
-			result = append(result, byte(b&255))
-			b >>= 8
-			n -= 8
-		}
-	}
-
-	if n != 0 {
-		result = append(result, byte(b&255))
-	}
-
-	return result, nil
+func DecodeBase91(s string) ([]byte, error) {
+	return dongle.Decode.FromString(s).ByBase91().ToBytes(), nil
 }
 
 func min(a, b int) int {
