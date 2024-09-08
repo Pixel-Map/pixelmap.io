@@ -225,7 +225,7 @@ export class IngestorService {
 		await this.pixelMapTransaction.getEntityManager().flush();
 	}
 
-	@Cron("0 * * * *")
+	@Cron("0 0 * * *")
 	@CreateRequestContext()
 	async updateCurrentTileData() {
 		this.logger.log("Updating current tile data");
