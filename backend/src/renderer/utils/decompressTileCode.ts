@@ -518,7 +518,9 @@ export function compressTileCode(tileCodeString) {
 export function decodeBase91(encodedString: string): Uint8Array {
 	return base91.decode(encodedString);
 }
-
+export function zlibInflate(data: Uint8Array): Uint8Array {
+	return pako.inflate(data);
+}
 export function decompressTileCode(tileCodeString) {
 	if (
 		typeof tileCodeString !== "string" ||
@@ -530,12 +532,12 @@ export function decompressTileCode(tileCodeString) {
 		return tileCodeString.trim();
 	}
 
-	//deocde and inflate
+	//decode and inflate
 	let data = null;
 	try {
-		const str = tileCodeString.substr(IMAGE_COMPRESSED.length);
+		const str = tileCodeString.slice(IMAGE_COMPRESSED.length);
 		const based = decodeBase91(str);
-		data = pako.inflate(based);
+		data = zlibInflate(based);
 	} catch (err) {
 		return tileCodeString;
 	}

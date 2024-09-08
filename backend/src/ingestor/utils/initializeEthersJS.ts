@@ -4,9 +4,9 @@ import * as pixelMapWrapperABI from "../../../abi/PixelMapWrapper.json";
 
 export function initializeEthersJS() {
 	const provider = new ethers.JsonRpcProvider(process.env.WEB3_URL, "mainnet");
-	provider.on("debug", (info) => {
-		console.log(info.action);
-	});
+	// provider.on("debug", (info) => {
+	// 	console.log(info.action);
+	// });
 	const pixelMap = new ethers.Contract(
 		"0x015a06a433353f8db634df4eddf0c109882a15ab",
 		pixelMapABI,
