@@ -556,7 +556,7 @@ function inflateCompressedData(tileCodeString: string): Uint8Array {
 	return zlibInflate(based);
 }
 
-function detectImageProperties(
+export function detectImageProperties(
 	data: Uint8Array,
 	tileCodeString: string,
 ): { pixelSize: number; colorDepth: number } {

@@ -1,6 +1,16 @@
-import { decompressTileCode } from "./decompressTileCode";
+import {
+	decompressTileCode,
+	detectImageProperties,
+} from "./decompressTileCode";
 import { decodeBase91 } from "./decompressTileCode";
 import { zlibInflate } from "./decompressTileCode";
+
+it("successfully decodes a non-compressed regular hex triplet string", async () => {
+	const regular_image =
+		"000000000000000000000000000000000000000000000000000000000000000000022ffffff022000000000000000000000000000000000000ffffffffffff000000000000000000000000000000000000fff022022fff000000000000000000000000000000000000a75ffffffa75000000000000000000000000000000000022da8da8da8da8022000000000000000000000000000000022da8da8da8da8022000000000000000000000000000000022764c97c97764022000000000000000000000000000000a75355566566355a75000000000000000000000000000000a75a75022022a75a75000000000000000000000022466466fff022ceecee022fff4664660000000000000000220220220220a00a00a00a0022022022000000000000000022466466022ceeceeceecee022466466000000000000000000022022fff700700700700fff022022000000000000000000022022000022022022022000022022000000000000000000000000000000000000000000000000000000000";
+
+	expect(decompressTileCode(regular_image)).toBe(regular_image);
+});
 
 it("successfully decodes a Pako compressed Base91 string", async () => {
 	const compressedImage =
@@ -131,5 +141,94 @@ describe("zlibInflate", () => {
 		const result = zlibInflate(compressedImage);
 
 		expect(result).toEqual(new Uint8Array(expectedInflatedImage));
+	});
+});
+
+describe("detectImageProperties", () => {
+	const IMAGE_COMPRESSED_V2 = "c#"; // Make sure this matches the actual constant
+
+	it("should return default values for non-V2 compressed strings", () => {
+		const result = detectImageProperties(new Uint8Array(0), "b#somedata");
+		expect(result).toEqual({ pixelSize: 16, colorDepth: 12 });
+	});
+
+	it("should detect 4x4 images with 4-bit color depth", () => {
+		const result = detectImageProperties(
+			new Uint8Array(8),
+			`${IMAGE_COMPRESSED_V2}data`,
+		);
+		expect(result).toEqual({ pixelSize: 4, colorDepth: 4 });
+	});
+
+	it("should detect 4x4 images with 8-bit color depth", () => {
+		const result = detectImageProperties(
+			new Uint8Array(16),
+			`${IMAGE_COMPRESSED_V2}data`,
+		);
+		expect(result).toEqual({ pixelSize: 4, colorDepth: 8 });
+	});
+
+	it("should detect 4x4 images with 12-bit color depth", () => {
+		const result = detectImageProperties(
+			new Uint8Array(48),
+			`${IMAGE_COMPRESSED_V2}data`,
+		);
+		expect(result).toEqual({ pixelSize: 4, colorDepth: 12 });
+	});
+
+	it("should detect 8x8 images with 4-bit color depth", () => {
+		const result = detectImageProperties(
+			new Uint8Array(32),
+			`${IMAGE_COMPRESSED_V2}data`,
+		);
+		expect(result).toEqual({ pixelSize: 8, colorDepth: 4 });
+	});
+
+	it("should detect 8x8 images with 8-bit color depth", () => {
+		const result = detectImageProperties(
+			new Uint8Array(64),
+			`${IMAGE_COMPRESSED_V2}data`,
+		);
+		expect(result).toEqual({ pixelSize: 8, colorDepth: 8 });
+	});
+
+	it("should detect 8x8 images with 12-bit color depth", () => {
+		const result = detectImageProperties(
+			new Uint8Array(192),
+			`${IMAGE_COMPRESSED_V2}data`,
+		);
+		expect(result).toEqual({ pixelSize: 8, colorDepth: 12 });
+	});
+
+	it("should detect 16x16 images with 4-bit color depth", () => {
+		const result = detectImageProperties(
+			new Uint8Array(128),
+			`${IMAGE_COMPRESSED_V2}data`,
+		);
+		expect(result).toEqual({ pixelSize: 16, colorDepth: 4 });
+	});
+
+	it("should detect 16x16 images with 8-bit color depth", () => {
+		const result = detectImageProperties(
+			new Uint8Array(256),
+			`${IMAGE_COMPRESSED_V2}data`,
+		);
+		expect(result).toEqual({ pixelSize: 16, colorDepth: 8 });
+	});
+
+	it("should detect 16x16 images with 12-bit color depth", () => {
+		const result = detectImageProperties(
+			new Uint8Array(768),
+			`${IMAGE_COMPRESSED_V2}data`,
+		);
+		expect(result).toEqual({ pixelSize: 16, colorDepth: 12 });
+	});
+
+	it("should return default values for unknown data lengths", () => {
+		const result = detectImageProperties(
+			new Uint8Array(1000),
+			`${IMAGE_COMPRESSED_V2}data`,
+		);
+		expect(result).toEqual({ pixelSize: 16, colorDepth: 12 });
 	});
 });
