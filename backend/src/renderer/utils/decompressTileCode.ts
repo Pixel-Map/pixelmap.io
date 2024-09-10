@@ -446,7 +446,7 @@ export function compressTileCode(tileCodeString) {
 			}
 		}
 		tileCodeString = imageString;
-	} else if (pixelSize == 4) {
+	} else if (pixelSize === 4) {
 		//4x4
 		const maxSize = 16;
 		const diffRatio = maxSize / 4;
@@ -521,142 +521,120 @@ export function decodeBase91(encodedString: string): Uint8Array {
 export function zlibInflate(data: Uint8Array): Uint8Array {
 	return pako.inflate(data);
 }
-export function decompressTileCode(tileCodeString) {
-	if (
-		typeof tileCodeString !== "string" ||
-		!(
-			tileCodeString.startsWith(IMAGE_COMPRESSED) ||
-			tileCodeString.startsWith(IMAGE_COMPRESSED_V2)
-		)
-	) {
+export function decompressTileCode(tileCodeString: string): string {
+	if (!isCompressedTileCode(tileCodeString)) {
 		return tileCodeString.trim();
 	}
 
-	//decode and inflate
-	let data = null;
+	let data: Uint8Array;
 	try {
-		const str = tileCodeString.slice(IMAGE_COMPRESSED.length);
-		const based = decodeBase91(str);
-		data = zlibInflate(based);
+		data = inflateCompressedData(tileCodeString);
 	} catch (err) {
 		return tileCodeString;
 	}
 
-	//determine pixelSize and colorDepth based on data size
-	let pixelSize = 16;
-	let colorDepth = 12;
-	if (tileCodeString.startsWith(IMAGE_COMPRESSED_V2)) {
-		if (data.length === 8) {
-			//4x4, 4bit colors
-			pixelSize = 4;
-			colorDepth = 4;
-		} else if (data.length === 16) {
-			//4x4, 8bit colors
-			pixelSize = 4;
-			colorDepth = 8;
-		} else if (data.length === 48) {
-			//4x4, 12bit colors
-			pixelSize = 4;
-			colorDepth = 12;
-		} else if (data.length === 32) {
-			//8x8, 4bit colors
-			pixelSize = 8;
-			colorDepth = 4;
-		} else if (data.length === 64) {
-			//8x8, 8bit colors
-			pixelSize = 8;
-			colorDepth = 8;
-		} else if (data.length === 192) {
-			//8x8, 12bit colors
-			pixelSize = 8;
-			colorDepth = 12;
-		} else if (data.length === 128) {
-			//16x16, 4bit colors
-			pixelSize = 16;
-			colorDepth = 4;
-		} else if (data.length === 256) {
-			//16x16, 8bit colors
-			pixelSize = 16;
-			colorDepth = 8;
-		} else if (data.length === 768) {
-			//16x16, 12bit colors
-			pixelSize = 16;
-			colorDepth = 12;
-		}
+	const { pixelSize, colorDepth } = detectImageProperties(data, tileCodeString);
+
+	let decodedString = decodeDataToString(data, colorDepth);
+	decodedString = expandColorEncoding(decodedString, colorDepth);
+	decodedString = expandPixelSize(decodedString, pixelSize);
+
+	return decodedString;
+}
+
+function isCompressedTileCode(tileCodeString: string): boolean {
+	return (
+		typeof tileCodeString === "string" &&
+		(tileCodeString.startsWith(IMAGE_COMPRESSED) ||
+			tileCodeString.startsWith(IMAGE_COMPRESSED_V2))
+	);
+}
+
+function inflateCompressedData(tileCodeString: string): Uint8Array {
+	const str = tileCodeString.slice(IMAGE_COMPRESSED.length);
+	const based = decodeBase91(str);
+	return zlibInflate(based);
+}
+
+function detectImageProperties(
+	data: Uint8Array,
+	tileCodeString: string,
+): { pixelSize: number; colorDepth: number } {
+	if (!tileCodeString.startsWith(IMAGE_COMPRESSED_V2)) {
+		return { pixelSize: 16, colorDepth: 12 };
 	}
 
-	//convert array to string
-	tileCodeString = "";
+	const properties = {
+		8: { pixelSize: 4, colorDepth: 4 },
+		16: { pixelSize: 4, colorDepth: 8 },
+		48: { pixelSize: 4, colorDepth: 12 },
+		32: { pixelSize: 8, colorDepth: 4 },
+		64: { pixelSize: 8, colorDepth: 8 },
+		192: { pixelSize: 8, colorDepth: 12 },
+		128: { pixelSize: 16, colorDepth: 4 },
+		256: { pixelSize: 16, colorDepth: 8 },
+		768: { pixelSize: 16, colorDepth: 12 },
+	};
+
+	return properties[data.length] || { pixelSize: 16, colorDepth: 12 };
+}
+
+function decodeDataToString(data: Uint8Array, colorDepth: number): string {
 	if (colorDepth === 8 || colorDepth === 4) {
-		//8bit and 4bit color depth are encoded as byte arrays (not string char values)
-		for (let i = 0; i < data.length; i++) {
-			tileCodeString += data[i].toString(16).padStart(2, "0");
-		}
-	} else {
-		tileCodeString = String.fromCharCode(...data);
+		return Array.from(data)
+			.map((byte) => byte.toString(16).padStart(2, "0"))
+			.join("");
 	}
+	return String.fromCharCode(...data);
+}
 
-	//expand hex doubles or hex singles to hex triplets
-	if (colorDepth == 8) {
-		//hex doubles
-		let imageString = "";
-		for (let i = 0; i < tileCodeString.length; i += 2) {
-			const color = get8bitColor(parseInt(tileCodeString.substr(i, 2), 16));
-			imageString +=
-				(color[0] >> 4).toString(16) +
-				(color[1] >> 4).toString(16) +
-				(color[2] >> 4).toString(16);
-		}
-		tileCodeString = imageString;
-	} else if (colorDepth == 4) {
-		//hex singles
-		let imageString = "";
-		for (let i = 0; i < tileCodeString.length; i++) {
-			const color = get4bitColor(parseInt(tileCodeString[i], 16));
-			imageString +=
-				(color[0] >> 4).toString(16) +
-				(color[1] >> 4).toString(16) +
-				(color[2] >> 4).toString(16);
-		}
-		tileCodeString = imageString;
+function expandColorEncoding(
+	tileCodeString: string,
+	colorDepth: number,
+): string {
+	if (colorDepth === 8) {
+		return expandHexDoubles(tileCodeString);
 	}
-
-	//increase string length from lower pixel sizes (16x16, 8x8, 4x4)
-	if (pixelSize == 8) {
-		//8x8
-		const maxSize = 16;
-		const diffRatio = maxSize / 8;
-		let imageString = "";
-		for (let y = 0; y < maxSize; y++) {
-			for (let x = 0; x < maxSize; x++) {
-				const pixelColor = tileCodeString.substr(
-					(Math.floor(y / diffRatio) * (maxSize / diffRatio) +
-						Math.floor(x / diffRatio)) *
-						3,
-					3,
-				);
-				imageString += pixelColor;
-			}
-		}
-		tileCodeString = imageString;
-	} else if (pixelSize == 4) {
-		//4x4
-		const maxSize = 16;
-		const diffRatio = maxSize / 4;
-		let imageString = "";
-		for (let y = 0; y < maxSize; y++) {
-			for (let x = 0; x < maxSize; x++) {
-				const pixelColor = tileCodeString.substr(
-					(Math.floor(y / diffRatio) * (maxSize / diffRatio) +
-						Math.floor(x / diffRatio)) *
-						3,
-					3,
-				);
-				imageString += pixelColor;
-			}
-		}
-		tileCodeString = imageString;
+	if (colorDepth === 4) {
+		return expandHexSingles(tileCodeString);
 	}
-
 	return tileCodeString;
+}
+
+function expandHexDoubles(tileCodeString: string): string {
+	return Array.from({ length: tileCodeString.length / 2 }, (_, i) => {
+		const color = get8bitColor(
+			Number.parseInt(tileCodeString.substr(i * 2, 2), 16),
+		);
+		return color.map((c) => (c >> 4).toString(16)).join("");
+	}).join("");
+}
+
+function expandHexSingles(tileCodeString: string): string {
+	return Array.from(tileCodeString)
+		.map((char) => {
+			const color = get4bitColor(Number.parseInt(char, 16));
+			return color.map((c) => (c >> 4).toString(16)).join("");
+		})
+		.join("");
+}
+
+function expandPixelSize(tileCodeString: string, pixelSize: number): string {
+	if (pixelSize === 16) {
+		return tileCodeString;
+	}
+
+	const maxSize = 16;
+	const diffRatio = maxSize / pixelSize;
+	let imageString = "";
+
+	for (let y = 0; y < maxSize; y++) {
+		for (let x = 0; x < maxSize; x++) {
+			const index =
+				(Math.floor(y / diffRatio) * pixelSize + Math.floor(x / diffRatio)) * 3;
+			imageString += tileCodeString.substr(index, 3);
+		}
+	}
+
+	return imageString;
 }
