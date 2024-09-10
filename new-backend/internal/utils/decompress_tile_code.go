@@ -2,7 +2,9 @@ package utils
 
 import (
 	"bytes"
+	"compress/zlib"
 	"fmt"
+	"io"
 	"log"
 	"strconv"
 
@@ -421,4 +423,19 @@ func min(a, b int) int {
 		return a
 	}
 	return b
+}
+
+func ZlibInflate(data []byte) ([]byte, error) {
+	r, err := zlib.NewReader(bytes.NewReader(data))
+	if err != nil {
+		return nil, err
+	}
+	defer r.Close()
+
+	var result bytes.Buffer
+	_, err = io.Copy(&result, r)
+	if err != nil {
+		return nil, err
+	}
+	return result.Bytes(), nil
 }
