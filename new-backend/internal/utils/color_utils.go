@@ -272,3 +272,10 @@ var Colors8bit = [][3]byte{
 	{176, 176, 64},
 	{176, 176, 176},
 }
+
+func Get8bitColor(index int) [3]byte {
+	return Colors8bit[index]
+}
+func Get4bitColor(index int) [3]byte {
+	return Colors4bit[index]
+}

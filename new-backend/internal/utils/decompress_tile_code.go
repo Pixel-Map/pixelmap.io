@@ -16,7 +16,6 @@ import (
 const (
 	ImageCompressed   = "b#"
 	ImageCompressedV2 = "c#"
-	base91Alphabet    = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!#$%&()*+,./:;<=>?@[]^_`{|}~\""
 )
 
 func DecompressTileCode(tileCodeString string) (string, error) {
@@ -52,7 +51,15 @@ func compressedV1Decoder(tileCodeString string) (string, error) {
 	if !strings.HasPrefix(tileCodeString, ImageCompressed) {
 		return "", fmt.Errorf("not a v1 compressed image")
 	}
-	return decodeCompressed(tileCodeString[len(ImageCompressed):], false)
+	data, err := decodeCompressed(tileCodeString[len(ImageCompressed):], false)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode compressed v1: %w", err)
+	}
+	imageProperties := DetectImageProperties([]byte(data), tileCodeString)
+	decodedString := DecodeDataToString([]byte(data), imageProperties.ColorDepth)
+	decodedString = ExpandColorEncoding(decodedString, imageProperties.ColorDepth)
+	decodedString = ExpandPixelSize(decodedString, imageProperties.PixelSize)
+	return decodedString, nil
 }
 
 func compressedV2Decoder(tileCodeString string) (string, error) {
@@ -70,19 +77,61 @@ func decodeCompressed(data string, isV2 bool) (string, error) {
 	pixelSize, colorDepth := determinePixelSizeAndColorDepth(len(decodedData), isV2)
 	log.Printf("Determined pixelSize: %d, colorDepth: %d", pixelSize, colorDepth)
 
-	result := bytesToHexString(decodedData)
+	// Convert the decompressed data to a string based on color depth
+	result := DecodeDataToString(decodedData, colorDepth)
+
+	// Expand the color encoding if necessary
+	result = ExpandColorEncoding(result, colorDepth)
+
+	// Expand the pixel size if necessary
+	result = ExpandPixelSize(result, pixelSize)
+
 	log.Printf("Final result length: %d", len(result))
 	log.Printf("Final result (first 60 chars): %s", result[:min(60, len(result))])
 
 	return result, nil
 }
-
-func bytesToHexString(data []byte) string {
+func ExpandColorEncoding(tileCodeString string, colorDepth int) string {
+	if colorDepth == 8 {
+		return ExpandHexDoubles(tileCodeString)
+	}
+	if colorDepth == 4 {
+		return ExpandHexSingles(tileCodeString)
+	}
+	return tileCodeString
+}
+func ExpandHexDoubles(tileCodeString string) string {
 	var result strings.Builder
-	for _, b := range data {
-		result.WriteString(fmt.Sprintf("%02x", b))
+	for i := 0; i < len(tileCodeString); i += 2 {
+		colorIndex, _ := strconv.ParseInt(tileCodeString[i:i+2], 16, 8)
+		color := Get8bitColor(int(colorIndex))
+		for _, c := range color {
+			result.WriteString(fmt.Sprintf("%x", c>>4))
+		}
 	}
 	return result.String()
+}
+
+func ExpandHexSingles(tileCodeString string) string {
+	var result strings.Builder
+	for _, char := range tileCodeString {
+		colorIndex, _ := strconv.ParseInt(string(char), 16, 8)
+		color := Get4bitColor(int(colorIndex))
+		for _, c := range color {
+			result.WriteString(fmt.Sprintf("%x", c>>4))
+		}
+	}
+	return result.String()
+}
+func DecodeDataToString(data []byte, colorDepth int) string {
+	if colorDepth == 8 || colorDepth == 4 {
+		var result strings.Builder
+		for _, byte := range data {
+			result.WriteString(fmt.Sprintf("%02x", byte))
+		}
+		return result.String()
+	}
+	return string(data)
 }
 
 func decodeAndInflate(str string) ([]byte, error) {
@@ -92,27 +141,32 @@ func decodeAndInflate(str string) ([]byte, error) {
 	}
 	log.Printf("Base91 decoded length: %d", len(decoded))
 
-	// Custom decompression algorithm
-	var result bytes.Buffer
-	var b uint32
-	var n uint32
+	// Use zlib to decompress the data
+	decompressed, err := ZlibInflate(decoded)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decompress data: %w", err)
+	}
 
-	for _, v := range decoded {
-		b |= uint32(v) << n
-		n += 8
-		for n > 7 {
-			result.WriteByte(byte(b & 0xFF))
-			b >>= 8
-			n -= 8
+	log.Printf("Zlib decompressed length: %d", len(decompressed))
+	return decompressed, nil
+}
+func ExpandPixelSize(tileCodeString string, pixelSize int) string {
+	if pixelSize == 16 {
+		return tileCodeString
+	}
+
+	const maxSize = 16
+	diffRatio := float64(maxSize) / float64(pixelSize)
+	var imageString strings.Builder
+
+	for y := 0; y < maxSize; y++ {
+		for x := 0; x < maxSize; x++ {
+			index := (int(float64(y)/diffRatio)*pixelSize + int(float64(x)/diffRatio)) * 3
+			imageString.WriteString(tileCodeString[index : index+3])
 		}
 	}
 
-	if n > 0 {
-		result.WriteByte(byte(b & 0xFF))
-	}
-
-	log.Printf("Custom decompressed length: %d", result.Len())
-	return result.Bytes(), nil
+	return imageString.String()
 }
 
 func determinePixelSizeAndColorDepth(dataLength int, isV2 bool) (int, int) {
@@ -142,28 +196,6 @@ func determinePixelSizeAndColorDepth(dataLength int, isV2 bool) (int, int) {
 	}
 
 	return pixelSize, colorDepth
-}
-
-func get4bitColor(s string) ([3]byte, error) {
-	index, err := strconv.ParseInt(s, 16, 4)
-	if err != nil {
-		return [3]byte{}, err
-	}
-	if index < 0 || int(index) >= len(Colors4bit) {
-		return [3]byte{}, fmt.Errorf("invalid 4-bit color index: %d", index)
-	}
-	return Colors4bit[index], nil
-}
-
-func get8bitColor(s string) ([3]byte, error) {
-	index, err := strconv.ParseInt(s, 16, 8)
-	if err != nil {
-		return [3]byte{}, err
-	}
-	if index < 0 || int(index) >= len(Colors8bit) {
-		return [3]byte{}, fmt.Errorf("invalid 8-bit color index: %d", index)
-	}
-	return Colors8bit[index], nil
 }
 
 func DecodeBase91(s string) ([]byte, error) {

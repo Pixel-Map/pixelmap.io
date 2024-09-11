@@ -41,6 +41,20 @@ func TestDecompressTileCode(t *testing.T) {
 			t.Errorf("Expected %s, but got %s", expected, result)
 		}
 	})
+
+	t.Run("successfully decodes a Pako compressed Base91 string with v2 compression", func(t *testing.T) {
+		compressedImage :=
+			"c#I@O:{0t#NMZD.(KC%ZhwOry(0kP{0WZLh*FTUG`cUB_A`c)}Nn@D]zS{/djLAA!mHP(B"
+		expected := "ffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffd000ffdffdffdffdffdffdffdffdffdffdffdffdffdffd000000ffdffdffdffdffdffdffdffdffdffdffdffdffd000000000ffdffdffdffdffdffdffdffdffdffdffdffdffd000000000ffdffdffdffdffdffdffdffdffdffdffdffd000000000000ffdffdffdffdffdffdffdffdffdffdffd332000000000000ffdffdffdffdffdffdffdffdffdffdffd000000000000000ffdffdffdffdffdffdffdffdffdffd000000000000000000ffdffdffdffdffdffdffdffdffd887000000000000000000ffdffdffdffdffdffdffdffdffd000000000000000000000"
+		result, err := DecompressTileCode(compressedImage)
+		if err != nil {
+			t.Fatalf("DecompressTileCode failed: %v", err)
+		}
+		if result != expected {
+			t.Errorf("Expected %s, but got %s", expected, result)
+		}
+	})
+
 }
 
 func TestDecodeBase91(t *testing.T) {
@@ -159,4 +173,104 @@ func TestZlibInflate(t *testing.T) {
 			t.Errorf("Expected %v, but got %v", expectedInflatedImage, result)
 		}
 	})
+}
+
+const IMAGE_COMPRESSED_V2 = "c#"
+
+func TestDetectImageProperties(t *testing.T) {
+	tests := []struct {
+		name           string
+		data           []byte
+		tileCodeString string
+		wantPixelSize  int
+		wantColorDepth int
+	}{
+		{
+			name:           "non-V2 compressed string",
+			data:           []byte{},
+			tileCodeString: "b#somedata",
+			wantPixelSize:  16,
+			wantColorDepth: 12,
+		},
+		{
+			name:           "4x4 image with 4-bit color depth",
+			data:           make([]byte, 8),
+			tileCodeString: IMAGE_COMPRESSED_V2 + "data",
+			wantPixelSize:  4,
+			wantColorDepth: 4,
+		},
+		{
+			name:           "4x4 image with 8-bit color depth",
+			data:           make([]byte, 16),
+			tileCodeString: IMAGE_COMPRESSED_V2 + "data",
+			wantPixelSize:  4,
+			wantColorDepth: 8,
+		},
+		{
+			name:           "4x4 image with 12-bit color depth",
+			data:           make([]byte, 48),
+			tileCodeString: IMAGE_COMPRESSED_V2 + "data",
+			wantPixelSize:  4,
+			wantColorDepth: 12,
+		},
+		{
+			name:           "8x8 image with 4-bit color depth",
+			data:           make([]byte, 32),
+			tileCodeString: IMAGE_COMPRESSED_V2 + "data",
+			wantPixelSize:  8,
+			wantColorDepth: 4,
+		},
+		{
+			name:           "8x8 image with 8-bit color depth",
+			data:           make([]byte, 64),
+			tileCodeString: IMAGE_COMPRESSED_V2 + "data",
+			wantPixelSize:  8,
+			wantColorDepth: 8,
+		},
+		{
+			name:           "8x8 image with 12-bit color depth",
+			data:           make([]byte, 192),
+			tileCodeString: IMAGE_COMPRESSED_V2 + "data",
+			wantPixelSize:  8,
+			wantColorDepth: 12,
+		},
+		{
+			name:           "16x16 image with 4-bit color depth",
+			data:           make([]byte, 128),
+			tileCodeString: IMAGE_COMPRESSED_V2 + "data",
+			wantPixelSize:  16,
+			wantColorDepth: 4,
+		},
+		{
+			name:           "16x16 image with 8-bit color depth",
+			data:           make([]byte, 256),
+			tileCodeString: IMAGE_COMPRESSED_V2 + "data",
+			wantPixelSize:  16,
+			wantColorDepth: 8,
+		},
+		{
+			name:           "16x16 image with 12-bit color depth",
+			data:           make([]byte, 768),
+			tileCodeString: IMAGE_COMPRESSED_V2 + "data",
+			wantPixelSize:  16,
+			wantColorDepth: 12,
+		},
+		{
+			name:           "unknown data length",
+			data:           make([]byte, 1000),
+			tileCodeString: IMAGE_COMPRESSED_V2 + "data",
+			wantPixelSize:  16,
+			wantColorDepth: 12,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := DetectImageProperties(tt.data, tt.tileCodeString)
+			if got.PixelSize != tt.wantPixelSize || got.ColorDepth != tt.wantColorDepth {
+				t.Errorf("detectImageProperties() = {pixelSize: %d, colorDepth: %d}, want {pixelSize: %d, colorDepth: %d}",
+					got.PixelSize, got.ColorDepth, tt.wantPixelSize, tt.wantColorDepth)
+			}
+		})
+	}
 }

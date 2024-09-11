@@ -22,6 +22,16 @@ it("successfully decodes a Pako compressed Base91 string", async () => {
 	);
 });
 
+it("successfully decodes a Pako compressed Base91 string with v2 compression", async () => {
+	const compressedImage =
+		// eslint-disable-next-line max-len
+		"c#I@O:{0t#NMZD.(KC%ZhwOry(0kP{0WZLh*FTUG`cUB_A`c)}Nn@D]zS{/djLAA!mHP(B";
+	expect(decompressTileCode(compressedImage)).toBe(
+		// eslint-disable-next-line max-len
+		"ffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffdffd000ffdffdffdffdffdffdffdffdffdffdffdffdffdffd000000ffdffdffdffdffdffdffdffdffdffdffdffdffd000000000ffdffdffdffdffdffdffdffdffdffdffdffdffd000000000ffdffdffdffdffdffdffdffdffdffdffdffd000000000000ffdffdffdffdffdffdffdffdffdffdffd332000000000000ffdffdffdffdffdffdffdffdffdffdffd000000000000000ffdffdffdffdffdffdffdffdffdffd000000000000000000ffdffdffdffdffdffdffdffdffd887000000000000000000ffdffdffdffdffdffdffdffdffd000000000000000000000",
+	);
+});
+
 it("successfully decodes a regular hex triplet string with accidental whitespace", async () => {
 	const compressedImage =
 		// eslint-disable-next-line max-len
