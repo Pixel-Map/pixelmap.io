@@ -16,8 +16,14 @@ import (
 const (
 	ImageCompressed   = "b#"
 	ImageCompressedV2 = "c#"
+	MaxPixelSize      = 16
+	ColorDepth4       = 4
+	ColorDepth8       = 8
+	ColorDepth12      = 12
 )
 
+// DecompressTileCode attempts to decompress the given tile code string using various decoders.
+// It tries uncompressed, compressed v1, and compressed v2 decoders in order.
 func DecompressTileCode(tileCodeString string) (string, error) {
 	tileCodeString = strings.TrimSpace(tileCodeString)
 	log.Printf("Input tileCodeString: %s", tileCodeString)
@@ -28,6 +34,7 @@ func DecompressTileCode(tileCodeString string) (string, error) {
 		compressedV2Decoder,
 	}
 
+	// Try each decoder until one succeeds
 	for _, decoder := range decoders {
 		result, err := decoder(tileCodeString)
 		if err == nil {
@@ -47,6 +54,9 @@ func uncompressedDecoder(tileCodeString string) (string, error) {
 	log.Println("Not a compressed image, returning as-is")
 	return tileCodeString, nil
 }
+
+// compressedV1Decoder handles the decompression of v1 compressed tile codes.
+// It decodes the data, determines the pixel size and color depth, and expands the result if necessary.
 func compressedV1Decoder(tileCodeString string) (string, error) {
 	if !strings.HasPrefix(tileCodeString, ImageCompressed) {
 		return "", fmt.Errorf("not a v1 compressed image")
@@ -62,28 +72,35 @@ func compressedV1Decoder(tileCodeString string) (string, error) {
 	return decodedString, nil
 }
 
+// compressedV2Decoder handles the decompression of v2 compressed tile codes.
+// It decodes the data, determines the pixel size and color depth, and expands the result if necessary.
 func compressedV2Decoder(tileCodeString string) (string, error) {
 	if !strings.HasPrefix(tileCodeString, ImageCompressedV2) {
 		return "", fmt.Errorf("not a v2 compressed image")
 	}
 	return decodeCompressed(tileCodeString[len(ImageCompressedV2):], true)
 }
+
+// decodeCompressed handles the decompression of both v1 and v2 compressed tile codes.
+// It decodes the data, determines the pixel size and color depth, and expands the result if necessary.
 func decodeCompressed(data string, isV2 bool) (string, error) {
+	// Decode the Base91 encoded string and inflate the zlib compressed data
 	decodedData, err := decodeAndInflate(data)
 	if err != nil {
 		return "", fmt.Errorf("failed to decode and inflate: %w", err)
 	}
 
+	// Determine the pixel size and color depth based on the decoded data length and version
 	pixelSize, colorDepth := determinePixelSizeAndColorDepth(len(decodedData), isV2)
 	log.Printf("Determined pixelSize: %d, colorDepth: %d", pixelSize, colorDepth)
 
 	// Convert the decompressed data to a string based on color depth
 	result := DecodeDataToString(decodedData, colorDepth)
 
-	// Expand the color encoding if necessary
+	// Expand the color encoding if necessary (for 4-bit and 8-bit color depths)
 	result = ExpandColorEncoding(result, colorDepth)
 
-	// Expand the pixel size if necessary
+	// Expand the pixel size if it's smaller than the maximum (16x16)
 	result = ExpandPixelSize(result, pixelSize)
 
 	log.Printf("Final result length: %d", len(result))
@@ -91,15 +108,22 @@ func decodeCompressed(data string, isV2 bool) (string, error) {
 
 	return result, nil
 }
+
+// ExpandColorEncoding expands the color encoding of the tile code string based on the color depth.
+// This function handles 4-bit and 8-bit color depths.
 func ExpandColorEncoding(tileCodeString string, colorDepth int) string {
-	if colorDepth == 8 {
+	switch colorDepth {
+	case 8:
 		return ExpandHexDoubles(tileCodeString)
-	}
-	if colorDepth == 4 {
+	case 4:
 		return ExpandHexSingles(tileCodeString)
+	default:
+		return tileCodeString
 	}
-	return tileCodeString
 }
+
+// ExpandHexDoubles expands a hexadecimal string where each character represents a 4-bit color value.
+// It converts each 4-bit value to an 8-bit value and returns the expanded string.
 func ExpandHexDoubles(tileCodeString string) string {
 	var result strings.Builder
 	for i := 0; i < len(tileCodeString); i += 2 {
@@ -112,6 +136,8 @@ func ExpandHexDoubles(tileCodeString string) string {
 	return result.String()
 }
 
+// ExpandHexSingles expands a hexadecimal string where each character represents an 8-bit color value.
+// It converts each 8-bit value to a 12-bit value and returns the expanded string.
 func ExpandHexSingles(tileCodeString string) string {
 	var result strings.Builder
 	for _, char := range tileCodeString {
@@ -123,6 +149,10 @@ func ExpandHexSingles(tileCodeString string) string {
 	}
 	return result.String()
 }
+
+// DecodeDataToString converts the decompressed data to a string based on the color depth.
+// For 4-bit and 8-bit color depths, it converts the data to a hexadecimal string.
+// For other color depths, it converts the data to a regular string.
 func DecodeDataToString(data []byte, colorDepth int) string {
 	if colorDepth == 8 || colorDepth == 4 {
 		var result strings.Builder
@@ -134,6 +164,7 @@ func DecodeDataToString(data []byte, colorDepth int) string {
 	return string(data)
 }
 
+// decodeAndInflate decodes a Base91 encoded string and inflates the zlib compressed data.
 func decodeAndInflate(str string) ([]byte, error) {
 	decoded, err := DecodeBase91(str)
 	if err != nil {
@@ -150,18 +181,23 @@ func decodeAndInflate(str string) ([]byte, error) {
 	log.Printf("Zlib decompressed length: %d", len(decompressed))
 	return decompressed, nil
 }
+
+// ExpandPixelSize expands the tile code string to a 16x16 pixel representation if necessary.
+// This function handles cases where the original pixel size is smaller than 16x16.
 func ExpandPixelSize(tileCodeString string, pixelSize int) string {
-	if pixelSize == 16 {
+	if pixelSize == MaxPixelSize {
 		return tileCodeString
 	}
 
-	const maxSize = 16
-	diffRatio := float64(maxSize) / float64(pixelSize)
+	diffRatio := float64(MaxPixelSize) / float64(pixelSize)
 	var imageString strings.Builder
 
-	for y := 0; y < maxSize; y++ {
-		for x := 0; x < maxSize; x++ {
+	// Iterate through each pixel in the 16x16 grid
+	for y := 0; y < MaxPixelSize; y++ {
+		for x := 0; x < MaxPixelSize; x++ {
+			// Calculate the corresponding index in the original smaller image
 			index := (int(float64(y)/diffRatio)*pixelSize + int(float64(x)/diffRatio)) * 3
+			// Append the color data for this pixel
 			imageString.WriteString(tileCodeString[index : index+3])
 		}
 	}
@@ -169,8 +205,10 @@ func ExpandPixelSize(tileCodeString string, pixelSize int) string {
 	return imageString.String()
 }
 
+// determinePixelSizeAndColorDepth calculates the pixel size and color depth
+// based on the length of the decoded data and whether it's a v2 compressed image.
 func determinePixelSizeAndColorDepth(dataLength int, isV2 bool) (int, int) {
-	pixelSize, colorDepth := 16, 12
+	pixelSize, colorDepth := MaxPixelSize, ColorDepth12
 
 	if isV2 {
 		switch dataLength {
@@ -198,17 +236,17 @@ func determinePixelSizeAndColorDepth(dataLength int, isV2 bool) (int, int) {
 	return pixelSize, colorDepth
 }
 
+// DecodeBase91 decodes a Base91 encoded string to bytes using the dongle library.
 func DecodeBase91(s string) ([]byte, error) {
 	return dongle.Decode.FromString(s).ByBase91().ToBytes(), nil
 }
 
+// min returns the minimum of two integers.
 func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
+	return map[bool]int{true: a, false: b}[a < b]
 }
 
+// ZlibInflate decompresses zlib compressed data.
 func ZlibInflate(data []byte) ([]byte, error) {
 	r, err := zlib.NewReader(bytes.NewReader(data))
 	if err != nil {
@@ -229,11 +267,11 @@ type ImageProperties struct {
 	ColorDepth int
 }
 
+// DetectImageProperties detects the pixel size and color depth of an image based on the tile code string.
+// It handles both uncompressed and v2 compressed images.
 func DetectImageProperties(data []byte, tileCodeString string) ImageProperties {
-	const IMAGE_COMPRESSED_V2 = "c#"
-
-	if !strings.HasPrefix(tileCodeString, IMAGE_COMPRESSED_V2) {
-		return ImageProperties{PixelSize: 16, ColorDepth: 12}
+	if !strings.HasPrefix(tileCodeString, ImageCompressedV2) {
+		return ImageProperties{PixelSize: MaxPixelSize, ColorDepth: ColorDepth12}
 	}
 
 	properties := map[int]ImageProperties{
@@ -252,5 +290,5 @@ func DetectImageProperties(data []byte, tileCodeString string) ImageProperties {
 		return result
 	}
 
-	return ImageProperties{PixelSize: 16, ColorDepth: 12}
+	return ImageProperties{PixelSize: MaxPixelSize, ColorDepth: ColorDepth12}
 }
