@@ -1,6 +1,8 @@
 package main
 
 //go:generate sh -c "cd internal/db && sqlc generate"
+//go:generate sh -c "abigen --abi ../contracts/PixelMap.abi -pkg contracts --type PixelMap --out internal/contracts/pixelmap.go"
+//go:generate sh -c "abigen --abi ../contracts/PixelMapWrapper.abi -pkg contracts --type PixelMapWrapper --out internal/contracts/pixelmap_wrapper.go"
 
 import (
 	"context"

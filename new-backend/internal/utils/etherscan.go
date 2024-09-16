@@ -64,11 +64,6 @@ func MakeRateLimitedRequest(url string, params map[string]string, logger *zap.Lo
 			return nil, fmt.Errorf("unexpected result type: %T", ethResp.Result)
 		}
 
-		if ethResp.Message == "No transactions found" {
-			logger.Info("No transactions found", zap.String("startBlock", params["startblock"]), zap.String("endBlock", params["endblock"]))
-			return &EtherscanResponse{Result: []interface{}{}}, nil
-		}
-
 		logger.Error("Invalid response from Etherscan", zap.String("message", ethResp.Message))
 		time.Sleep(5 * time.Second)
 	}
