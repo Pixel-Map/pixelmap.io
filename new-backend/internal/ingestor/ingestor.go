@@ -9,7 +9,9 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"go.uber.org/zap"
+	pixelmap "pixelmap.io/backend/internal/contracts/pixelmap"
 	db "pixelmap.io/backend/internal/db"
 )
 
@@ -118,7 +120,8 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 	confirmations, _ := new(big.Int).SetString(tx.Confirmations, 10)
 
 	transactionIndex, _ := strconv.Atoi(tx.TransactionIndex)
-	_, err := i.queries.InsertPixelMapTransaction(ctx, db.InsertPixelMapTransactionParams{
+
+	transaction := db.InsertPixelMapTransactionParams{
 		BlockNumber:       blockNumber.Int64(),
 		TimeStamp:         time.Unix(timeStamp.Int64(), 0),
 		Hash:              tx.Hash,
@@ -137,7 +140,59 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 		CumulativeGasUsed: cumulativeGasUsed.Int64(),
 		GasUsed:           gasUsed.Int64(),
 		Confirmations:     confirmations.Int64(),
-	})
+	}
+
+	fmt.Printf("transaction: %+v\n", transaction)
+
+	// Decode the input data
+	abi, err := pixelmap.PixelMapMetaData.GetAbi()
+	if err != nil {
+		return fmt.Errorf("failed to get ABI: %w", err)
+	}
+
+	// The first 4 bytes of the input data represent the method ID
+	methodID := tx.Input[:10]
+	if string(methodID) == "0x60606040" {
+		fmt.Println("Constructor called")
+		return nil
+	}
+	method, err := abi.MethodById(common.FromHex(methodID))
+	if err != nil {
+		return fmt.Errorf("failed to get method: %w", err)
+
+	}
+	// Decode the parameters
+	args, err := method.Inputs.Unpack(common.FromHex(tx.Input)[4:])
+	if err != nil {
+		return fmt.Errorf("failed to unpack inputs: %w", err)
+	}
+
+	switch method.Name {
+	case "buyTile":
+		if len(args) > 0 {
+			location, ok := args[0].(*big.Int)
+			if ok {
+				fmt.Printf("buyTile called with location: %s\n", location.String())
+			}
+		}
+
+	case "setTile":
+		if len(args) >= 4 {
+			location, _ := args[0].(*big.Int)
+			image, _ := args[1].(string)
+			url, _ := args[2].(string)
+			price, _ := args[3].(*big.Int)
+			fmt.Printf("setTile called with location: %s, image: %s, url: %s, price: %s\n",
+				location.String(), image, url, price.String())
+		}
+
+	// Add other cases as needed
+
+	default:
+		fmt.Printf("Unknown method called: %s\n", method.Name)
+	}
+
+	_, err = i.queries.InsertPixelMapTransaction(ctx, transaction)
 
 	return err
 }

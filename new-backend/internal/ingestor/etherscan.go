@@ -103,7 +103,7 @@ func (c *EtherscanClient) GetTransactions(ctx context.Context, startBlock, endBl
 	params := map[string]string{
 		"module":     "account",
 		"action":     "txlist",
-		"address":    "0x7Be8076f4EA4A4AD08075C2508e481d6C946D12b", // OpenSea contract address
+		"address":    "0x015A06a433353f8db634dF4eDdF0C109882A15AB",
 		"startblock": strconv.FormatInt(startBlock, 10),
 		"endblock":   strconv.FormatInt(endBlock, 10),
 		"sort":       "asc",
