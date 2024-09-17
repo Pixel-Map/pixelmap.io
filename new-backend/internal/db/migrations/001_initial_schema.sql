@@ -12,16 +12,15 @@ CREATE TABLE current_state (
     value BIGINT NOT NULL DEFAULT 0
 );
 
-
 CREATE TABLE tiles (
-    id SERIAL PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
     image VARCHAR(800) NOT NULL,
-    price DECIMAL(10, 2) NOT NULL,
-    url TEXT NOT NULL,
-    owner VARCHAR(42) NOT NULL,
-    wrapped BOOLEAN NOT NULL,
+    price VARCHAR(255) NOT NULL DEFAULT '2.00',
+    url VARCHAR(255) NOT NULL DEFAULT '',
+    owner VARCHAR(255) NOT NULL DEFAULT '0x4f4b7e7edf5ec41235624ce207a6ef352aca7050',
+    wrapped BOOLEAN NOT NULL DEFAULT FALSE,
     ens VARCHAR(255) NOT NULL DEFAULT '',
-    opensea_price DECIMAL(10, 2) NOT NULL DEFAULT 0.0
+    opensea_price VARCHAR(255) NOT NULL DEFAULT '0.0'
 );
 
 CREATE TABLE data_histories (

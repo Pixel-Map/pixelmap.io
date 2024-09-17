@@ -29,3 +29,75 @@ WHERE state = 'INGESTION_LAST_ETHERSCAN_BLOCK';
 INSERT INTO current_state (state, value) 
 VALUES ('INGESTION_LAST_ETHERSCAN_BLOCK', $1)
 ON CONFLICT (state) DO UPDATE SET value = EXCLUDED.value;
+
+-- name: InsertDataHistory :one
+INSERT INTO data_histories (
+    time_stamp, block_number, tx, log_index, image, price, url, updated_by, tile_id
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7, $8, $9
+)
+RETURNING id;
+
+-- name: GetDataHistoryByTileId :many
+SELECT * FROM data_histories
+WHERE tile_id = $1
+ORDER BY time_stamp DESC;
+
+-- name: GetLatestDataHistoryByTileId :one
+SELECT * FROM data_histories
+WHERE tile_id = $1
+ORDER BY time_stamp DESC
+LIMIT 1;
+
+-- name: GetDataHistoryByTx :one
+SELECT * FROM data_histories
+WHERE tx = $1 AND tile_id = $2
+LIMIT 1;
+
+-- name: DeleteDataHistory :exec
+DELETE FROM data_histories
+WHERE id = $1;
+
+-- name: InsertTile :one
+INSERT INTO tiles (id, image, price, url, owner, wrapped, ens, opensea_price)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id;
+
+-- name: GetTileById :one
+SELECT * FROM tiles
+WHERE id = $1;
+
+-- name: UpdateTile :exec
+UPDATE tiles
+SET image = $2, price = $3, url = $4, owner = $5, wrapped = $6, ens = $7, opensea_price = $8
+WHERE id = $1;
+
+-- name: ListTiles :many
+SELECT * FROM tiles
+ORDER BY id
+LIMIT $1 OFFSET $2;
+
+-- name: GetTilesByOwner :many
+SELECT * FROM tiles
+WHERE owner = $1
+ORDER BY id;
+
+-- name: UpdateTileOwner :exec
+UPDATE tiles
+SET owner = $2, wrapped = $3
+WHERE id = $1;
+
+-- name: UpdateTileENS :exec
+UPDATE tiles
+SET ens = $2
+WHERE id = $1;
+
+-- name: UpdateTileOpenSeaPrice :exec
+UPDATE tiles
+SET opensea_price = $2
+WHERE id = $1;
+
+-- name: GetWrappedTiles :many
+SELECT * FROM tiles
+WHERE wrapped = true
+ORDER BY id;

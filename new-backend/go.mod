@@ -4,6 +4,7 @@ go 1.23.0
 
 require (
 	github.com/cenkalti/backoff/v4 v4.3.0
+	github.com/ethereum/go-ethereum v1.14.8
 	github.com/golang-module/dongle v0.2.8
 	github.com/joho/godotenv v1.5.1
 	github.com/lib/pq v1.10.9
@@ -17,7 +18,6 @@ require (
 require (
 	github.com/Code-Hex/dd v1.1.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
-	github.com/StackExchange/wmi v1.2.1 // indirect
 	github.com/bits-and-blooms/bitset v1.14.3 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.3.4 // indirect
 	github.com/consensys/bavard v0.1.15 // indirect
@@ -28,8 +28,6 @@ require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.3.0 // indirect
 	github.com/emmansun/gmsm v0.28.0 // indirect
 	github.com/ethereum/c-kzg-4844 v1.0.0 // indirect
-	github.com/ethereum/c-kzg-4844/bindings/go v0.0.0-20230126171313-363c7d7593b4 // indirect
-	github.com/ethereum/go-ethereum v1.14.8 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect

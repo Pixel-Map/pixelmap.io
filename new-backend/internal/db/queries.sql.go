@@ -11,6 +11,16 @@ import (
 	"time"
 )
 
+const deleteDataHistory = `-- name: DeleteDataHistory :exec
+DELETE FROM data_histories
+WHERE id = $1
+`
+
+func (q *Queries) DeleteDataHistory(ctx context.Context, id int32) error {
+	_, err := q.db.ExecContext(ctx, deleteDataHistory, id)
+	return err
+}
+
 const getCurrentState = `-- name: GetCurrentState :one
 SELECT state, value FROM current_state
 WHERE state = $1 LIMIT 1
@@ -20,6 +30,75 @@ func (q *Queries) GetCurrentState(ctx context.Context, state string) (CurrentSta
 	row := q.db.QueryRowContext(ctx, getCurrentState, state)
 	var i CurrentState
 	err := row.Scan(&i.State, &i.Value)
+	return i, err
+}
+
+const getDataHistoryByTileId = `-- name: GetDataHistoryByTileId :many
+SELECT id, time_stamp, block_number, tx, log_index, image, price, url, updated_by, tile_id FROM data_histories
+WHERE tile_id = $1
+ORDER BY time_stamp DESC
+`
+
+func (q *Queries) GetDataHistoryByTileId(ctx context.Context, tileID int32) ([]DataHistory, error) {
+	rows, err := q.db.QueryContext(ctx, getDataHistoryByTileId, tileID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []DataHistory
+	for rows.Next() {
+		var i DataHistory
+		if err := rows.Scan(
+			&i.ID,
+			&i.TimeStamp,
+			&i.BlockNumber,
+			&i.Tx,
+			&i.LogIndex,
+			&i.Image,
+			&i.Price,
+			&i.Url,
+			&i.UpdatedBy,
+			&i.TileID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getDataHistoryByTx = `-- name: GetDataHistoryByTx :one
+SELECT id, time_stamp, block_number, tx, log_index, image, price, url, updated_by, tile_id FROM data_histories
+WHERE tx = $1 AND tile_id = $2
+LIMIT 1
+`
+
+type GetDataHistoryByTxParams struct {
+	Tx     string `json:"tx"`
+	TileID int32  `json:"tile_id"`
+}
+
+func (q *Queries) GetDataHistoryByTx(ctx context.Context, arg GetDataHistoryByTxParams) (DataHistory, error) {
+	row := q.db.QueryRowContext(ctx, getDataHistoryByTx, arg.Tx, arg.TileID)
+	var i DataHistory
+	err := row.Scan(
+		&i.ID,
+		&i.TimeStamp,
+		&i.BlockNumber,
+		&i.Tx,
+		&i.LogIndex,
+		&i.Image,
+		&i.Price,
+		&i.Url,
+		&i.UpdatedBy,
+		&i.TileID,
+	)
 	return i, err
 }
 
@@ -44,6 +123,166 @@ func (q *Queries) GetLatestBlockNumber(ctx context.Context) (interface{}, error)
 	var coalesce interface{}
 	err := row.Scan(&coalesce)
 	return coalesce, err
+}
+
+const getLatestDataHistoryByTileId = `-- name: GetLatestDataHistoryByTileId :one
+SELECT id, time_stamp, block_number, tx, log_index, image, price, url, updated_by, tile_id FROM data_histories
+WHERE tile_id = $1
+ORDER BY time_stamp DESC
+LIMIT 1
+`
+
+func (q *Queries) GetLatestDataHistoryByTileId(ctx context.Context, tileID int32) (DataHistory, error) {
+	row := q.db.QueryRowContext(ctx, getLatestDataHistoryByTileId, tileID)
+	var i DataHistory
+	err := row.Scan(
+		&i.ID,
+		&i.TimeStamp,
+		&i.BlockNumber,
+		&i.Tx,
+		&i.LogIndex,
+		&i.Image,
+		&i.Price,
+		&i.Url,
+		&i.UpdatedBy,
+		&i.TileID,
+	)
+	return i, err
+}
+
+const getTileById = `-- name: GetTileById :one
+SELECT id, image, price, url, owner, wrapped, ens, opensea_price FROM tiles
+WHERE id = $1
+`
+
+func (q *Queries) GetTileById(ctx context.Context, id int32) (Tile, error) {
+	row := q.db.QueryRowContext(ctx, getTileById, id)
+	var i Tile
+	err := row.Scan(
+		&i.ID,
+		&i.Image,
+		&i.Price,
+		&i.Url,
+		&i.Owner,
+		&i.Wrapped,
+		&i.Ens,
+		&i.OpenseaPrice,
+	)
+	return i, err
+}
+
+const getTilesByOwner = `-- name: GetTilesByOwner :many
+SELECT id, image, price, url, owner, wrapped, ens, opensea_price FROM tiles
+WHERE owner = $1
+ORDER BY id
+`
+
+func (q *Queries) GetTilesByOwner(ctx context.Context, owner string) ([]Tile, error) {
+	rows, err := q.db.QueryContext(ctx, getTilesByOwner, owner)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Tile
+	for rows.Next() {
+		var i Tile
+		if err := rows.Scan(
+			&i.ID,
+			&i.Image,
+			&i.Price,
+			&i.Url,
+			&i.Owner,
+			&i.Wrapped,
+			&i.Ens,
+			&i.OpenseaPrice,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getWrappedTiles = `-- name: GetWrappedTiles :many
+SELECT id, image, price, url, owner, wrapped, ens, opensea_price FROM tiles
+WHERE wrapped = true
+ORDER BY id
+`
+
+func (q *Queries) GetWrappedTiles(ctx context.Context) ([]Tile, error) {
+	rows, err := q.db.QueryContext(ctx, getWrappedTiles)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Tile
+	for rows.Next() {
+		var i Tile
+		if err := rows.Scan(
+			&i.ID,
+			&i.Image,
+			&i.Price,
+			&i.Url,
+			&i.Owner,
+			&i.Wrapped,
+			&i.Ens,
+			&i.OpenseaPrice,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const insertDataHistory = `-- name: InsertDataHistory :one
+INSERT INTO data_histories (
+    time_stamp, block_number, tx, log_index, image, price, url, updated_by, tile_id
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7, $8, $9
+)
+RETURNING id
+`
+
+type InsertDataHistoryParams struct {
+	TimeStamp   time.Time `json:"time_stamp"`
+	BlockNumber int64     `json:"block_number"`
+	Tx          string    `json:"tx"`
+	LogIndex    int32     `json:"log_index"`
+	Image       string    `json:"image"`
+	Price       string    `json:"price"`
+	Url         string    `json:"url"`
+	UpdatedBy   string    `json:"updated_by"`
+	TileID      int32     `json:"tile_id"`
+}
+
+func (q *Queries) InsertDataHistory(ctx context.Context, arg InsertDataHistoryParams) (int32, error) {
+	row := q.db.QueryRowContext(ctx, insertDataHistory,
+		arg.TimeStamp,
+		arg.BlockNumber,
+		arg.Tx,
+		arg.LogIndex,
+		arg.Image,
+		arg.Price,
+		arg.Url,
+		arg.UpdatedBy,
+		arg.TileID,
+	)
+	var id int32
+	err := row.Scan(&id)
+	return id, err
 }
 
 const insertPixelMapTransaction = `-- name: InsertPixelMapTransaction :one
@@ -104,6 +343,82 @@ func (q *Queries) InsertPixelMapTransaction(ctx context.Context, arg InsertPixel
 	return id, err
 }
 
+const insertTile = `-- name: InsertTile :one
+INSERT INTO tiles (id, image, price, url, owner, wrapped, ens, opensea_price)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id
+`
+
+type InsertTileParams struct {
+	ID           int32  `json:"id"`
+	Image        string `json:"image"`
+	Price        string `json:"price"`
+	Url          string `json:"url"`
+	Owner        string `json:"owner"`
+	Wrapped      bool   `json:"wrapped"`
+	Ens          string `json:"ens"`
+	OpenseaPrice string `json:"opensea_price"`
+}
+
+func (q *Queries) InsertTile(ctx context.Context, arg InsertTileParams) (int32, error) {
+	row := q.db.QueryRowContext(ctx, insertTile,
+		arg.ID,
+		arg.Image,
+		arg.Price,
+		arg.Url,
+		arg.Owner,
+		arg.Wrapped,
+		arg.Ens,
+		arg.OpenseaPrice,
+	)
+	var id int32
+	err := row.Scan(&id)
+	return id, err
+}
+
+const listTiles = `-- name: ListTiles :many
+SELECT id, image, price, url, owner, wrapped, ens, opensea_price FROM tiles
+ORDER BY id
+LIMIT $1 OFFSET $2
+`
+
+type ListTilesParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+func (q *Queries) ListTiles(ctx context.Context, arg ListTilesParams) ([]Tile, error) {
+	rows, err := q.db.QueryContext(ctx, listTiles, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Tile
+	for rows.Next() {
+		var i Tile
+		if err := rows.Scan(
+			&i.ID,
+			&i.Image,
+			&i.Price,
+			&i.Url,
+			&i.Owner,
+			&i.Wrapped,
+			&i.Ens,
+			&i.OpenseaPrice,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateCurrentState = `-- name: UpdateCurrentState :exec
 INSERT INTO current_state (state, value)
 VALUES ($1, $2)
@@ -129,5 +444,85 @@ ON CONFLICT (state) DO UPDATE SET value = EXCLUDED.value
 
 func (q *Queries) UpdateLastProcessedBlock(ctx context.Context, value int64) error {
 	_, err := q.db.ExecContext(ctx, updateLastProcessedBlock, value)
+	return err
+}
+
+const updateTile = `-- name: UpdateTile :exec
+UPDATE tiles
+SET image = $2, price = $3, url = $4, owner = $5, wrapped = $6, ens = $7, opensea_price = $8
+WHERE id = $1
+`
+
+type UpdateTileParams struct {
+	ID           int32  `json:"id"`
+	Image        string `json:"image"`
+	Price        string `json:"price"`
+	Url          string `json:"url"`
+	Owner        string `json:"owner"`
+	Wrapped      bool   `json:"wrapped"`
+	Ens          string `json:"ens"`
+	OpenseaPrice string `json:"opensea_price"`
+}
+
+func (q *Queries) UpdateTile(ctx context.Context, arg UpdateTileParams) error {
+	_, err := q.db.ExecContext(ctx, updateTile,
+		arg.ID,
+		arg.Image,
+		arg.Price,
+		arg.Url,
+		arg.Owner,
+		arg.Wrapped,
+		arg.Ens,
+		arg.OpenseaPrice,
+	)
+	return err
+}
+
+const updateTileENS = `-- name: UpdateTileENS :exec
+UPDATE tiles
+SET ens = $2
+WHERE id = $1
+`
+
+type UpdateTileENSParams struct {
+	ID  int32  `json:"id"`
+	Ens string `json:"ens"`
+}
+
+func (q *Queries) UpdateTileENS(ctx context.Context, arg UpdateTileENSParams) error {
+	_, err := q.db.ExecContext(ctx, updateTileENS, arg.ID, arg.Ens)
+	return err
+}
+
+const updateTileOpenSeaPrice = `-- name: UpdateTileOpenSeaPrice :exec
+UPDATE tiles
+SET opensea_price = $2
+WHERE id = $1
+`
+
+type UpdateTileOpenSeaPriceParams struct {
+	ID           int32  `json:"id"`
+	OpenseaPrice string `json:"opensea_price"`
+}
+
+func (q *Queries) UpdateTileOpenSeaPrice(ctx context.Context, arg UpdateTileOpenSeaPriceParams) error {
+	_, err := q.db.ExecContext(ctx, updateTileOpenSeaPrice, arg.ID, arg.OpenseaPrice)
+	return err
+}
+
+const updateTileOwner = `-- name: UpdateTileOwner :exec
+UPDATE tiles
+SET owner = $2, wrapped = $3
+WHERE id = $1
+`
+
+type UpdateTileOwnerParams struct {
+	ID      int32  `json:"id"`
+	Owner   string `json:"owner"`
+	Wrapped bool   `json:"wrapped"`
+}
+
+func (q *Queries) UpdateTileOwner(ctx context.Context, arg UpdateTileOwnerParams) error {
+	_, err := q.db.ExecContext(ctx, updateTileOwner, arg.ID, arg.Owner, arg.Wrapped)
 	return err
 }

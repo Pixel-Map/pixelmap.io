@@ -70,10 +70,39 @@ func (i *Ingestor) getStartBlock(ctx context.Context) (int64, error) {
 		return 0, fmt.Errorf("failed to get last processed block: %w", err)
 	}
 
+	if lastProcessedBlock == 0 {
+		// Initialize tiles
+		if err := i.initializeTiles(ctx); err != nil {
+			return 0, fmt.Errorf("failed to initialize tiles: %w", err)
+		}
+		return startBlockNumber, nil
+	}
+
 	if lastProcessedBlock > startBlockNumber {
 		return lastProcessedBlock + 1, nil
 	}
 	return startBlockNumber, nil
+}
+
+func (i *Ingestor) initializeTiles(ctx context.Context) error {
+	i.logger.Info("Initializing tiles")
+	for tileID := 0; tileID < 3970; tileID++ {
+		i.logger.Debug("Initializing tile", zap.Int("tileID", tileID))
+		tile := db.InsertTileParams{
+			ID:      int32(tileID),
+			Price:   "2.00",
+			Url:     "",
+			Image:   "",
+			Owner:   "0x4f4b7e7edf5ec41235624ce207a6ef352aca7050", // Creator of Pixelmap
+			Wrapped: false,
+		}
+
+		if _, err := i.queries.InsertTile(ctx, tile); err != nil {
+			return fmt.Errorf("failed to insert initial tile data: %w", err)
+		}
+	}
+	i.logger.Info("Tiles initialized successfully")
+	return nil
 }
 
 func (i *Ingestor) getEndBlock() (int64, error) {
@@ -185,13 +214,42 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 			location, _ := args[0].(*big.Int)
 			image, _ := args[1].(string)
 			url, _ := args[2].(string)
-			price, _ := args[3].(*big.Int)
-			fmt.Printf("setTile called with location: %s, image: %s, url: %s, price: %s\n",
-				location.String(), image, url, price.String())
+			priceWei, _ := args[3].(*big.Int)
+
+			// Convert Wei to Ether
+			priceEth := new(big.Float).Quo(new(big.Float).SetInt(priceWei), big.NewFloat(1e18))
+
+			// Round to 2 decimal places
+			priceEthRounded := new(big.Float).Mul(priceEth, big.NewFloat(100))
+			priceEthInt, _ := priceEthRounded.Int(nil)
+			priceEthRounded.SetInt(priceEthInt)
+			priceEthRounded.Quo(priceEthRounded, big.NewFloat(100))
+
+			// Format the price with 2 decimal places
+			priceEthStr := fmt.Sprintf("%.2f", priceEthRounded)
+
+			fmt.Printf("setTile called with location: %s, image: %s, url: %s, price: %s ETH\n",
+				location.String(), image, url, priceEthStr)
 
 			// Render and save the image
 			if err := i.renderAndSaveImage(location, image, blockNumber.Int64()); err != nil {
 				return fmt.Errorf("failed to render and save image: %w", err)
+			}
+			// Add to dataHistory
+			dataHistory := db.InsertDataHistoryParams{
+				TileID:      int32(location.Int64()),
+				Price:       priceEthStr, // Store the rounded Ether price as a string
+				Url:         url,
+				Tx:          tx.Hash,
+				TimeStamp:   time.Unix(timeStamp.Int64(), 0),
+				BlockNumber: blockNumber.Int64(),
+				Image:       image,
+				UpdatedBy:   tx.From,
+				LogIndex:    int32(transactionIndex),
+			}
+
+			if _, err := i.queries.InsertDataHistory(ctx, dataHistory); err != nil {
+				return fmt.Errorf("failed to insert data history: %w", err)
 			}
 		}
 
@@ -237,15 +295,24 @@ func (i *Ingestor) renderAndSaveImage(location *big.Int, imageData string, block
 		return fmt.Errorf("failed to create directory: %w", err)
 	}
 
-	// Generate the file path
-	filePath := fmt.Sprintf("%s/%d.png", dirPath, blockNumber)
+	// Generate the file paths
+	blockFilePath := fmt.Sprintf("%s/%d.png", dirPath, blockNumber)
+	latestFilePath := fmt.Sprintf("%s/latest.png", dirPath)
 
 	// Render the image using the existing RenderImage function
-	err := utils.RenderImage(imageData, imageSize, imageSize, filePath)
+	err := utils.RenderImage(imageData, imageSize, imageSize, blockFilePath)
 	if err != nil {
 		return fmt.Errorf("failed to render image: %w", err)
 	}
 
-	i.logger.Info("Image rendered and saved", zap.String("path", filePath))
+	// Render the image using the existing RenderImage function
+	err = utils.RenderImage(imageData, imageSize, imageSize, latestFilePath)
+	if err != nil {
+		return fmt.Errorf("failed to render image: %w", err)
+	}
+
+	i.logger.Info("Image rendered and saved",
+		zap.String("blockPath", blockFilePath),
+		zap.String("latestPath", latestFilePath))
 	return nil
 }

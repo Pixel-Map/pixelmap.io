@@ -9,12 +9,26 @@ import (
 )
 
 type Querier interface {
+	DeleteDataHistory(ctx context.Context, id int32) error
 	GetCurrentState(ctx context.Context, state string) (CurrentState, error)
+	GetDataHistoryByTileId(ctx context.Context, tileID int32) ([]DataHistory, error)
+	GetDataHistoryByTx(ctx context.Context, arg GetDataHistoryByTxParams) (DataHistory, error)
 	GetLastProcessedBlock(ctx context.Context) (int64, error)
 	GetLatestBlockNumber(ctx context.Context) (interface{}, error)
+	GetLatestDataHistoryByTileId(ctx context.Context, tileID int32) (DataHistory, error)
+	GetTileById(ctx context.Context, id int32) (Tile, error)
+	GetTilesByOwner(ctx context.Context, owner string) ([]Tile, error)
+	GetWrappedTiles(ctx context.Context) ([]Tile, error)
+	InsertDataHistory(ctx context.Context, arg InsertDataHistoryParams) (int32, error)
 	InsertPixelMapTransaction(ctx context.Context, arg InsertPixelMapTransactionParams) (int32, error)
+	InsertTile(ctx context.Context, arg InsertTileParams) (int32, error)
+	ListTiles(ctx context.Context, arg ListTilesParams) ([]Tile, error)
 	UpdateCurrentState(ctx context.Context, arg UpdateCurrentStateParams) error
 	UpdateLastProcessedBlock(ctx context.Context, value int64) error
+	UpdateTile(ctx context.Context, arg UpdateTileParams) error
+	UpdateTileENS(ctx context.Context, arg UpdateTileENSParams) error
+	UpdateTileOpenSeaPrice(ctx context.Context, arg UpdateTileOpenSeaPriceParams) error
+	UpdateTileOwner(ctx context.Context, arg UpdateTileOwnerParams) error
 }
 
 var _ Querier = (*Queries)(nil)
