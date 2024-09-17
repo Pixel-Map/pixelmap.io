@@ -6,6 +6,7 @@ import (
 	sqldb "database/sql"
 	"fmt"
 	"math/big"
+	"os"
 	"strconv"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"go.uber.org/zap"
 	pixelmap "pixelmap.io/backend/internal/contracts/pixelmap"
 	db "pixelmap.io/backend/internal/db"
+	utils "pixelmap.io/backend/internal/utils"
 )
 
 type Ingestor struct {
@@ -184,6 +186,11 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 			price, _ := args[3].(*big.Int)
 			fmt.Printf("setTile called with location: %s, image: %s, url: %s, price: %s\n",
 				location.String(), image, url, price.String())
+
+			// Render and save the image
+			if err := i.renderAndSaveImage(location, image, blockNumber.Int64()); err != nil {
+				return fmt.Errorf("failed to render and save image: %w", err)
+			}
 		}
 
 	// Add other cases as needed
@@ -195,4 +202,24 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 	_, err = i.queries.InsertPixelMapTransaction(ctx, transaction)
 
 	return err
+}
+
+func (i *Ingestor) renderAndSaveImage(location *big.Int, imageData string, blockNumber int64) error {
+	// Create the directory if it doesn't exist
+	dirPath := fmt.Sprintf("cache/%s", location.String())
+	if err := os.MkdirAll(dirPath, 0755); err != nil {
+		return fmt.Errorf("failed to create directory: %w", err)
+	}
+
+	// Generate the file path
+	filePath := fmt.Sprintf("%s/%d.png", dirPath, blockNumber)
+
+	// Render the image using the existing RenderImage function
+	err := utils.RenderImage(imageData, 512, 512, filePath)
+	if err != nil {
+		return fmt.Errorf("failed to render image: %w", err)
+	}
+
+	i.logger.Info("Image rendered and saved", zap.String("path", filePath))
+	return nil
 }
