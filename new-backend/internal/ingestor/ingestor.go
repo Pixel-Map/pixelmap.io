@@ -3,7 +3,6 @@ package ingestor
 import (
 	"context"
 	"database/sql"
-	sqldb "database/sql"
 	"fmt"
 	"math/big"
 	"os"
@@ -15,6 +14,14 @@ import (
 	pixelmap "pixelmap.io/backend/internal/contracts/pixelmap"
 	db "pixelmap.io/backend/internal/db"
 	utils "pixelmap.io/backend/internal/utils"
+)
+
+const (
+	startBlockNumber    = 2641527
+	blockRangeSize      = 10000
+	safetyBlockOffset   = 10
+	constructorMethodID = "0x60606040"
+	imageSize           = 512
 )
 
 type Ingestor struct {
@@ -32,80 +39,75 @@ func NewIngestor(logger *zap.Logger, sqlDB *sql.DB, apiKey string) *Ingestor {
 }
 
 func (i *Ingestor) IngestTransactions(ctx context.Context) error {
-	// Retrieve the last processed block from the database
-	lastProcessedBlock, err := i.queries.GetLastProcessedBlock(ctx)
-	if err != nil && err != sql.ErrNoRows {
-		i.logger.Error("Failed to get last processed block", zap.Error(err))
-		return fmt.Errorf("failed to get last processed block: %w", err)
-	}
-
-	startBlock := int64(2641527)
-	if lastProcessedBlock > startBlock {
-		startBlock = lastProcessedBlock + 1
-	}
-
-	latestBlock, err := i.etherscanClient.GetLatestBlockNumber()
+	startBlock, err := i.getStartBlock(ctx)
 	if err != nil {
-		i.logger.Error("Failed to get latest block number", zap.Error(err))
-		return fmt.Errorf("failed to get latest block number: %w", err)
+		return fmt.Errorf("failed to get start block: %w", err)
+	}
+
+	endBlock, err := i.getEndBlock()
+	if err != nil {
+		return fmt.Errorf("failed to get end block: %w", err)
 	}
 
 	i.logger.Info("Starting transaction ingestion",
 		zap.Int64("startBlock", startBlock),
-		zap.Uint64("latestBlock", latestBlock))
+		zap.Int64("endBlock", endBlock))
 
-	endBlock := int64(latestBlock) - 10 // As requested, to avoid uncles
-
-	for currentBlock := startBlock; currentBlock <= endBlock; currentBlock += 10000 {
-		blockEnd := currentBlock + 9999
-		if blockEnd > endBlock {
-			blockEnd = endBlock
+	for currentBlock := startBlock; currentBlock <= endBlock; currentBlock += blockRangeSize {
+		if err := i.processBlockRange(ctx, currentBlock, endBlock); err != nil {
+			return err
 		}
-
-		i.logger.Debug("Fetching transactions",
-			zap.Int64("from", currentBlock),
-			zap.Int64("to", blockEnd))
-
-		transactions, err := i.etherscanClient.GetTransactions(ctx, currentBlock, blockEnd)
-		if err != nil {
-			i.logger.Warn("Error fetching transactions",
-				zap.Error(err),
-				zap.Int64("from", currentBlock),
-				zap.Int64("to", blockEnd))
-
-			if err.Error() == "API error: No transactions found" {
-				i.logger.Info("No transactions found in block range",
-					zap.Int64("from", currentBlock),
-					zap.Int64("to", blockEnd))
-				continue
-			}
-			// If it's any other error, return it
-			return fmt.Errorf("failed to get transactions for blocks %d-%d: %w", currentBlock, blockEnd, err)
-		}
-
-		i.logger.Info("Processing transactions",
-			zap.Int("count", len(transactions)),
-			zap.Int64("from", currentBlock),
-			zap.Int64("to", blockEnd))
-
-		for _, tx := range transactions {
-			if err := i.processTransaction(ctx, &tx); err != nil {
-				i.logger.Error("Failed to process transaction", zap.Error(err), zap.String("hash", tx.Hash))
-				return fmt.Errorf("failed to process transaction %s: %w", tx.Hash, err)
-			}
-		}
-
-		// Update the last processed block in the database
-		if err := i.queries.UpdateLastProcessedBlock(ctx, blockEnd); err != nil {
-			i.logger.Error("Failed to update last processed block", zap.Error(err), zap.Int64("block", blockEnd))
-			return fmt.Errorf("failed to update last processed block: %w", err)
-		}
-
-		i.logger.Info("Processed blocks", zap.Int64("from", currentBlock), zap.Int64("to", blockEnd))
 	}
 
 	i.logger.Info("Finished ingesting transactions", zap.Int64("endBlock", endBlock))
+	return nil
+}
 
+func (i *Ingestor) getStartBlock(ctx context.Context) (int64, error) {
+	lastProcessedBlock, err := i.queries.GetLastProcessedBlock(ctx)
+	if err != nil && err != sql.ErrNoRows {
+		i.logger.Error("Failed to get last processed block", zap.Error(err))
+		return 0, fmt.Errorf("failed to get last processed block: %w", err)
+	}
+
+	if lastProcessedBlock > startBlockNumber {
+		return lastProcessedBlock + 1, nil
+	}
+	return startBlockNumber, nil
+}
+
+func (i *Ingestor) getEndBlock() (int64, error) {
+	latestBlock, err := i.etherscanClient.GetLatestBlockNumber()
+	if err != nil {
+		i.logger.Error("Failed to get latest block number", zap.Error(err))
+		return 0, fmt.Errorf("failed to get latest block number: %w", err)
+	}
+	return int64(latestBlock) - safetyBlockOffset, nil
+}
+
+func (i *Ingestor) processBlockRange(ctx context.Context, currentBlock, endBlock int64) error {
+	blockEnd := currentBlock + blockRangeSize - 1
+	if blockEnd > endBlock {
+		blockEnd = endBlock
+	}
+
+	transactions, err := i.fetchTransactions(ctx, currentBlock, blockEnd)
+	if err != nil {
+		return err
+	}
+
+	for _, tx := range transactions {
+		if err := i.processTransaction(ctx, &tx); err != nil {
+			i.logger.Error("Failed to process transaction", zap.Error(err), zap.String("hash", tx.Hash))
+			return fmt.Errorf("failed to process transaction %s: %w", tx.Hash, err)
+		}
+	}
+
+	if err := i.updateLastProcessedBlock(ctx, blockEnd); err != nil {
+		return err
+	}
+
+	i.logger.Info("Processed blocks", zap.Int64("from", currentBlock), zap.Int64("to", blockEnd))
 	return nil
 }
 
@@ -136,7 +138,7 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 		Gas:               gas.Int64(),
 		GasPrice:          gasPrice.Int64(),
 		IsError:           tx.IsError == "1",
-		TxreceiptStatus:   sqldb.NullBool{Bool: tx.TxreceiptStatus == "1", Valid: true},
+		TxreceiptStatus:   sql.NullBool{Bool: tx.TxreceiptStatus == "1", Valid: true},
 		Input:             tx.Input,
 		ContractAddress:   tx.ContractAddress,
 		CumulativeGasUsed: cumulativeGasUsed.Int64(),
@@ -154,7 +156,7 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 
 	// The first 4 bytes of the input data represent the method ID
 	methodID := tx.Input[:10]
-	if string(methodID) == "0x60606040" {
+	if string(methodID) == constructorMethodID {
 		fmt.Println("Constructor called")
 		return nil
 	}
@@ -204,6 +206,30 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 	return err
 }
 
+func (i *Ingestor) fetchTransactions(ctx context.Context, fromBlock, toBlock int64) ([]EtherscanTransaction, error) {
+	i.logger.Debug("Fetching transactions", zap.Int64("from", fromBlock), zap.Int64("to", toBlock))
+
+	transactions, err := i.etherscanClient.GetTransactions(ctx, fromBlock, toBlock)
+	if err != nil {
+		if err.Error() == "API error: No transactions found" {
+			i.logger.Info("No transactions found in block range", zap.Int64("from", fromBlock), zap.Int64("to", toBlock))
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get transactions for blocks %d-%d: %w", fromBlock, toBlock, err)
+	}
+
+	i.logger.Info("Processing transactions", zap.Int("count", len(transactions)), zap.Int64("from", fromBlock), zap.Int64("to", toBlock))
+	return transactions, nil
+}
+
+func (i *Ingestor) updateLastProcessedBlock(ctx context.Context, blockNumber int64) error {
+	if err := i.queries.UpdateLastProcessedBlock(ctx, blockNumber); err != nil {
+		i.logger.Error("Failed to update last processed block", zap.Error(err), zap.Int64("block", blockNumber))
+		return fmt.Errorf("failed to update last processed block: %w", err)
+	}
+	return nil
+}
+
 func (i *Ingestor) renderAndSaveImage(location *big.Int, imageData string, blockNumber int64) error {
 	// Create the directory if it doesn't exist
 	dirPath := fmt.Sprintf("cache/%s", location.String())
@@ -215,7 +241,7 @@ func (i *Ingestor) renderAndSaveImage(location *big.Int, imageData string, block
 	filePath := fmt.Sprintf("%s/%d.png", dirPath, blockNumber)
 
 	// Render the image using the existing RenderImage function
-	err := utils.RenderImage(imageData, 512, 512, filePath)
+	err := utils.RenderImage(imageData, imageSize, imageSize, filePath)
 	if err != nil {
 		return fmt.Errorf("failed to render image: %w", err)
 	}
