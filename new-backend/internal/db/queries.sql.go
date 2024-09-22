@@ -114,6 +114,21 @@ func (q *Queries) GetLastProcessedBlock(ctx context.Context) (int64, error) {
 	return value, err
 }
 
+const getLastProcessedDataHistoryID = `-- name: GetLastProcessedDataHistoryID :one
+INSERT INTO current_state (state, value)
+VALUES ('LAST_PROCESSED_DATA_HISTORY_ID', '0')
+ON CONFLICT (state) DO UPDATE
+SET value = current_state.value
+RETURNING COALESCE(CAST(value AS INTEGER), 0)::INT4
+`
+
+func (q *Queries) GetLastProcessedDataHistoryID(ctx context.Context) (int32, error) {
+	row := q.db.QueryRowContext(ctx, getLastProcessedDataHistoryID)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const getLatestBlockNumber = `-- name: GetLatestBlockNumber :one
 SELECT COALESCE(MAX(block_number), 0) FROM pixel_map_transaction
 `
@@ -195,6 +210,52 @@ func (q *Queries) GetTilesByOwner(ctx context.Context, owner string) ([]Tile, er
 			&i.Wrapped,
 			&i.Ens,
 			&i.OpenseaPrice,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getUnprocessedDataHistory = `-- name: GetUnprocessedDataHistory :many
+SELECT id, time_stamp, block_number, tx, log_index, image, price, url, updated_by, tile_id FROM data_histories
+WHERE id > $1
+ORDER BY id ASC
+LIMIT $2
+`
+
+type GetUnprocessedDataHistoryParams struct {
+	ID    int32 `json:"id"`
+	Limit int32 `json:"limit"`
+}
+
+func (q *Queries) GetUnprocessedDataHistory(ctx context.Context, arg GetUnprocessedDataHistoryParams) ([]DataHistory, error) {
+	rows, err := q.db.QueryContext(ctx, getUnprocessedDataHistory, arg.ID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []DataHistory
+	for rows.Next() {
+		var i DataHistory
+		if err := rows.Scan(
+			&i.ID,
+			&i.TimeStamp,
+			&i.BlockNumber,
+			&i.Tx,
+			&i.LogIndex,
+			&i.Image,
+			&i.Price,
+			&i.Url,
+			&i.UpdatedBy,
+			&i.TileID,
 		); err != nil {
 			return nil, err
 		}
@@ -444,6 +505,18 @@ ON CONFLICT (state) DO UPDATE SET value = EXCLUDED.value
 
 func (q *Queries) UpdateLastProcessedBlock(ctx context.Context, value int64) error {
 	_, err := q.db.ExecContext(ctx, updateLastProcessedBlock, value)
+	return err
+}
+
+const updateLastProcessedDataHistoryID = `-- name: UpdateLastProcessedDataHistoryID :exec
+INSERT INTO current_state (state, value) 
+VALUES ('LAST_PROCESSED_DATA_HISTORY_ID', $1::INT4)
+ON CONFLICT (state) DO UPDATE
+SET value = EXCLUDED.value
+`
+
+func (q *Queries) UpdateLastProcessedDataHistoryID(ctx context.Context, dollar_1 int32) error {
+	_, err := q.db.ExecContext(ctx, updateLastProcessedDataHistoryID, dollar_1)
 	return err
 }
 

@@ -14,10 +14,12 @@ type Querier interface {
 	GetDataHistoryByTileId(ctx context.Context, tileID int32) ([]DataHistory, error)
 	GetDataHistoryByTx(ctx context.Context, arg GetDataHistoryByTxParams) (DataHistory, error)
 	GetLastProcessedBlock(ctx context.Context) (int64, error)
+	GetLastProcessedDataHistoryID(ctx context.Context) (int32, error)
 	GetLatestBlockNumber(ctx context.Context) (interface{}, error)
 	GetLatestDataHistoryByTileId(ctx context.Context, tileID int32) (DataHistory, error)
 	GetTileById(ctx context.Context, id int32) (Tile, error)
 	GetTilesByOwner(ctx context.Context, owner string) ([]Tile, error)
+	GetUnprocessedDataHistory(ctx context.Context, arg GetUnprocessedDataHistoryParams) ([]DataHistory, error)
 	GetWrappedTiles(ctx context.Context) ([]Tile, error)
 	InsertDataHistory(ctx context.Context, arg InsertDataHistoryParams) (int32, error)
 	InsertPixelMapTransaction(ctx context.Context, arg InsertPixelMapTransactionParams) (int32, error)
@@ -25,6 +27,7 @@ type Querier interface {
 	ListTiles(ctx context.Context, arg ListTilesParams) ([]Tile, error)
 	UpdateCurrentState(ctx context.Context, arg UpdateCurrentStateParams) error
 	UpdateLastProcessedBlock(ctx context.Context, value int64) error
+	UpdateLastProcessedDataHistoryID(ctx context.Context, dollar_1 int32) error
 	UpdateTile(ctx context.Context, arg UpdateTileParams) error
 	UpdateTileENS(ctx context.Context, arg UpdateTileENSParams) error
 	UpdateTileOpenSeaPrice(ctx context.Context, arg UpdateTileOpenSeaPriceParams) error

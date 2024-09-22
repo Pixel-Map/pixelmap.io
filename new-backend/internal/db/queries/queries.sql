@@ -101,3 +101,22 @@ WHERE id = $1;
 SELECT * FROM tiles
 WHERE wrapped = true
 ORDER BY id;
+
+-- name: GetLastProcessedDataHistoryID :one
+INSERT INTO current_state (state, value)
+VALUES ('LAST_PROCESSED_DATA_HISTORY_ID', '0')
+ON CONFLICT (state) DO UPDATE
+SET value = current_state.value
+RETURNING COALESCE(CAST(value AS INTEGER), 0)::INT4;
+
+-- name: GetUnprocessedDataHistory :many
+SELECT * FROM data_histories
+WHERE id > $1
+ORDER BY id ASC
+LIMIT $2;
+
+-- name: UpdateLastProcessedDataHistoryID :exec
+INSERT INTO current_state (state, value) 
+VALUES ('LAST_PROCESSED_DATA_HISTORY_ID', $1::INT4)
+ON CONFLICT (state) DO UPDATE
+SET value = EXCLUDED.value;

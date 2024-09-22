@@ -9,6 +9,7 @@ import (
 	"os"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -74,6 +75,8 @@ type Ingestor struct {
 	queries         *db.Queries
 	etherscanClient *EtherscanClient
 	pubSub          *PubSub
+	renderSignal    chan struct{}
+	isRendering     atomic.Bool
 }
 
 func NewIngestor(logger *zap.Logger, sqlDB *sql.DB, apiKey string) *Ingestor {
@@ -83,11 +86,11 @@ func NewIngestor(logger *zap.Logger, sqlDB *sql.DB, apiKey string) *Ingestor {
 		queries:         db.New(sqlDB),
 		etherscanClient: NewEtherscanClient(apiKey, logger),
 		pubSub:          pubSub,
+		renderSignal:    make(chan struct{}, 1),
 	}
 
-	// Start subscribers
-	go ingestor.imageRenderSubscriber(pubSub.Subscribe(EventTypeImageRender))
-	go ingestor.discordNotificationSubscriber(pubSub.Subscribe(EventTypeDiscordNotification))
+	// Start the continuous rendering process
+	go ingestor.continuousRenderProcess()
 
 	return ingestor
 }
@@ -302,15 +305,10 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 				return fmt.Errorf("failed to insert data history: %w", err)
 			}
 
-			// Publish event for image rendering
-			imageRenderPayload, _ := json.Marshal(map[string]interface{}{
-				"location":    location.String(),
-				"imageData":   image,
-				"blockNumber": blockNumber,
-			})
-			i.pubSub.Publish(Event{Type: EventTypeImageRender, Payload: imageRenderPayload})
+			// Signal that new data is available to render
+			i.signalNewData()
 
-			// Publish event for Discord notification
+			// Keep the Discord notification
 			discordPayload, _ := json.Marshal(map[string]interface{}{
 				"message": fmt.Sprintf("Tile %s updated by %s", location.String(), tx.From),
 				"url":     url,
@@ -353,39 +351,82 @@ func (i *Ingestor) updateLastProcessedBlock(ctx context.Context, blockNumber int
 	return nil
 }
 
-func (i *Ingestor) imageRenderSubscriber(ch <-chan Event) {
-	for event := range ch {
-		var payload struct {
-			Location    string `json:"location"`
-			ImageData   string `json:"imageData"`
-			BlockNumber int64  `json:"blockNumber"`
-		}
-		json.Unmarshal(event.Payload, &payload)
-
-		location, _ := new(big.Int).SetString(payload.Location, 10)
-		if err := i.renderAndSaveImage(location, payload.ImageData, payload.BlockNumber); err != nil {
-			i.logger.Error("Failed to render and save image",
-				zap.Error(err),
-				zap.String("location", payload.Location),
-				zap.Int64("blockNumber", payload.BlockNumber))
-		}
+func (i *Ingestor) signalNewData() {
+	select {
+	case i.renderSignal <- struct{}{}:
+	default:
+		// Channel already has a signal, no need to send another
 	}
 }
 
-func (i *Ingestor) discordNotificationSubscriber(ch <-chan Event) {
-	for event := range ch {
-		var payload struct {
-			Message string `json:"message"`
-			URL     string `json:"url"`
-		}
-		json.Unmarshal(event.Payload, &payload)
+func (i *Ingestor) continuousRenderProcess() {
+	for {
+		// Wait for a signal that new data is available
+		<-i.renderSignal
 
-		// Implement Discord notification logic here
-		i.logger.Info("Discord notification",
-			zap.String("message", payload.Message),
-			zap.String("url", payload.URL))
-		// You would typically call a Discord API client here
+		// Set the rendering flag
+		if !i.isRendering.CompareAndSwap(false, true) {
+			// If already rendering, continue waiting
+			continue
+		}
+
+		// Start rendering in a separate goroutine
+		go func() {
+			defer i.isRendering.Store(false)
+
+			for {
+				if err := i.processDataHistory(context.Background()); err != nil {
+					i.logger.Error("Failed to process data history", zap.Error(err))
+					return
+				}
+
+				// Check if there's more data to process
+				select {
+				case <-i.renderSignal:
+					// More data available, continue processing
+					continue
+				default:
+					// No more data, exit the rendering loop
+					return
+				}
+			}
+		}()
 	}
+}
+
+func (i *Ingestor) processDataHistory(ctx context.Context) error {
+	lastProcessedID, err := i.queries.GetLastProcessedDataHistoryID(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get last processed data history ID: %w", err)
+	}
+
+	// Fetch a batch of unprocessed data history entries
+	history, err := i.queries.GetUnprocessedDataHistory(ctx, db.GetUnprocessedDataHistoryParams{
+		ID:    lastProcessedID,
+		Limit: 100, // Process in batches of 100
+	})
+	if err != nil {
+		return fmt.Errorf("failed to get unprocessed data history: %w", err)
+	}
+
+	if len(history) == 0 {
+		// No more data to process
+		return nil
+	}
+
+	for _, row := range history {
+		location := big.NewInt(int64(row.TileID))
+		if err := i.renderAndSaveImage(location, row.Image, row.BlockNumber); err != nil {
+			return fmt.Errorf("failed to render and save image: %w", err)
+		}
+
+		// Update the last processed ID
+		if err := i.queries.UpdateLastProcessedDataHistoryID(ctx, row.ID); err != nil {
+			return fmt.Errorf("failed to update last processed data history ID: %w", err)
+		}
+	}
+
+	return nil
 }
 
 func (i *Ingestor) renderAndSaveImage(location *big.Int, imageData string, blockNumber int64) error {
