@@ -14,10 +14,12 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/lib/pq"
 	"go.uber.org/zap"
 	pixelmap "pixelmap.io/backend/internal/contracts/pixelmap"
+	pixelmapWrapper "pixelmap.io/backend/internal/contracts/pixelmapWrapper"
 	db "pixelmap.io/backend/internal/db"
 	utils "pixelmap.io/backend/internal/utils"
 )
@@ -258,9 +260,15 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 	// fmt.Printf("transaction: %+v\n", transaction)
 
 	// Decode the input data
-	abi, err := pixelmap.PixelMapMetaData.GetAbi()
-	if err != nil {
-		return fmt.Errorf("failed to get ABI: %w", err)
+	// If tx involves contract at 0x015A06a433353f8db634dF4eDdF0C109882A15AB, use non wrapper ABI
+	var abi *abi.ABI
+	if tx.To == "0x015a06a433353f8db634df4eddf0c109882a15ab" {
+		abi, _ = pixelmap.PixelMapMetaData.GetAbi()
+
+	} else if tx.To == "0x050dc61dfb867e0fe3cf2948362b6c0f3faf790b" {
+		abi, _ = pixelmapWrapper.PixelMapWrapperMetaData.GetAbi()
+	} else {
+		return nil
 	}
 
 	// Check if the input data is long enough to contain a method ID
@@ -280,7 +288,6 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 	method, err := abi.MethodById(common.FromHex(methodID))
 	if err != nil {
 		return fmt.Errorf("failed to get method: %w", err)
-
 	}
 	// Decode the parameters
 	args, err := method.Inputs.Unpack(common.FromHex(tx.Input)[4:])
@@ -412,6 +419,14 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 				zap.String("tx", tx.Hash),
 				zap.String("from", tx.From))
 		}
+	case "setBaseTokenURI":
+		i.logger.Info("setBaseTokenURI called",
+			zap.String("tx", tx.Hash),
+			zap.String("from", tx.From))
+	case "setTokenExtension":
+		i.logger.Info("setTokenExtension called",
+			zap.String("tx", tx.Hash),
+			zap.String("from", tx.From))
 	default:
 		fmt.Printf("Unknown method called: %s\n", method.Name)
 		os.Exit(2)
