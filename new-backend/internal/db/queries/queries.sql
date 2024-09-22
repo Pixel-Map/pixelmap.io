@@ -120,3 +120,29 @@ INSERT INTO current_state (state, value)
 VALUES ('LAST_PROCESSED_DATA_HISTORY_ID', $1::INT4)
 ON CONFLICT (state) DO UPDATE
 SET value = EXCLUDED.value;
+
+-- name: InsertPurchaseHistory :one
+INSERT INTO purchase_histories (
+    tile_id,
+    sold_by,
+    purchased_by,
+    price,
+    tx,
+    time_stamp,
+    block_number,
+    log_index
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7, $8
+)
+RETURNING id;
+
+-- name: GetPurchaseHistoryByTileId :many
+SELECT * FROM purchase_histories
+WHERE tile_id = $1
+ORDER BY time_stamp DESC, log_index DESC;
+
+-- name: GetLatestPurchaseHistoryByTileId :one
+SELECT * FROM purchase_histories
+WHERE tile_id = $1
+ORDER BY time_stamp DESC, log_index DESC
+LIMIT 1;

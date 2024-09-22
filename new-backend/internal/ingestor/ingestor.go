@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"math/rand"
 	"os"
 	"strconv"
 	"sync"
@@ -77,6 +78,8 @@ type Ingestor struct {
 	pubSub          *PubSub
 	renderSignal    chan struct{}
 	isRendering     atomic.Bool
+	maxRetries      int
+	baseDelay       time.Duration
 }
 
 func NewIngestor(logger *zap.Logger, sqlDB *sql.DB, apiKey string) *Ingestor {
@@ -87,6 +90,8 @@ func NewIngestor(logger *zap.Logger, sqlDB *sql.DB, apiKey string) *Ingestor {
 		etherscanClient: NewEtherscanClient(apiKey, logger),
 		pubSub:          pubSub,
 		renderSignal:    make(chan struct{}, 1),
+		maxRetries:      5,
+		baseDelay:       time.Second,
 	}
 
 	// Start the continuous rendering process
@@ -232,7 +237,7 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 		Confirmations:     confirmations.Int64(),
 	}
 
-	fmt.Printf("transaction: %+v\n", transaction)
+	// fmt.Printf("transaction: %+v\n", transaction)
 
 	// Decode the input data
 	abi, err := pixelmap.PixelMapMetaData.GetAbi()
@@ -262,7 +267,45 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 		if len(args) > 0 {
 			location, ok := args[0].(*big.Int)
 			if ok {
-				fmt.Printf("buyTile called with location: %s\n", location.String())
+				i.logger.Debug("buyTile called",
+					zap.String("location", location.String()),
+					zap.String("tx", tx.Hash),
+					zap.String("from", tx.From))
+
+				// Fetch the current tile data
+				tile, err := i.queries.GetTileById(ctx, int32(location.Int64()))
+				if err != nil {
+					return fmt.Errorf("failed to get tile data: %w", err)
+				}
+
+				// Insert purchase history
+				_, err = i.queries.InsertPurchaseHistory(ctx, db.InsertPurchaseHistoryParams{
+					TileID:      int32(location.Int64()),
+					SoldBy:      tile.Owner,
+					PurchasedBy: tx.From,
+					Price:       tile.Price,
+					Tx:          tx.Hash,
+					TimeStamp:   time.Unix(timeStamp.Int64(), 0),
+					BlockNumber: blockNumber.Int64(),
+					LogIndex:    int32(transactionIndex),
+				})
+				if err != nil {
+					return fmt.Errorf("failed to insert purchase history: %w", err)
+				}
+
+				// Update tile owner
+				err = i.queries.UpdateTileOwner(ctx, db.UpdateTileOwnerParams{
+					ID:    int32(location.Int64()),
+					Owner: tx.From,
+				})
+				if err != nil {
+					return fmt.Errorf("failed to update tile owner: %w", err)
+				}
+
+				i.logger.Info("Tile purchased",
+					zap.String("location", location.String()),
+					zap.String("newOwner", tx.From),
+					zap.String("transaction", tx.Hash))
 			}
 		}
 
@@ -285,8 +328,12 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 			// Format the price with 2 decimal places
 			priceEthStr := fmt.Sprintf("%.2f", priceEthRounded)
 
-			fmt.Printf("setTile called with location: %s, image: %s, url: %s, price: %s ETH\n",
-				location.String(), image, url, priceEthStr)
+			i.logger.Info("setTile called",
+				zap.String("location", location.String()),
+				zap.String("price", priceEthStr),
+				zap.String("url", url),
+				zap.String("tx", tx.Hash),
+				zap.String("from", tx.From))
 
 			// Add to dataHistory
 			dataHistory := db.InsertDataHistoryParams{
@@ -320,6 +367,7 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 
 	default:
 		fmt.Printf("Unknown method called: %s\n", method.Name)
+		os.Exit(2)
 	}
 
 	_, err = i.queries.InsertPixelMapTransaction(ctx, transaction)
@@ -330,13 +378,41 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 func (i *Ingestor) fetchTransactions(ctx context.Context, fromBlock, toBlock int64) ([]EtherscanTransaction, error) {
 	i.logger.Debug("Fetching transactions", zap.Int64("from", fromBlock), zap.Int64("to", toBlock))
 
-	transactions, err := i.etherscanClient.GetTransactions(ctx, fromBlock, toBlock)
-	if err != nil {
+	var transactions []EtherscanTransaction
+	var err error
+
+	for attempt := 0; attempt < i.maxRetries; attempt++ {
+		transactions, err = i.etherscanClient.GetTransactions(ctx, fromBlock, toBlock)
+		if err == nil {
+			break
+		}
+
 		if err.Error() == "API error: No transactions found" {
 			i.logger.Info("No transactions found in block range", zap.Int64("from", fromBlock), zap.Int64("to", toBlock))
 			return nil, nil
 		}
-		return nil, fmt.Errorf("failed to get transactions for blocks %d-%d: %w", fromBlock, toBlock, err)
+
+		i.logger.Warn("Failed to fetch transactions, retrying",
+			zap.Error(err),
+			zap.Int("attempt", attempt+1),
+			zap.Int64("from", fromBlock),
+			zap.Int64("to", toBlock))
+
+		// Calculate backoff delay
+		delay := i.baseDelay * time.Duration(1<<uint(attempt))
+		jitter := time.Duration(rand.Int63n(int64(delay) / 2))
+		delay = delay + jitter
+
+		select {
+		case <-time.After(delay):
+			// Wait before retrying
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get transactions for blocks %d-%d after %d attempts: %w", fromBlock, toBlock, i.maxRetries, err)
 	}
 
 	i.logger.Info("Processing transactions", zap.Int("count", len(transactions)), zap.Int64("from", fromBlock), zap.Int64("to", toBlock))
@@ -425,7 +501,7 @@ func (i *Ingestor) processDataHistory(ctx context.Context) error {
 			return fmt.Errorf("failed to update last processed data history ID: %w", err)
 		}
 	}
-
+	i.logger.Info("Finished processing data history", zap.Int("count", len(history)))
 	return nil
 }
 

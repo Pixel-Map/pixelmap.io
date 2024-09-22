@@ -165,6 +165,69 @@ func (q *Queries) GetLatestDataHistoryByTileId(ctx context.Context, tileID int32
 	return i, err
 }
 
+const getLatestPurchaseHistoryByTileId = `-- name: GetLatestPurchaseHistoryByTileId :one
+SELECT id, time_stamp, block_number, tx, log_index, sold_by, purchased_by, price, tile_id FROM purchase_histories
+WHERE tile_id = $1
+ORDER BY time_stamp DESC, log_index DESC
+LIMIT 1
+`
+
+func (q *Queries) GetLatestPurchaseHistoryByTileId(ctx context.Context, tileID int32) (PurchaseHistory, error) {
+	row := q.db.QueryRowContext(ctx, getLatestPurchaseHistoryByTileId, tileID)
+	var i PurchaseHistory
+	err := row.Scan(
+		&i.ID,
+		&i.TimeStamp,
+		&i.BlockNumber,
+		&i.Tx,
+		&i.LogIndex,
+		&i.SoldBy,
+		&i.PurchasedBy,
+		&i.Price,
+		&i.TileID,
+	)
+	return i, err
+}
+
+const getPurchaseHistoryByTileId = `-- name: GetPurchaseHistoryByTileId :many
+SELECT id, time_stamp, block_number, tx, log_index, sold_by, purchased_by, price, tile_id FROM purchase_histories
+WHERE tile_id = $1
+ORDER BY time_stamp DESC, log_index DESC
+`
+
+func (q *Queries) GetPurchaseHistoryByTileId(ctx context.Context, tileID int32) ([]PurchaseHistory, error) {
+	rows, err := q.db.QueryContext(ctx, getPurchaseHistoryByTileId, tileID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PurchaseHistory
+	for rows.Next() {
+		var i PurchaseHistory
+		if err := rows.Scan(
+			&i.ID,
+			&i.TimeStamp,
+			&i.BlockNumber,
+			&i.Tx,
+			&i.LogIndex,
+			&i.SoldBy,
+			&i.PurchasedBy,
+			&i.Price,
+			&i.TileID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getTileById = `-- name: GetTileById :one
 SELECT id, image, price, url, owner, wrapped, ens, opensea_price FROM tiles
 WHERE id = $1
@@ -398,6 +461,49 @@ func (q *Queries) InsertPixelMapTransaction(ctx context.Context, arg InsertPixel
 		arg.CumulativeGasUsed,
 		arg.GasUsed,
 		arg.Confirmations,
+	)
+	var id int32
+	err := row.Scan(&id)
+	return id, err
+}
+
+const insertPurchaseHistory = `-- name: InsertPurchaseHistory :one
+INSERT INTO purchase_histories (
+    tile_id,
+    sold_by,
+    purchased_by,
+    price,
+    tx,
+    time_stamp,
+    block_number,
+    log_index
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7, $8
+)
+RETURNING id
+`
+
+type InsertPurchaseHistoryParams struct {
+	TileID      int32     `json:"tile_id"`
+	SoldBy      string    `json:"sold_by"`
+	PurchasedBy string    `json:"purchased_by"`
+	Price       string    `json:"price"`
+	Tx          string    `json:"tx"`
+	TimeStamp   time.Time `json:"time_stamp"`
+	BlockNumber int64     `json:"block_number"`
+	LogIndex    int32     `json:"log_index"`
+}
+
+func (q *Queries) InsertPurchaseHistory(ctx context.Context, arg InsertPurchaseHistoryParams) (int32, error) {
+	row := q.db.QueryRowContext(ctx, insertPurchaseHistory,
+		arg.TileID,
+		arg.SoldBy,
+		arg.PurchasedBy,
+		arg.Price,
+		arg.Tx,
+		arg.TimeStamp,
+		arg.BlockNumber,
+		arg.LogIndex,
 	)
 	var id int32
 	err := row.Scan(&id)
