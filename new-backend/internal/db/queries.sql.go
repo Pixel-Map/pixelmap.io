@@ -189,6 +189,44 @@ func (q *Queries) GetLatestPurchaseHistoryByTileId(ctx context.Context, tileID i
 	return i, err
 }
 
+const getLatestTileImages = `-- name: GetLatestTileImages :many
+SELECT tile_id, image
+FROM data_histories
+WHERE (tile_id, block_number) IN (
+    SELECT tile_id, MAX(block_number)
+    FROM data_histories
+    GROUP BY tile_id
+)
+`
+
+type GetLatestTileImagesRow struct {
+	TileID int32  `json:"tile_id"`
+	Image  string `json:"image"`
+}
+
+func (q *Queries) GetLatestTileImages(ctx context.Context) ([]GetLatestTileImagesRow, error) {
+	rows, err := q.db.QueryContext(ctx, getLatestTileImages)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetLatestTileImagesRow
+	for rows.Next() {
+		var i GetLatestTileImagesRow
+		if err := rows.Scan(&i.TileID, &i.Image); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getPurchaseHistoryByTileId = `-- name: GetPurchaseHistoryByTileId :many
 SELECT id, time_stamp, block_number, tx, log_index, sold_by, purchased_by, price, tile_id FROM purchase_histories
 WHERE tile_id = $1

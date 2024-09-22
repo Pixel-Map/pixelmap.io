@@ -18,6 +18,7 @@ type Querier interface {
 	GetLatestBlockNumber(ctx context.Context) (interface{}, error)
 	GetLatestDataHistoryByTileId(ctx context.Context, tileID int32) (DataHistory, error)
 	GetLatestPurchaseHistoryByTileId(ctx context.Context, tileID int32) (PurchaseHistory, error)
+	GetLatestTileImages(ctx context.Context) ([]GetLatestTileImagesRow, error)
 	GetPurchaseHistoryByTileId(ctx context.Context, tileID int32) ([]PurchaseHistory, error)
 	GetTileById(ctx context.Context, id int32) (Tile, error)
 	GetTilesByOwner(ctx context.Context, owner string) ([]Tile, error)

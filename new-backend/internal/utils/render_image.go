@@ -60,3 +60,50 @@ func parseHexChar(c byte) uint8 {
 		return 0
 	}
 }
+
+func RenderFullMap(tiles []string, outputPath string) error {
+	if len(tiles) != 3970 {
+		return fmt.Errorf("tile array is NOT 3,970 tiles")
+	}
+
+	width := 81 * 16  // 81 tiles across
+	height := 49 * 16 // 49 tiles down
+
+	img := image.NewRGBA(image.Rect(0, 0, width, height))
+
+	for i, tile := range tiles {
+		if len(tile) < 768 {
+			continue // Skip invalid tiles
+		}
+
+		row := i / 81
+		col := i % 81
+
+		for y := 0; y < 16; y++ {
+			for x := 0; x < 16; x++ {
+				index := (y*16 + x) * 3
+				hexStr := tile[index : index+3]
+				r := parseHexChar(hexStr[0])
+				g := parseHexChar(hexStr[1])
+				b := parseHexChar(hexStr[2])
+				img.Set(x+16*col, y+16*row, color.RGBA{r, g, b, 255})
+			}
+		}
+	}
+
+	if err := os.MkdirAll(filepath.Dir(outputPath), os.ModePerm); err != nil {
+		return fmt.Errorf("failed to create directory: %w", err)
+	}
+
+	outFile, err := os.Create(outputPath)
+	if err != nil {
+		return fmt.Errorf("failed to create output file: %w", err)
+	}
+	defer outFile.Close()
+
+	if err := png.Encode(outFile, img); err != nil {
+		return fmt.Errorf("failed to encode image: %w", err)
+	}
+
+	return nil
+}

@@ -435,7 +435,7 @@ func (i *Ingestor) fetchTransactions(ctx context.Context, fromBlock, toBlock int
 		}
 
 		if err.Error() == "API error: No transactions found" {
-			i.logger.Info("No transactions found in block range", zap.Int64("from", fromBlock), zap.Int64("to", toBlock))
+			// i.logger.Info("No transactions found in block range", zap.Int64("from", fromBlock), zap.Int64("to", toBlock))
 			return nil, nil
 		}
 
@@ -537,6 +537,13 @@ func (i *Ingestor) processDataHistory(ctx context.Context) error {
 		return nil
 	}
 
+	// Redraw the full map
+	tiles, err := i.getLatestTileImages(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get latest tile images: %w", err)
+	}
+	utils.RenderFullMap(tiles, "cache/tilemap.png")
+
 	for _, row := range history {
 		location := big.NewInt(int64(row.TileID))
 		if err := i.renderAndSaveImage(location, row.Image, row.BlockNumber); err != nil {
@@ -550,6 +557,18 @@ func (i *Ingestor) processDataHistory(ctx context.Context) error {
 	}
 	i.logger.Info("Finished processing data history", zap.Int("count", len(history)))
 	return nil
+}
+
+func (i *Ingestor) getLatestTileImages(ctx context.Context) ([]string, error) {
+	tiles := make([]string, 3970)
+	latestImages, err := i.queries.GetLatestTileImages(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get latest tile images: %w", err)
+	}
+	for _, img := range latestImages {
+		tiles[img.TileID] = img.Image
+	}
+	return tiles, nil
 }
 
 func (i *Ingestor) renderAndSaveImage(location *big.Int, imageData string, blockNumber int64) error {

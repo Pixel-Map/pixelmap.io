@@ -62,6 +62,15 @@ WHERE tile_id = $1
 ORDER BY time_stamp DESC
 LIMIT 1;
 
+-- name: GetLatestTileImages :many
+SELECT tile_id, image
+FROM data_histories
+WHERE (tile_id, block_number) IN (
+    SELECT tile_id, MAX(block_number)
+    FROM data_histories
+    GROUP BY tile_id
+);
+
 -- name: GetDataHistoryByTx :one
 SELECT * FROM data_histories
 WHERE tx = $1 AND tile_id = $2
