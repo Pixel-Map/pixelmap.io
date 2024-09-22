@@ -427,15 +427,15 @@ RETURNING id
 `
 
 type InsertDataHistoryParams struct {
-	TimeStamp   time.Time `json:"time_stamp"`
-	BlockNumber int64     `json:"block_number"`
-	Tx          string    `json:"tx"`
-	LogIndex    int32     `json:"log_index"`
-	Image       string    `json:"image"`
-	Price       string    `json:"price"`
-	Url         string    `json:"url"`
-	UpdatedBy   string    `json:"updated_by"`
-	TileID      int32     `json:"tile_id"`
+	TimeStamp   time.Time      `json:"time_stamp"`
+	BlockNumber int64          `json:"block_number"`
+	Tx          string         `json:"tx"`
+	LogIndex    int32          `json:"log_index"`
+	Image       string         `json:"image"`
+	Price       sql.NullString `json:"price"`
+	Url         string         `json:"url"`
+	UpdatedBy   string         `json:"updated_by"`
+	TileID      int32          `json:"tile_id"`
 }
 
 func (q *Queries) InsertDataHistory(ctx context.Context, arg InsertDataHistoryParams) (int32, error) {
@@ -588,6 +588,99 @@ func (q *Queries) InsertTile(ctx context.Context, arg InsertTileParams) (int32, 
 		arg.Wrapped,
 		arg.Ens,
 		arg.OpenseaPrice,
+	)
+	var id int32
+	err := row.Scan(&id)
+	return id, err
+}
+
+const insertTransferHistory = `-- name: InsertTransferHistory :one
+INSERT INTO transfer_histories (
+    tile_id,
+    tx,
+    time_stamp,
+    block_number,
+    transferred_from,
+    transferred_to,
+    log_index
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7
+)
+ON CONFLICT (tile_id, tx) DO UPDATE SET
+    time_stamp = EXCLUDED.time_stamp,
+    block_number = EXCLUDED.block_number,
+    transferred_from = EXCLUDED.transferred_from,
+    transferred_to = EXCLUDED.transferred_to,
+    log_index = EXCLUDED.log_index
+RETURNING id
+`
+
+type InsertTransferHistoryParams struct {
+	TileID          int32     `json:"tile_id"`
+	Tx              string    `json:"tx"`
+	TimeStamp       time.Time `json:"time_stamp"`
+	BlockNumber     int64     `json:"block_number"`
+	TransferredFrom string    `json:"transferred_from"`
+	TransferredTo   string    `json:"transferred_to"`
+	LogIndex        int32     `json:"log_index"`
+}
+
+func (q *Queries) InsertTransferHistory(ctx context.Context, arg InsertTransferHistoryParams) (int32, error) {
+	row := q.db.QueryRowContext(ctx, insertTransferHistory,
+		arg.TileID,
+		arg.Tx,
+		arg.TimeStamp,
+		arg.BlockNumber,
+		arg.TransferredFrom,
+		arg.TransferredTo,
+		arg.LogIndex,
+	)
+	var id int32
+	err := row.Scan(&id)
+	return id, err
+}
+
+const insertWrappingHistory = `-- name: InsertWrappingHistory :one
+INSERT INTO wrapping_histories (
+    tile_id,
+    wrapped,
+    tx,
+    time_stamp,
+    block_number,
+    updated_by,
+    log_index
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7
+)
+ON CONFLICT (tile_id, tx) DO UPDATE
+SET
+    wrapped = EXCLUDED.wrapped,
+    time_stamp = EXCLUDED.time_stamp,
+    block_number = EXCLUDED.block_number,
+    updated_by = EXCLUDED.updated_by,
+    log_index = EXCLUDED.log_index
+RETURNING id
+`
+
+type InsertWrappingHistoryParams struct {
+	TileID      int32     `json:"tile_id"`
+	Wrapped     bool      `json:"wrapped"`
+	Tx          string    `json:"tx"`
+	TimeStamp   time.Time `json:"time_stamp"`
+	BlockNumber int64     `json:"block_number"`
+	UpdatedBy   string    `json:"updated_by"`
+	LogIndex    int32     `json:"log_index"`
+}
+
+func (q *Queries) InsertWrappingHistory(ctx context.Context, arg InsertWrappingHistoryParams) (int32, error) {
+	row := q.db.QueryRowContext(ctx, insertWrappingHistory,
+		arg.TileID,
+		arg.Wrapped,
+		arg.Tx,
+		arg.TimeStamp,
+		arg.BlockNumber,
+		arg.UpdatedBy,
+		arg.LogIndex,
 	)
 	var id int32
 	err := row.Scan(&id)

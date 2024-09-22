@@ -168,3 +168,44 @@ SELECT * FROM purchase_histories
 WHERE tile_id = $1
 ORDER BY time_stamp DESC, log_index DESC
 LIMIT 1;
+
+-- name: InsertWrappingHistory :one
+INSERT INTO wrapping_histories (
+    tile_id,
+    wrapped,
+    tx,
+    time_stamp,
+    block_number,
+    updated_by,
+    log_index
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7
+)
+ON CONFLICT (tile_id, tx) DO UPDATE
+SET
+    wrapped = EXCLUDED.wrapped,
+    time_stamp = EXCLUDED.time_stamp,
+    block_number = EXCLUDED.block_number,
+    updated_by = EXCLUDED.updated_by,
+    log_index = EXCLUDED.log_index
+RETURNING id;
+
+-- name: InsertTransferHistory :one
+INSERT INTO transfer_histories (
+    tile_id,
+    tx,
+    time_stamp,
+    block_number,
+    transferred_from,
+    transferred_to,
+    log_index
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7
+)
+ON CONFLICT (tile_id, tx) DO UPDATE SET
+    time_stamp = EXCLUDED.time_stamp,
+    block_number = EXCLUDED.block_number,
+    transferred_from = EXCLUDED.transferred_from,
+    transferred_to = EXCLUDED.transferred_to,
+    log_index = EXCLUDED.log_index
+RETURNING id;

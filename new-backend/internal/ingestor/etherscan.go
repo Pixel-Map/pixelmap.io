@@ -100,15 +100,20 @@ func (c *EtherscanClient) GetLatestBlockNumber() (uint64, error) {
 }
 
 func (c *EtherscanClient) GetTransactions(ctx context.Context, startBlock, endBlock int64) ([]EtherscanTransaction, error) {
-	// List of addresses to fetch transactions for
 	addresses := []string{
-		"0x015A06a433353f8db634dF4eDdF0C109882A15AB",
+		"0x015a06a433353f8db634df4eddf0c109882a15ab",
 		"0x050dc61dFB867E0fE3Cf2948362b6c0F3fAF790b",
 	}
 
 	var allTransactions []EtherscanTransaction
 
-	for _, address := range addresses {
+	for i, address := range addresses {
+		c.logger.Debug("Processing address",
+			zap.Int("index", i),
+			zap.String("address", address),
+			zap.Int64("startBlock", startBlock),
+			zap.Int64("endBlock", endBlock))
+
 		params := map[string]string{
 			"module":     "account",
 			"action":     "txlist",
@@ -121,13 +126,24 @@ func (c *EtherscanClient) GetTransactions(ctx context.Context, startBlock, endBl
 
 		var rawResp json.RawMessage
 		if err := c.makeRequestWithRetry(ctx, params, &rawResp); err != nil {
-			return nil, err
+			if strings.Contains(err.Error(), "No transactions found") {
+				c.logger.Info("No transactions found for address",
+					zap.String("address", address))
+				continue // Skip this address and continue with the next one
+			}
+			c.logger.Error("Failed to make request",
+				zap.Error(err),
+				zap.String("address", address))
+			continue // Skip this address and continue with the next one
 		}
 
 		// Try to unmarshal as an array first
 		var transactions []EtherscanTransaction
 		err := json.Unmarshal(rawResp, &transactions)
 		if err == nil {
+			c.logger.Debug("Successfully unmarshaled response as array",
+				zap.Int("transactionCount", len(transactions)),
+				zap.String("address", address))
 			allTransactions = append(allTransactions, transactions...)
 			continue
 		}
@@ -137,31 +153,36 @@ func (c *EtherscanClient) GetTransactions(ctx context.Context, startBlock, endBl
 		if err := json.Unmarshal(rawResp, &resp); err != nil {
 			c.logger.Error("Failed to unmarshal response",
 				zap.Error(err),
-				zap.String("rawResponse", string(rawResp)))
-			return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+				zap.String("rawResponse", string(rawResp)),
+				zap.String("address", address))
+			continue
 		}
 
 		if resp.Status != "1" {
-			return nil, fmt.Errorf("API error: %s (Message: %s)", resp.Status, resp.Message)
+			c.logger.Warn("API returned non-success status",
+				zap.String("status", resp.Status),
+				zap.String("message", resp.Message),
+				zap.String("address", address))
+			continue
 		}
 
-		// Handle the case where Result is a string (error message)
-		if resultStr, ok := resp.Result.(string); ok {
-			return nil, fmt.Errorf("API returned an error in Result: %s", resultStr)
-		}
-
-		// Handle the case where Result is an array of transactions
 		transactions, ok := resp.Result.([]EtherscanTransaction)
 		if !ok {
-			return nil, fmt.Errorf("unexpected result type for transactions: %T", resp.Result)
+			c.logger.Warn("Unexpected result type for transactions",
+				zap.String("type", fmt.Sprintf("%T", resp.Result)),
+				zap.String("address", address))
+			continue
 		}
+
+		c.logger.Info("Transactions found for address",
+			zap.String("address", address),
+			zap.Int("count", len(transactions)))
 
 		allTransactions = append(allTransactions, transactions...)
 	}
 
-	if len(allTransactions) == 0 {
-		return nil, fmt.Errorf("no transactions found")
-	}
+	c.logger.Info("Finished processing all addresses",
+		zap.Int("totalTransactions", len(allTransactions)))
 
 	return allTransactions, nil
 }
@@ -214,7 +235,7 @@ func (c *EtherscanClient) makeRequest(ctx context.Context, params map[string]str
 	return nil
 }
 
-func (c *EtherscanClient) makeRequestWithRetry(ctx context.Context, params map[string]string, result interface{}) error {
+func (c *EtherscanClient) makeRequestWithRetry(ctx context.Context, params map[string]string, result *json.RawMessage) error {
 	b := backoff.NewExponentialBackOff()
 	b.MaxElapsedTime = 2 * time.Minute
 

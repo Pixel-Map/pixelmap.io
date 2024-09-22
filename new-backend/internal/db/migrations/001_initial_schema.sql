@@ -30,7 +30,7 @@ CREATE TABLE data_histories (
     tx VARCHAR(66) NOT NULL,
     log_index INTEGER NOT NULL,
     image VARCHAR(800) NOT NULL,
-    price DECIMAL(10, 2) NOT NULL,
+    price DECIMAL(10, 2),
     url TEXT NOT NULL,
     updated_by VARCHAR(42) NOT NULL,
     tile_id INTEGER NOT NULL REFERENCES tiles(id),

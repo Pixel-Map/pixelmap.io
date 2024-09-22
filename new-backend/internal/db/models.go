@@ -15,16 +15,16 @@ type CurrentState struct {
 }
 
 type DataHistory struct {
-	ID          int32     `json:"id"`
-	TimeStamp   time.Time `json:"time_stamp"`
-	BlockNumber int64     `json:"block_number"`
-	Tx          string    `json:"tx"`
-	LogIndex    int32     `json:"log_index"`
-	Image       string    `json:"image"`
-	Price       string    `json:"price"`
-	Url         string    `json:"url"`
-	UpdatedBy   string    `json:"updated_by"`
-	TileID      int32     `json:"tile_id"`
+	ID          int32          `json:"id"`
+	TimeStamp   time.Time      `json:"time_stamp"`
+	BlockNumber int64          `json:"block_number"`
+	Tx          string         `json:"tx"`
+	LogIndex    int32          `json:"log_index"`
+	Image       string         `json:"image"`
+	Price       sql.NullString `json:"price"`
+	Url         string         `json:"url"`
+	UpdatedBy   string         `json:"updated_by"`
+	TileID      int32          `json:"tile_id"`
 }
 
 type PixelMapTransaction struct {

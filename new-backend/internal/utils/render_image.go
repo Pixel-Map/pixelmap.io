@@ -13,7 +13,6 @@ import (
 
 func RenderImage(tileImageData string, sizeX, sizeY int, outputPath string) error {
 	if len(tileImageData) < 768 {
-		fmt.Println("Not saving image, invalid image data found, skipping")
 		return nil
 	}
 

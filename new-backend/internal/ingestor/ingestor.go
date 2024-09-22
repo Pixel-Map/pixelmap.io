@@ -268,6 +268,7 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 	} else if tx.To == "0x050dc61dfb867e0fe3cf2948362b6c0f3faf790b" {
 		abi, _ = pixelmapWrapper.PixelMapWrapperMetaData.GetAbi()
 	} else {
+		fmt.Println("Unknown contract address", tx.To)
 		return nil
 	}
 
@@ -361,54 +362,21 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 			url, _ := args[2].(string)
 			priceWei, _ := args[3].(*big.Int)
 
-			// Convert Wei to Ether
-			priceEth := new(big.Float).Quo(new(big.Float).SetInt(priceWei), big.NewFloat(1e18))
-
-			var priceEthStr string
-			if priceEth.Cmp(big.NewFloat(maxPostgresNumeric)) > 0 {
-				i.logger.Warn("Price exceeds maximum supported value, capping at max",
-					zap.String("location", location.String()),
-					zap.String("originalPrice", priceEth.Text('f', 18)),
-					zap.Float64("maxPrice", maxPostgresNumeric))
-				priceEthStr = fmt.Sprintf("%.2f", maxPostgresNumeric)
-			} else {
-				// Format the price with up to 18 decimal places, removing trailing zeros
-				priceEthStr = strings.TrimRight(strings.TrimRight(fmt.Sprintf("%.18f", priceEth), "0"), ".")
+			if err := i.processTileUpdate(ctx, location, image, url, priceWei, tx, timeStamp.Int64(), blockNumber.Int64(), int32(transactionIndex)); err != nil {
+				return err
 			}
+		}
 
-			i.logger.Info("setTile called",
-				zap.String("location", location.String()),
-				zap.String("price", priceEthStr),
-				zap.String("url", url),
-				zap.String("tx", tx.Hash),
-				zap.String("from", tx.From))
+	case "setTileData":
+		if len(args) >= 3 {
+			location, _ := args[0].(*big.Int)
+			image, _ := args[1].(string)
+			url, _ := args[2].(string)
 
-			// Add to dataHistory
-			dataHistory := db.InsertDataHistoryParams{
-				TileID:      int32(location.Int64()),
-				Price:       priceEthStr,
-				Url:         url,
-				Tx:          tx.Hash,
-				TimeStamp:   time.Unix(timeStamp.Int64(), 0),
-				BlockNumber: blockNumber.Int64(),
-				Image:       image,
-				UpdatedBy:   tx.From,
-				LogIndex:    int32(transactionIndex),
+			// For setTileData, we don't change the price, so we pass nil for priceWei
+			if err := i.processTileUpdate(ctx, location, image, url, nil, tx, timeStamp.Int64(), blockNumber.Int64(), int32(transactionIndex)); err != nil {
+				return err
 			}
-
-			if _, err := i.queries.InsertDataHistory(ctx, dataHistory); err != nil {
-				return fmt.Errorf("failed to insert data history: %w", err)
-			}
-
-			// Signal that new data is available to render
-			i.signalNewData()
-
-			// Keep the Discord notification
-			discordPayload, _ := json.Marshal(map[string]interface{}{
-				"message": fmt.Sprintf("Tile %s updated by %s", location.String(), tx.From),
-				"url":     url,
-			})
-			i.pubSub.Publish(Event{Type: EventTypeDiscordNotification, Payload: discordPayload})
 		}
 
 	case "getTile":
@@ -425,6 +393,74 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 			zap.String("from", tx.From))
 	case "setTokenExtension":
 		i.logger.Info("setTokenExtension called",
+			zap.String("tx", tx.Hash),
+			zap.String("from", tx.From))
+	case "setApprovalForAll":
+		i.logger.Info("setApprovalForAll called",
+			zap.String("tx", tx.Hash),
+			zap.String("from", tx.From))
+	case "wrap":
+		i.logger.Info("wrap called",
+			zap.String("tx", tx.Hash),
+			zap.String("from", tx.From))
+		if len(args) >= 2 {
+			location, _ := args[0].(*big.Int)
+			wrapped, _ := args[1].(string)
+			i.logger.Info("wrap called",
+				zap.String("location", location.String()),
+				zap.String("wrapped", wrapped),
+				zap.String("tx", tx.Hash),
+				zap.String("from", tx.From))
+			wrappingHistory := db.InsertWrappingHistoryParams{
+				TileID:      int32(location.Int64()),
+				Wrapped:     wrapped == "true",
+				Tx:          tx.Hash,
+				TimeStamp:   time.Unix(timeStamp.Int64(), 0),
+				BlockNumber: blockNumber.Int64(),
+				UpdatedBy:   tx.From,
+				LogIndex:    int32(transactionIndex),
+			}
+			_, err := i.queries.InsertWrappingHistory(ctx, wrappingHistory)
+			if err != nil {
+				return fmt.Errorf("failed to insert wrapping history: %w", err)
+			}
+		}
+	case "unwrap":
+		i.logger.Info("wrap called",
+			zap.String("tx", tx.Hash),
+			zap.String("from", tx.From))
+		if len(args) >= 2 {
+			location, _ := args[0].(*big.Int)
+			wrapped, _ := args[1].(string)
+			i.logger.Info("unwrap called",
+				zap.String("location", location.String()),
+				zap.String("unwrapped", wrapped),
+				zap.String("tx", tx.Hash),
+				zap.String("from", tx.From))
+			wrappingHistory := db.InsertWrappingHistoryParams{
+				TileID:      int32(location.Int64()),
+				Wrapped:     wrapped == "false",
+				Tx:          tx.Hash,
+				TimeStamp:   time.Unix(timeStamp.Int64(), 0),
+				BlockNumber: blockNumber.Int64(),
+				UpdatedBy:   tx.From,
+				LogIndex:    int32(transactionIndex),
+			}
+			_, err := i.queries.InsertWrappingHistory(ctx, wrappingHistory)
+			if err != nil {
+				return fmt.Errorf("failed to insert wrapping history: %w", err)
+			}
+		}
+	case "transferFrom", "safeTransferFrom", "safeTransferFrom0":
+		if err := i.processTransfer(ctx, args, tx, timeStamp.Int64(), blockNumber.Int64(), int32(transactionIndex)); err != nil {
+			return err
+		}
+	case "withdrawETH":
+		i.logger.Info("withdrawETH called",
+			zap.String("tx", tx.Hash),
+			zap.String("from", tx.From))
+	case "approve":
+		i.logger.Info("approve called",
 			zap.String("tx", tx.Hash),
 			zap.String("from", tx.From))
 	default:
@@ -612,5 +648,121 @@ func (i *Ingestor) renderAndSaveImage(location *big.Int, imageData string, block
 	i.logger.Info("Image rendered and saved",
 		zap.String("blockPath", blockFilePath),
 		zap.String("latestPath", latestFilePath))
+	return nil
+}
+
+func (i *Ingestor) processTileUpdate(ctx context.Context, location *big.Int, image, url string, priceWei *big.Int, tx *EtherscanTransaction, timestamp, blockNumber int64, transactionIndex int32) error {
+	var priceEthStr string
+	if priceWei != nil && priceWei.Sign() > 0 {
+		// Convert Wei to Ether
+		priceEth := new(big.Float).Quo(new(big.Float).SetInt(priceWei), big.NewFloat(1e18))
+
+		if priceEth.Cmp(big.NewFloat(maxPostgresNumeric)) > 0 {
+			i.logger.Warn("Price exceeds maximum supported value, capping at max",
+				zap.String("location", location.String()),
+				zap.String("originalPrice", priceEth.Text('f', 18)),
+				zap.Float64("maxPrice", maxPostgresNumeric))
+			priceEthStr = fmt.Sprintf("%.2f", maxPostgresNumeric)
+		} else {
+			// Format the price with up to 18 decimal places, removing trailing zeros
+			priceEthStr = strings.TrimRight(strings.TrimRight(fmt.Sprintf("%.18f", priceEth), "0"), ".")
+		}
+	} else {
+		// If price is nil or zero, set it to an empty string or a default value
+		priceEthStr = "" // or you could use "0" if you prefer
+	}
+
+	i.logger.Info("Tile update",
+		zap.String("location", location.String()),
+		zap.String("price", priceEthStr),
+		zap.String("url", url),
+		zap.String("tx", tx.Hash),
+		zap.String("from", tx.From))
+
+	// If length of image is greater than 800, truncate it
+	if len(image) > 800 {
+		image = image[:800]
+	}
+	// Add to dataHistory
+	dataHistory := db.InsertDataHistoryParams{
+		TileID:      int32(location.Int64()),
+		Price:       sql.NullString{String: priceEthStr, Valid: priceEthStr != ""}, // Use sql.NullString
+		Url:         url,
+		Tx:          tx.Hash,
+		TimeStamp:   time.Unix(timestamp, 0),
+		BlockNumber: blockNumber,
+		Image:       image,
+		UpdatedBy:   tx.From,
+		LogIndex:    transactionIndex,
+	}
+
+	if _, err := i.queries.InsertDataHistory(ctx, dataHistory); err != nil {
+		return fmt.Errorf("failed to insert data history: %w", err)
+	}
+
+	// Signal that new data is available to render
+	i.signalNewData()
+
+	// Keep the Discord notification
+	discordPayload, _ := json.Marshal(map[string]interface{}{
+		"message": fmt.Sprintf("Tile %s updated by %s", location.String(), tx.From),
+		"url":     url,
+	})
+	i.pubSub.Publish(Event{Type: EventTypeDiscordNotification, Payload: discordPayload})
+
+	return nil
+}
+
+func (i *Ingestor) processTransfer(ctx context.Context, args []interface{}, tx *EtherscanTransaction, timestamp, blockNumber int64, transactionIndex int32) error {
+	if len(args) < 3 {
+		return fmt.Errorf("insufficient arguments for transfer")
+	}
+
+	from, ok := args[0].(common.Address)
+	if !ok {
+		return fmt.Errorf("invalid 'from' address")
+	}
+
+	to, ok := args[1].(common.Address)
+	if !ok {
+		return fmt.Errorf("invalid 'to' address")
+	}
+
+	location, ok := args[2].(*big.Int)
+	if !ok {
+		return fmt.Errorf("invalid location")
+	}
+
+	i.logger.Info("Transfer processed",
+		zap.String("from", from.Hex()),
+		zap.String("to", to.Hex()),
+		zap.String("location", location.String()),
+		zap.String("tx", tx.Hash),
+		zap.String("caller", tx.From))
+
+	transferHistory := db.InsertTransferHistoryParams{
+		TileID:          int32(location.Int64()),
+		Tx:              tx.Hash,
+		TimeStamp:       time.Unix(timestamp, 0),
+		BlockNumber:     blockNumber,
+		TransferredFrom: from.Hex(),
+		TransferredTo:   to.Hex(),
+		LogIndex:        transactionIndex,
+	}
+
+	_, err := i.queries.InsertTransferHistory(ctx, transferHistory)
+	if err != nil {
+		return fmt.Errorf("failed to insert transfer history: %w", err)
+	}
+
+	// Update tile owner
+	err = i.queries.UpdateTileOwner(ctx, db.UpdateTileOwnerParams{
+		ID:    int32(location.Int64()),
+		Owner: to.Hex(),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update tile owner: %w", err)
+	}
+
 	return nil
 }

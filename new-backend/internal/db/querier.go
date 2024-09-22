@@ -28,6 +28,8 @@ type Querier interface {
 	InsertPixelMapTransaction(ctx context.Context, arg InsertPixelMapTransactionParams) (int32, error)
 	InsertPurchaseHistory(ctx context.Context, arg InsertPurchaseHistoryParams) (int32, error)
 	InsertTile(ctx context.Context, arg InsertTileParams) (int32, error)
+	InsertTransferHistory(ctx context.Context, arg InsertTransferHistoryParams) (int32, error)
+	InsertWrappingHistory(ctx context.Context, arg InsertWrappingHistoryParams) (int32, error)
 	ListTiles(ctx context.Context, arg ListTilesParams) ([]Tile, error)
 	UpdateCurrentState(ctx context.Context, arg UpdateCurrentStateParams) error
 	UpdateLastProcessedBlock(ctx context.Context, value int64) error
