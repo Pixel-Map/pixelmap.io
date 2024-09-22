@@ -16,6 +16,11 @@ INSERT INTO pixel_map_transaction (
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18
 )
+ON CONFLICT (hash, transaction_index) DO UPDATE SET
+    block_number = EXCLUDED.block_number,
+    time_stamp = EXCLUDED.time_stamp,
+    -- Add other fields you want to update here
+    confirmations = EXCLUDED.confirmations
 RETURNING id;
 
 -- name: GetLatestBlockNumber :one
@@ -36,6 +41,14 @@ INSERT INTO data_histories (
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9
 )
+ON CONFLICT (tile_id, tx) DO UPDATE SET
+    time_stamp = EXCLUDED.time_stamp,
+    block_number = EXCLUDED.block_number,
+    log_index = EXCLUDED.log_index,
+    image = EXCLUDED.image,
+    price = EXCLUDED.price,
+    url = EXCLUDED.url,
+    updated_by = EXCLUDED.updated_by
 RETURNING id;
 
 -- name: GetDataHistoryByTileId :many

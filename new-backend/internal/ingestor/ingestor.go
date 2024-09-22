@@ -9,11 +9,13 @@ import (
 	"math/rand"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/lib/pq"
 	"go.uber.org/zap"
 	pixelmap "pixelmap.io/backend/internal/contracts/pixelmap"
 	db "pixelmap.io/backend/internal/db"
@@ -26,6 +28,7 @@ const (
 	safetyBlockOffset   = 10
 	constructorMethodID = "0x60606040"
 	imageSize           = 512
+	maxPostgresNumeric  = 1e3 // Display max of 1000 eth
 )
 
 // Event types
@@ -187,8 +190,13 @@ func (i *Ingestor) processBlockRange(ctx context.Context, currentBlock, endBlock
 		return err
 	}
 
+	skippedCount := 0
 	for _, tx := range transactions {
 		if err := i.processTransaction(ctx, &tx); err != nil {
+			if strings.Contains(err.Error(), "bad jump destination") {
+				skippedCount++
+				continue
+			}
 			i.logger.Error("Failed to process transaction", zap.Error(err), zap.String("hash", tx.Hash))
 			return fmt.Errorf("failed to process transaction %s: %w", tx.Hash, err)
 		}
@@ -198,11 +206,21 @@ func (i *Ingestor) processBlockRange(ctx context.Context, currentBlock, endBlock
 		return err
 	}
 
-	i.logger.Info("Processed blocks", zap.Int64("from", currentBlock), zap.Int64("to", blockEnd))
+	i.logger.Info("Processed blocks",
+		zap.Int64("from", currentBlock),
+		zap.Int64("to", blockEnd),
+		zap.Int("skippedTransactions", skippedCount))
 	return nil
 }
 
 func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransaction) error {
+	// Check if this is a "bad jump destination" transaction
+	if tx.IsError == "1" {
+		i.logger.Debug("Skipping bad transaction",
+			zap.String("hash", tx.Hash))
+		return nil
+	}
+
 	// Convert types and insert into database
 	blockNumber, _ := new(big.Int).SetString(tx.BlockNumber, 10)
 	timeStamp, _ := new(big.Int).SetString(tx.TimeStamp, 10)
@@ -245,6 +263,14 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 		return fmt.Errorf("failed to get ABI: %w", err)
 	}
 
+	// Check if the input data is long enough to contain a method ID
+	if len(tx.Input) < 10 {
+		i.logger.Warn("Transaction input too short to contain method ID",
+			zap.String("hash", tx.Hash),
+			zap.String("input", tx.Input))
+		return nil
+	}
+
 	// The first 4 bytes of the input data represent the method ID
 	methodID := tx.Input[:10]
 	if string(methodID) == constructorMethodID {
@@ -279,7 +305,7 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 				}
 
 				// Insert purchase history
-				_, err = i.queries.InsertPurchaseHistory(ctx, db.InsertPurchaseHistoryParams{
+				purchaseHistory := db.InsertPurchaseHistoryParams{
 					TileID:      int32(location.Int64()),
 					SoldBy:      tile.Owner,
 					PurchasedBy: tx.From,
@@ -288,9 +314,21 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 					TimeStamp:   time.Unix(timeStamp.Int64(), 0),
 					BlockNumber: blockNumber.Int64(),
 					LogIndex:    int32(transactionIndex),
-				})
+				}
+
+				_, err = i.queries.InsertPurchaseHistory(ctx, purchaseHistory)
 				if err != nil {
-					return fmt.Errorf("failed to insert purchase history: %w", err)
+					// Check if it's a duplicate key error
+					if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {
+						// This is a duplicate entry, log it and continue
+						i.logger.Warn("Duplicate purchase history entry",
+							zap.String("tx", tx.Hash),
+							zap.Int32("tileID", purchaseHistory.TileID),
+							zap.Int32("logIndex", purchaseHistory.LogIndex))
+					} else {
+						// If it's not a duplicate key error, return the error
+						return fmt.Errorf("failed to insert purchase history: %w", err)
+					}
 				}
 
 				// Update tile owner
@@ -319,14 +357,17 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 			// Convert Wei to Ether
 			priceEth := new(big.Float).Quo(new(big.Float).SetInt(priceWei), big.NewFloat(1e18))
 
-			// Round to 2 decimal places
-			priceEthRounded := new(big.Float).Mul(priceEth, big.NewFloat(100))
-			priceEthInt, _ := priceEthRounded.Int(nil)
-			priceEthRounded.SetInt(priceEthInt)
-			priceEthRounded.Quo(priceEthRounded, big.NewFloat(100))
-
-			// Format the price with 2 decimal places
-			priceEthStr := fmt.Sprintf("%.2f", priceEthRounded)
+			var priceEthStr string
+			if priceEth.Cmp(big.NewFloat(maxPostgresNumeric)) > 0 {
+				i.logger.Warn("Price exceeds maximum supported value, capping at max",
+					zap.String("location", location.String()),
+					zap.String("originalPrice", priceEth.Text('f', 18)),
+					zap.Float64("maxPrice", maxPostgresNumeric))
+				priceEthStr = fmt.Sprintf("%.2f", maxPostgresNumeric)
+			} else {
+				// Format the price with up to 18 decimal places, removing trailing zeros
+				priceEthStr = strings.TrimRight(strings.TrimRight(fmt.Sprintf("%.18f", priceEth), "0"), ".")
+			}
 
 			i.logger.Info("setTile called",
 				zap.String("location", location.String()),
@@ -338,7 +379,7 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 			// Add to dataHistory
 			dataHistory := db.InsertDataHistoryParams{
 				TileID:      int32(location.Int64()),
-				Price:       priceEthStr, // Store the rounded Ether price as a string
+				Price:       priceEthStr,
 				Url:         url,
 				Tx:          tx.Hash,
 				TimeStamp:   time.Unix(timeStamp.Int64(), 0),
@@ -363,8 +404,14 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 			i.pubSub.Publish(Event{Type: EventTypeDiscordNotification, Payload: discordPayload})
 		}
 
-	// Add other cases as needed
-
+	case "getTile":
+		if len(args) >= 1 {
+			location, _ := args[0].(*big.Int)
+			i.logger.Debug("getTile called",
+				zap.String("location", location.String()),
+				zap.String("tx", tx.Hash),
+				zap.String("from", tx.From))
+		}
 	default:
 		fmt.Printf("Unknown method called: %s\n", method.Name)
 		os.Exit(2)
