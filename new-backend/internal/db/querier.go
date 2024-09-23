@@ -22,7 +22,7 @@ type Querier interface {
 	GetPurchaseHistoryByTileId(ctx context.Context, tileID int32) ([]PurchaseHistory, error)
 	GetTileById(ctx context.Context, id int32) (Tile, error)
 	GetTilesByOwner(ctx context.Context, owner string) ([]Tile, error)
-	GetUnprocessedDataHistory(ctx context.Context, arg GetUnprocessedDataHistoryParams) ([]DataHistory, error)
+	GetUnprocessedDataHistory(ctx context.Context, id int32) ([]DataHistory, error)
 	GetWrappedTiles(ctx context.Context) ([]Tile, error)
 	InsertDataHistory(ctx context.Context, arg InsertDataHistoryParams) (int32, error)
 	InsertPixelMapTransaction(ctx context.Context, arg InsertPixelMapTransactionParams) (int32, error)

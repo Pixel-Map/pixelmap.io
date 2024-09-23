@@ -329,16 +329,10 @@ const getUnprocessedDataHistory = `-- name: GetUnprocessedDataHistory :many
 SELECT id, time_stamp, block_number, tx, log_index, image, price, url, updated_by, tile_id FROM data_histories
 WHERE id > $1
 ORDER BY id ASC
-LIMIT $2
 `
 
-type GetUnprocessedDataHistoryParams struct {
-	ID    int32 `json:"id"`
-	Limit int32 `json:"limit"`
-}
-
-func (q *Queries) GetUnprocessedDataHistory(ctx context.Context, arg GetUnprocessedDataHistoryParams) ([]DataHistory, error) {
-	rows, err := q.db.QueryContext(ctx, getUnprocessedDataHistory, arg.ID, arg.Limit)
+func (q *Queries) GetUnprocessedDataHistory(ctx context.Context, id int32) ([]DataHistory, error) {
+	rows, err := q.db.QueryContext(ctx, getUnprocessedDataHistory, id)
 	if err != nil {
 		return nil, err
 	}

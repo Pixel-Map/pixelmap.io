@@ -12,7 +12,14 @@ import (
 )
 
 func RenderImage(tileImageData string, sizeX, sizeY int, outputPath string) error {
-	if len(tileImageData) < 768 {
+	// First try to decompress the tile image data
+	decompressedImage, err := DecompressTileCode(tileImageData)
+	if err != nil {
+		return fmt.Errorf("failed to decompress tile image data: %w", err)
+	}
+
+	if len(decompressedImage) < 768 {
+		fmt.Printf("decompressed tile image data is too short: %d bytes", len(decompressedImage))
 		return nil
 	}
 
@@ -24,7 +31,7 @@ func RenderImage(tileImageData string, sizeX, sizeY int, outputPath string) erro
 
 	for i := 0; i < 256; i++ {
 		x, y := i%16, i/16
-		hexStr := tileImageData[i*3 : i*3+3]
+		hexStr := decompressedImage[i*3 : i*3+3]
 		r := parseHexChar(hexStr[0])
 		g := parseHexChar(hexStr[1])
 		b := parseHexChar(hexStr[2])

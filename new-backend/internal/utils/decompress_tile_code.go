@@ -51,7 +51,6 @@ func uncompressedDecoder(tileCodeString string) (string, error) {
 	if strings.HasPrefix(tileCodeString, ImageCompressed) || strings.HasPrefix(tileCodeString, ImageCompressedV2) {
 		return "", fmt.Errorf("not an uncompressed image")
 	}
-	log.Println("Not a compressed image, returning as-is")
 	return tileCodeString, nil
 }
 

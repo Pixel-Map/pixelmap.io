@@ -134,8 +134,7 @@ RETURNING COALESCE(CAST(value AS INTEGER), 0)::INT4;
 -- name: GetUnprocessedDataHistory :many
 SELECT * FROM data_histories
 WHERE id > $1
-ORDER BY id ASC
-LIMIT $2;
+ORDER BY id ASC;
 
 -- name: UpdateLastProcessedDataHistoryID :exec
 INSERT INTO current_state (state, value) 

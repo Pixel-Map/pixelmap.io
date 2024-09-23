@@ -102,6 +102,9 @@ func NewIngestor(logger *zap.Logger, sqlDB *sql.DB, apiKey string) *Ingestor {
 	// Start the continuous rendering process
 	go ingestor.continuousRenderProcess()
 
+	// Trigger an initial render
+	ingestor.signalNewData()
+
 	return ingestor
 }
 
@@ -575,10 +578,7 @@ func (i *Ingestor) processDataHistory(ctx context.Context) error {
 	}
 
 	// Fetch a batch of unprocessed data history entries
-	history, err := i.queries.GetUnprocessedDataHistory(ctx, db.GetUnprocessedDataHistoryParams{
-		ID:    lastProcessedID,
-		Limit: 100, // Process in batches of 100
-	})
+	history, err := i.queries.GetUnprocessedDataHistory(ctx, lastProcessedID)
 	if err != nil {
 		return fmt.Errorf("failed to get unprocessed data history: %w", err)
 	}
@@ -636,13 +636,34 @@ func (i *Ingestor) renderAndSaveImage(location *big.Int, imageData string, block
 	// Render the image using the existing RenderImage function
 	err := utils.RenderImage(imageData, imageSize, imageSize, blockFilePath)
 	if err != nil {
-		return fmt.Errorf("failed to render image: %w", err)
+		i.logger.Error("Failed to render block image",
+			zap.Error(err),
+			zap.String("path", blockFilePath),
+			zap.String("imageData", imageData))
+		return fmt.Errorf("failed to render block image: %w", err)
 	}
 
 	// Render the image using the existing RenderImage function
 	err = utils.RenderImage(imageData, imageSize, imageSize, latestFilePath)
 	if err != nil {
-		return fmt.Errorf("failed to render image: %w", err)
+		i.logger.Error("Failed to render latest image",
+			zap.Error(err),
+			zap.String("path", latestFilePath),
+			zap.String("imageData", imageData))
+		return fmt.Errorf("failed to render latest image: %w", err)
+	}
+
+	// Verify that the files were created
+	if _, err := os.Stat(blockFilePath); os.IsNotExist(err) {
+		i.logger.Error("Block image file not created",
+			zap.String("path", blockFilePath))
+		return nil
+	}
+
+	if _, err := os.Stat(latestFilePath); os.IsNotExist(err) {
+		i.logger.Error("Latest image file not created",
+			zap.String("path", latestFilePath))
+		return fmt.Errorf("latest image file not created: %s", latestFilePath)
 	}
 
 	i.logger.Info("Image rendered and saved",
@@ -653,7 +674,14 @@ func (i *Ingestor) renderAndSaveImage(location *big.Int, imageData string, block
 
 func (i *Ingestor) processTileUpdate(ctx context.Context, location *big.Int, image, url string, priceWei *big.Int, tx *EtherscanTransaction, timestamp, blockNumber int64, transactionIndex int32) error {
 	var priceEthStr string
-	if priceWei != nil && priceWei.Sign() > 0 {
+	if priceWei == nil {
+		// Fetch the current price from the database
+		currentTile, err := i.queries.GetTileById(ctx, int32(location.Int64()))
+		if err != nil {
+			return fmt.Errorf("failed to get current tile data: %w", err)
+		}
+		priceEthStr = currentTile.Price
+	} else if priceWei.Sign() > 0 {
 		// Convert Wei to Ether
 		priceEth := new(big.Float).Quo(new(big.Float).SetInt(priceWei), big.NewFloat(1e18))
 
@@ -668,8 +696,7 @@ func (i *Ingestor) processTileUpdate(ctx context.Context, location *big.Int, ima
 			priceEthStr = strings.TrimRight(strings.TrimRight(fmt.Sprintf("%.18f", priceEth), "0"), ".")
 		}
 	} else {
-		// If price is nil or zero, set it to an empty string or a default value
-		priceEthStr = "" // or you could use "0" if you prefer
+		priceEthStr = "0"
 	}
 
 	i.logger.Info("Tile update",
