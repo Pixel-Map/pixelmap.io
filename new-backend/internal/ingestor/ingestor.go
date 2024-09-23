@@ -108,6 +108,27 @@ func NewIngestor(logger *zap.Logger, sqlDB *sql.DB, apiKey string) *Ingestor {
 	return ingestor
 }
 
+func (i *Ingestor) StartContinuousIngestion(ctx context.Context) error {
+	for {
+		err := i.IngestTransactions(ctx)
+		if err != nil {
+			i.logger.Error("Error during transaction ingestion", zap.Error(err))
+			// Optionally, you might want to return the error here if you want to stop the process on errors
+			// return err
+		}
+
+		i.logger.Info("Finished ingestion cycle, waiting for 30 seconds before next check")
+
+		select {
+		case <-time.After(30 * time.Second):
+			// Continue to the next iteration after 30 seconds
+		case <-ctx.Done():
+			// Exit if the context is cancelled
+			return ctx.Err()
+		}
+	}
+}
+
 func (i *Ingestor) IngestTransactions(ctx context.Context) error {
 	startBlock, err := i.getStartBlock(ctx)
 	if err != nil {

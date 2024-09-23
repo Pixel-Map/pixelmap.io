@@ -33,10 +33,8 @@ func main() {
 
 	ingester := ingestor.NewIngestor(logger, db, os.Getenv("ETHERSCAN_API_KEY"))
 
-	if err := ingester.IngestTransactions(context.Background()); err != nil {
-		logger.Error("Fatal error in ingestor", zap.Error(err))
-		os.Exit(1)
+	ctx := context.Background()
+	if err := ingester.StartContinuousIngestion(ctx); err != nil {
+		log.Fatalf("Continuous ingestion stopped: %v", err)
 	}
-
-	logger.Info("Indexing completed successfully")
 }
