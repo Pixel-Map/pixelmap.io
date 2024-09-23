@@ -78,7 +78,13 @@ func RenderFullMap(tiles []string, outputPath string) error {
 	img := image.NewRGBA(image.Rect(0, 0, width, height))
 
 	for i, tile := range tiles {
-		if len(tile) < 768 {
+		// Decompress the tile if it's compressed
+		decompressedTile, err := DecompressTileCode(tile)
+		if err != nil {
+			return fmt.Errorf("failed to decompress tile: %w", err)
+		}
+
+		if len(decompressedTile) < 768 {
 			continue // Skip invalid tiles
 		}
 
@@ -88,7 +94,7 @@ func RenderFullMap(tiles []string, outputPath string) error {
 		for y := 0; y < 16; y++ {
 			for x := 0; x < 16; x++ {
 				index := (y*16 + x) * 3
-				hexStr := tile[index : index+3]
+				hexStr := decompressedTile[index : index+3]
 				r := parseHexChar(hexStr[0])
 				g := parseHexChar(hexStr[1])
 				b := parseHexChar(hexStr[2])

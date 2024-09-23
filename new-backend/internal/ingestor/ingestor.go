@@ -661,7 +661,7 @@ func (i *Ingestor) renderAndSaveImage(location *big.Int, imageData string, block
 			zap.Error(err),
 			zap.String("path", blockFilePath),
 			zap.String("imageData", imageData))
-		return fmt.Errorf("failed to render block image: %w", err)
+		return nil
 	}
 
 	// Render the image using the existing RenderImage function
