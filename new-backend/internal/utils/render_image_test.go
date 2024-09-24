@@ -73,7 +73,7 @@ func TestRenderImage(t *testing.T) {
 	})
 
 	t.Run("successfully renders a PNG image from tile #2947", func(t *testing.T) {
-		compressedImage := "c#I@|Ph5:W*F9F%0RRS$CUB>}~UOn6r%~wJccRN7!(AY@CeGI.8$%~d|[YzYcpt/b*^LkcZ]j].JYgj7X.t+CPm>N=yzvhW|v>)6cZ0};9e0)hJ^6OI1hzzZ_z%o=9y/M@a]xTZGR%>bjV!![6?j:H7c&8M[sTSfk*8>q~FeZGHpUhB"
+		compressedImage := "c#I@D;=i~W/FHHllD<NjB!e<#8;&ebh)TU|@kRfb(nH7v;D*!T%wAx0z&/~BN3e87=T4rwt=3rGMP3`HWD%n:4YybsE#mk}G8$M/)NHzs:K`q[ax#29/(va@+!)`)bq~Fa#|MPS_5D"
 
 		decompressedImage, err := DecompressTileCode(compressedImage)
 		if err != nil {
@@ -91,6 +91,6 @@ func TestRenderImage(t *testing.T) {
 		}
 
 		// Clean up the test file
-		os.Remove("cache/test-2947.png")
+		// os.Remove("cache/test-2947.png")
 	})
 }

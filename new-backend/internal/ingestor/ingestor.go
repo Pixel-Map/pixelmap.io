@@ -609,13 +609,6 @@ func (i *Ingestor) processDataHistory(ctx context.Context) error {
 		return nil
 	}
 
-	// Redraw the full map
-	tiles, err := i.getLatestTileImages(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get latest tile images: %w", err)
-	}
-	utils.RenderFullMap(tiles, "cache/tilemap.png")
-
 	for _, row := range history {
 		location := big.NewInt(int64(row.TileID))
 		if err := i.renderAndSaveImage(location, row.Image, row.BlockNumber); err != nil {
@@ -627,6 +620,14 @@ func (i *Ingestor) processDataHistory(ctx context.Context) error {
 			return fmt.Errorf("failed to update last processed data history ID: %w", err)
 		}
 	}
+
+	// Redraw the full map
+	tiles, err := i.getLatestTileImages(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get latest tile images: %w", err)
+	}
+	utils.RenderFullMap(tiles, "cache/tilemap.png")
+
 	i.logger.Info("Finished processing data history", zap.Int("count", len(history)))
 	return nil
 }
