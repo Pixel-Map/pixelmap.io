@@ -3,6 +3,7 @@ package ingestor
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,6 +12,8 @@ import (
 	"pixelmap.io/backend/internal/db"
 	utils "pixelmap.io/backend/internal/utils"
 )
+
+var logger = log.New(os.Stdout, "metadata", log.LstdFlags)
 
 type MetadataPixelMapTile struct {
 	ID               int             `json:"id"`
@@ -22,6 +25,47 @@ type MetadataPixelMapTile struct {
 	OpenseaPrice     string          `json:"opensea_price"`
 	Ens              string          `json:"ens"`
 	HistoricalImages []PixelMapImage `json:"historical_images"`
+}
+
+// GenerateTiledataJSON generates the tiledata.json file
+func GenerateTiledataJSON(tiles []db.Tile) error {
+
+	logger.Println("Generating tiledata.json")
+	tiledataJSON := make([]map[string]interface{}, 3970)
+
+	for i := 0; i <= 3969; i++ {
+		tile := tiles[i]
+		if err := updateTileMetadata(tile, nil); err != nil {
+			return fmt.Errorf("error updating tile metadata: %w", err)
+		}
+
+		tiledataJSON[i] = map[string]interface{}{
+			"id":           tile.ID,
+			"url":          tile.Url,
+			"image":        tile.Image,
+			"owner":        tile.Owner,
+			"price":        tile.Price,
+			"wrapped":      tile.Wrapped,
+			"openseaPrice": tile.OpenseaPrice,
+			"lastUpdated":  time.Date(2021, time.December, 13, 1, 1, 0, 0, time.UTC),
+			"ens":          tile.Ens,
+		}
+	}
+
+	jsonData, err := json.MarshalIndent(tiledataJSON, "", "  ")
+	if err != nil {
+		return fmt.Errorf("error marshaling tiledata JSON: %w", err)
+	}
+
+	if err := os.MkdirAll(filepath.Dir("cache/tiledata.json"), os.ModePerm); err != nil {
+		return fmt.Errorf("error creating cache directory: %w", err)
+	}
+
+	if err := os.WriteFile("cache/tiledata.json", jsonData, 0644); err != nil {
+		return fmt.Errorf("error writing tiledata.json file: %w", err)
+	}
+
+	return nil
 }
 
 // updateTileMetadata updates the metadata for a given tile

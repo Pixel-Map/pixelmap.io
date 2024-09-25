@@ -74,9 +74,15 @@ type Ingestor struct {
 
 func NewIngestor(logger *zap.Logger, sqlDB *sql.DB, apiKey string) *Ingestor {
 	pubSub := NewPubSub()
-	s3Syncer, err := NewS3Syncer(logger, "cache")
-	if err != nil {
-		logger.Error("Failed to create S3Syncer", zap.Error(err))
+	var s3Syncer *S3Syncer
+
+	// Check if SYNC_TO_AWS environment variable is set
+	if os.Getenv("SYNC_TO_AWS") == "true" {
+		var err error
+		s3Syncer, err = NewS3Syncer(logger, "cache")
+		if err != nil {
+			logger.Error("Failed to create S3Syncer", zap.Error(err))
+		}
 	}
 
 	ingestor := &Ingestor{
@@ -439,6 +445,14 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 			if err != nil {
 				return fmt.Errorf("failed to insert wrapping history: %w", err)
 			}
+			err = i.queries.UpdateTile(ctx, db.UpdateTileParams{
+				ID:      int32(location.Int64()),
+				Owner:   tx.From,
+				Wrapped: wrapped == "true",
+			})
+			if err != nil {
+				return fmt.Errorf("failed to update tile owner: %w", err)
+			}
 		}
 	case "unwrap":
 		i.logger.Info("wrap called",
@@ -464,6 +478,14 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 			_, err := i.queries.InsertWrappingHistory(ctx, wrappingHistory)
 			if err != nil {
 				return fmt.Errorf("failed to insert wrapping history: %w", err)
+			}
+			err = i.queries.UpdateTile(ctx, db.UpdateTileParams{
+				ID:      int32(location.Int64()),
+				Owner:   tx.From,
+				Wrapped: wrapped == "false",
+			})
+			if err != nil {
+				return fmt.Errorf("failed to update tile owner: %w", err)
 			}
 		}
 	case "transferFrom", "safeTransferFrom", "safeTransferFrom0":
@@ -633,9 +655,20 @@ func (i *Ingestor) processDataHistory(ctx context.Context) error {
 	}
 	utils.RenderFullMap(tiles, "cache/tilemap.png")
 
+	// get all tiles
+	all_tiles, err := i.queries.ListTiles(ctx, db.ListTilesParams{
+		Limit:  int32(3970),
+		Offset: 0,
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to get all tiles: %w", err)
+	}
+	GenerateTiledataJSON(all_tiles)
+
 	i.logger.Info("Finished processing data history", zap.Int("count", len(history)))
 
-	// Sync with S3 after processing
+	// Sync with S3 after processing only if s3Syncer is initialized
 	if i.s3Syncer != nil {
 		err := i.s3Syncer.SyncWithS3(ctx)
 		if err != nil {
@@ -762,6 +795,19 @@ func (i *Ingestor) processTileUpdate(ctx context.Context, location *big.Int, ima
 
 	if _, err := i.queries.InsertDataHistory(ctx, dataHistory); err != nil {
 		return fmt.Errorf("failed to insert data history: %w", err)
+	}
+
+	// Update the tile in the database
+	err := i.queries.UpdateTile(ctx, db.UpdateTileParams{
+		ID:    int32(location.Int64()),
+		Price: priceEthStr,
+		Url:   url,
+		Image: image,
+	})
+	if err != nil {
+		i.logger.Error("Failed to update tile", zap.Error(err), zap.String("location", location.String()))
+		os.Exit(1)
+		return fmt.Errorf("failed to update tile: %w", err)
 	}
 
 	// Signal that new data is available to render
