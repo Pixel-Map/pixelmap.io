@@ -606,6 +606,20 @@ func (i *Ingestor) processDataHistory(ctx context.Context) error {
 			return fmt.Errorf("failed to render and save image: %w", err)
 		}
 
+		// Update metadata
+		tile, err := i.queries.GetTileById(ctx, int32(location.Int64()))
+		if err != nil {
+			return fmt.Errorf("failed to get tile data: %w", err)
+		}
+		// Get all data history for the tile
+		dataHistory, err := i.queries.GetDataHistoryByTileId(ctx, int32(location.Int64()))
+		if err != nil {
+			return fmt.Errorf("failed to get data history: %w", err)
+		}
+		if err := updateTileMetadata(tile, dataHistory); err != nil {
+			return fmt.Errorf("failed to update metadata: %w", err)
+		}
+
 		// Update the last processed ID
 		if err := i.queries.UpdateLastProcessedDataHistoryID(ctx, row.ID); err != nil {
 			return fmt.Errorf("failed to update last processed data history ID: %w", err)
