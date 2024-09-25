@@ -24,22 +24,6 @@ import (
 	utils "pixelmap.io/backend/internal/utils"
 )
 
-const (
-	startBlockNumber    = 2641527
-	blockRangeSize      = 10000
-	safetyBlockOffset   = 10
-	constructorMethodID = "0x60606040"
-	imageSize           = 512
-	maxPostgresNumeric  = 1e3 // Display max of 1000 eth
-)
-
-// Event types
-const (
-	EventTypeImageRender         = "image_render"
-	EventTypeDiscordNotification = "discord_notification"
-	// Add more event types as needed
-)
-
 type Event struct {
 	Type    string
 	Payload json.RawMessage
@@ -85,10 +69,16 @@ type Ingestor struct {
 	isRendering     atomic.Bool
 	maxRetries      int
 	baseDelay       time.Duration
+	s3Syncer        *S3Syncer
 }
 
 func NewIngestor(logger *zap.Logger, sqlDB *sql.DB, apiKey string) *Ingestor {
 	pubSub := NewPubSub()
+	s3Syncer, err := NewS3Syncer(logger, "cache")
+	if err != nil {
+		logger.Error("Failed to create S3Syncer", zap.Error(err))
+	}
+
 	ingestor := &Ingestor{
 		logger:          logger,
 		queries:         db.New(sqlDB),
@@ -97,6 +87,7 @@ func NewIngestor(logger *zap.Logger, sqlDB *sql.DB, apiKey string) *Ingestor {
 		renderSignal:    make(chan struct{}, 1),
 		maxRetries:      5,
 		baseDelay:       time.Second,
+		s3Syncer:        s3Syncer,
 	}
 
 	// Start the continuous rendering process
@@ -629,6 +620,16 @@ func (i *Ingestor) processDataHistory(ctx context.Context) error {
 	utils.RenderFullMap(tiles, "cache/tilemap.png")
 
 	i.logger.Info("Finished processing data history", zap.Int("count", len(history)))
+
+	// Sync with S3 after processing
+	if i.s3Syncer != nil {
+		err := i.s3Syncer.SyncWithS3(ctx)
+		if err != nil {
+			i.logger.Error("Failed to sync with S3", zap.Error(err))
+			// Note: We're not returning this error as it shouldn't stop the main process
+		}
+	}
+
 	return nil
 }
 
