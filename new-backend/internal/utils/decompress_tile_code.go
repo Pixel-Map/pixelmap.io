@@ -5,7 +5,6 @@ import (
 	"compress/zlib"
 	"fmt"
 	"io"
-	"log"
 	"strconv"
 
 	"github.com/golang-module/dongle"
@@ -26,7 +25,6 @@ const (
 // It tries uncompressed, compressed v1, and compressed v2 decoders in order.
 func DecompressTileCode(tileCodeString string) (string, error) {
 	tileCodeString = strings.TrimSpace(tileCodeString)
-	log.Printf("Input tileCodeString: %s", tileCodeString)
 
 	decoders := []Decoder{
 		uncompressedDecoder,
@@ -84,14 +82,13 @@ func compressedV2Decoder(tileCodeString string) (string, error) {
 // It decodes the data, determines the pixel size and color depth, and expands the result if necessary.
 func decodeCompressed(data string, isV2 bool) (string, error) {
 	// Decode the Base91 encoded string and inflate the zlib compressed data
-	decodedData, err := decodeAndInflate(data)
+	decodedData, err := DecodeAndInflate(data)
 	if err != nil {
 		return "", fmt.Errorf("failed to decode and inflate: %w", err)
 	}
 
 	// Determine the pixel size and color depth based on the decoded data length and version
 	pixelSize, colorDepth := determinePixelSizeAndColorDepth(len(decodedData), isV2)
-	log.Printf("Determined pixelSize: %d, colorDepth: %d", pixelSize, colorDepth)
 
 	// Convert the decompressed data to a string based on color depth
 	result := DecodeDataToString(decodedData, colorDepth)
@@ -102,32 +99,28 @@ func decodeCompressed(data string, isV2 bool) (string, error) {
 	// Expand the pixel size if it's smaller than the maximum (16x16)
 	result = ExpandPixelSize(result, pixelSize)
 
-	log.Printf("Final result length: %d", len(result))
-	log.Printf("Final result (first 60 chars): %s", result[:min(60, len(result))])
-
 	return result, nil
 }
 
 // ExpandColorEncoding expands the color encoding of the tile code string based on the color depth.
 // This function handles 4-bit and 8-bit color depths.
-func ExpandColorEncoding(tileCodeString string, colorDepth int) string {
-	switch colorDepth {
-	case 8:
-		return ExpandHexDoubles(tileCodeString)
-	case 4:
-		return ExpandHexSingles(tileCodeString)
-	default:
-		return tileCodeString
+func ExpandColorEncoding(decodedString string, colorDepth int) string {
+	if colorDepth == 8 {
+		return ExpandHexDoubles(decodedString)
 	}
+	if colorDepth == 4 {
+		return ExpandHexSingles(decodedString)
+	}
+	return decodedString
 }
 
-// ExpandHexDoubles expands a hexadecimal string where each character represents a 4-bit color value.
-// It converts each 4-bit value to an 8-bit value and returns the expanded string.
+// ExpandHexDoubles expands a hexadecimal string where each pair of characters represents an 8-bit color value.
+// It converts each 8-bit value to a 12-bit value and returns the expanded string.
 func ExpandHexDoubles(tileCodeString string) string {
 	var result strings.Builder
 	for i := 0; i < len(tileCodeString); i += 2 {
-		colorIndex, _ := strconv.ParseInt(tileCodeString[i:i+2], 16, 8)
-		color := Get8bitColor(int(colorIndex))
+		colorValue, _ := strconv.ParseUint(tileCodeString[i:i+2], 16, 8)
+		color := Get8bitColor(uint(colorValue))
 		for _, c := range color {
 			result.WriteString(fmt.Sprintf("%x", c>>4))
 		}
@@ -141,7 +134,7 @@ func ExpandHexSingles(tileCodeString string) string {
 	var result strings.Builder
 	for _, char := range tileCodeString {
 		colorIndex, _ := strconv.ParseInt(string(char), 16, 8)
-		color := Get4bitColor(int(colorIndex))
+		color := Get4bitColor(uint(colorIndex))
 		for _, c := range color {
 			result.WriteString(fmt.Sprintf("%x", c>>4))
 		}
@@ -164,21 +157,24 @@ func DecodeDataToString(data []byte, colorDepth int) string {
 }
 
 // decodeAndInflate decodes a Base91 encoded string and inflates the zlib compressed data.
-func decodeAndInflate(str string) ([]byte, error) {
-	decoded, err := DecodeBase91(str)
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode base91: %w", err)
-	}
-	log.Printf("Base91 decoded length: %d", len(decoded))
+func DecodeAndInflate(compressedImage string) ([]byte, error) {
 
-	// Use zlib to decompress the data
-	decompressed, err := ZlibInflate(decoded)
+	// Check if it's a v2 compressed image
+	compressedImage = strings.TrimPrefix(compressedImage, ImageCompressedV2)
+
+	// Decode Base91
+	decoded, err := DecodeBase91(compressedImage)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decompress data: %w", err)
+		return nil, fmt.Errorf("failed to decode Base91: %v", err)
 	}
 
-	log.Printf("Zlib decompressed length: %d", len(decompressed))
-	return decompressed, nil
+	// Inflate
+	inflated, err := ZlibInflate(decoded)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decompress data: %v", err)
+	}
+
+	return inflated, nil
 }
 
 // ExpandPixelSize expands the tile code string to a 16x16 pixel representation if necessary.

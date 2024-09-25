@@ -550,7 +550,7 @@ function isCompressedTileCode(tileCodeString: string): boolean {
 	);
 }
 
-function inflateCompressedData(tileCodeString: string): Uint8Array {
+export function inflateCompressedData(tileCodeString: string): Uint8Array {
 	const str = tileCodeString.slice(IMAGE_COMPRESSED.length);
 	const based = decodeBase91(str);
 	return zlibInflate(based);
@@ -579,7 +579,10 @@ export function detectImageProperties(
 	return properties[data.length] || { pixelSize: 16, colorDepth: 12 };
 }
 
-function decodeDataToString(data: Uint8Array, colorDepth: number): string {
+export function decodeDataToString(
+	data: Uint8Array,
+	colorDepth: number,
+): string {
 	if (colorDepth === 8 || colorDepth === 4) {
 		return Array.from(data)
 			.map((byte) => byte.toString(16).padStart(2, "0"))
@@ -588,7 +591,7 @@ function decodeDataToString(data: Uint8Array, colorDepth: number): string {
 	return String.fromCharCode(...data);
 }
 
-function expandColorEncoding(
+export function expandColorEncoding(
 	tileCodeString: string,
 	colorDepth: number,
 ): string {
@@ -601,7 +604,7 @@ function expandColorEncoding(
 	return tileCodeString;
 }
 
-function expandHexDoubles(tileCodeString: string): string {
+export function expandHexDoubles(tileCodeString: string): string {
 	return Array.from({ length: tileCodeString.length / 2 }, (_, i) => {
 		const color = get8bitColor(
 			Number.parseInt(tileCodeString.substr(i * 2, 2), 16),
