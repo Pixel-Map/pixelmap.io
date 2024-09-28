@@ -829,17 +829,23 @@ func (q *Queries) UpdateTileOpenSeaPrice(ctx context.Context, arg UpdateTileOpen
 
 const updateTileOwner = `-- name: UpdateTileOwner :exec
 UPDATE tiles
-SET owner = $2, wrapped = $3
+SET owner = $2, ens = $3, wrapped = $4
 WHERE id = $1
 `
 
 type UpdateTileOwnerParams struct {
 	ID      int32  `json:"id"`
 	Owner   string `json:"owner"`
+	Ens     string `json:"ens"`
 	Wrapped bool   `json:"wrapped"`
 }
 
 func (q *Queries) UpdateTileOwner(ctx context.Context, arg UpdateTileOwnerParams) error {
-	_, err := q.db.ExecContext(ctx, updateTileOwner, arg.ID, arg.Owner, arg.Wrapped)
+	_, err := q.db.ExecContext(ctx, updateTileOwner,
+		arg.ID,
+		arg.Owner,
+		arg.Ens,
+		arg.Wrapped,
+	)
 	return err
 }

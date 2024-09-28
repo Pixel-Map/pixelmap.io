@@ -106,7 +106,7 @@ ORDER BY id;
 
 -- name: UpdateTileOwner :exec
 UPDATE tiles
-SET owner = $2, wrapped = $3
+SET owner = $2, ens = $3, wrapped = $4
 WHERE id = $1;
 
 -- name: UpdateTileENS :exec

@@ -16,7 +16,9 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/lib/pq"
+	ens "github.com/wealdtech/go-ens/v3"
 	"go.uber.org/zap"
 	pixelmap "pixelmap.io/backend/internal/contracts/pixelmap"
 	pixelmapWrapper "pixelmap.io/backend/internal/contracts/pixelmapWrapper"
@@ -38,6 +40,19 @@ func NewPubSub() *PubSub {
 	return &PubSub{
 		subscribers: make(map[string][]chan Event),
 	}
+}
+
+func lookupENS(client *ethclient.Client, address string) (string, error) {
+
+	name, err := ens.ReverseResolve(client, common.HexToAddress(address))
+	if err != nil {
+		if err.Error() == "ErrNoName" {
+			return "", nil // No ENS name found, but not an error
+		}
+		return "", fmt.Errorf("failed to resolve ENS name: %w", err)
+	}
+
+	return name, nil
 }
 
 func (ps *PubSub) Subscribe(eventType string) <-chan Event {
@@ -70,6 +85,7 @@ type Ingestor struct {
 	maxRetries      int
 	baseDelay       time.Duration
 	s3Syncer        *S3Syncer
+	ethClient       *ethclient.Client
 }
 
 func NewIngestor(logger *zap.Logger, sqlDB *sql.DB, apiKey string) *Ingestor {
@@ -85,6 +101,15 @@ func NewIngestor(logger *zap.Logger, sqlDB *sql.DB, apiKey string) *Ingestor {
 		}
 	}
 
+	ethClient, err := ethclient.Dial(os.Getenv("WEB3_URL"))
+	if err != nil {
+		logger.Error("Failed to connect to Ethereum client", zap.Error(err))
+	}
+
+	if err != nil {
+		logger.Error("Failed to create ENS resolver", zap.Error(err))
+	}
+
 	ingestor := &Ingestor{
 		logger:          logger,
 		queries:         db.New(sqlDB),
@@ -94,6 +119,7 @@ func NewIngestor(logger *zap.Logger, sqlDB *sql.DB, apiKey string) *Ingestor {
 		maxRetries:      5,
 		baseDelay:       time.Second,
 		s3Syncer:        s3Syncer,
+		ethClient:       ethClient,
 	}
 
 	// Start the continuous rendering process
@@ -338,11 +364,14 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 					TileID:      int32(location.Int64()),
 					SoldBy:      tile.Owner,
 					PurchasedBy: tx.From,
-					Price:       tile.Price,
+					Price:       "0",
 					Tx:          tx.Hash,
 					TimeStamp:   time.Unix(timeStamp.Int64(), 0),
 					BlockNumber: blockNumber.Int64(),
 					LogIndex:    int32(transactionIndex),
+				}
+				if tile.Price != "" {
+					purchaseHistory.Price = tile.Price
 				}
 
 				_, err = i.queries.InsertPurchaseHistory(ctx, purchaseHistory)
@@ -361,6 +390,11 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 				}
 
 				// Update tile owner
+				if tx.From == "" {
+					i.logger.Warn("Transaction has no Owner address?",
+						zap.String("tx", tx.Hash))
+					os.Exit(1)
+				}
 				err = i.queries.UpdateTileOwner(ctx, db.UpdateTileOwnerParams{
 					ID:    int32(location.Int64()),
 					Owner: tx.From,
@@ -382,8 +416,9 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 			image, _ := args[1].(string)
 			url, _ := args[2].(string)
 			priceWei, _ := args[3].(*big.Int)
+			wrapped := false
 
-			if err := i.processTileUpdate(ctx, location, image, url, priceWei, tx, timeStamp.Int64(), blockNumber.Int64(), int32(transactionIndex)); err != nil {
+			if err := i.processTileUpdate(ctx, location, image, url, priceWei, tx, timeStamp.Int64(), blockNumber.Int64(), int32(transactionIndex), wrapped); err != nil {
 				return err
 			}
 		}
@@ -393,9 +428,10 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 			location, _ := args[0].(*big.Int)
 			image, _ := args[1].(string)
 			url, _ := args[2].(string)
+			wrapped := true
 
 			// For setTileData, we don't change the price, so we pass nil for priceWei
-			if err := i.processTileUpdate(ctx, location, image, url, nil, tx, timeStamp.Int64(), blockNumber.Int64(), int32(transactionIndex)); err != nil {
+			if err := i.processTileUpdate(ctx, location, image, url, nil, tx, timeStamp.Int64(), blockNumber.Int64(), int32(transactionIndex), wrapped); err != nil {
 				return err
 			}
 		}
@@ -445,10 +481,15 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 			if err != nil {
 				return fmt.Errorf("failed to insert wrapping history: %w", err)
 			}
+			if tx.From == "" {
+				i.logger.Warn("Transaction has no Owner address?",
+					zap.String("tx", tx.Hash))
+				os.Exit(1)
+			}
 			err = i.queries.UpdateTile(ctx, db.UpdateTileParams{
 				ID:      int32(location.Int64()),
 				Owner:   tx.From,
-				Wrapped: wrapped == "true",
+				Wrapped: true,
 			})
 			if err != nil {
 				return fmt.Errorf("failed to update tile owner: %w", err)
@@ -479,10 +520,15 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 			if err != nil {
 				return fmt.Errorf("failed to insert wrapping history: %w", err)
 			}
+			if tx.From == "" {
+				i.logger.Warn("Transaction has no Owner address?",
+					zap.String("tx", tx.Hash))
+				os.Exit(1)
+			}
 			err = i.queries.UpdateTile(ctx, db.UpdateTileParams{
 				ID:      int32(location.Int64()),
 				Owner:   tx.From,
-				Wrapped: wrapped == "false",
+				Wrapped: false,
 			})
 			if err != nil {
 				return fmt.Errorf("failed to update tile owner: %w", err)
@@ -725,7 +771,7 @@ func (i *Ingestor) renderAndSaveImage(location *big.Int, imageData string, block
 
 	// Verify that the files were created
 	if _, err := os.Stat(blockFilePath); os.IsNotExist(err) {
-		i.logger.Error("Block image file not created",
+		i.logger.Debug("Block image file not created",
 			zap.String("path", blockFilePath))
 		return nil
 	}
@@ -742,7 +788,7 @@ func (i *Ingestor) renderAndSaveImage(location *big.Int, imageData string, block
 	return nil
 }
 
-func (i *Ingestor) processTileUpdate(ctx context.Context, location *big.Int, image, url string, priceWei *big.Int, tx *EtherscanTransaction, timestamp, blockNumber int64, transactionIndex int32) error {
+func (i *Ingestor) processTileUpdate(ctx context.Context, location *big.Int, image, url string, priceWei *big.Int, tx *EtherscanTransaction, timestamp, blockNumber int64, transactionIndex int32, wrapped bool) error {
 	var priceEthStr string
 	if priceWei == nil {
 		// Fetch the current price from the database
@@ -799,10 +845,12 @@ func (i *Ingestor) processTileUpdate(ctx context.Context, location *big.Int, ima
 
 	// Update the tile in the database
 	err := i.queries.UpdateTile(ctx, db.UpdateTileParams{
-		ID:    int32(location.Int64()),
-		Price: priceEthStr,
-		Url:   url,
-		Image: image,
+		ID:      int32(location.Int64()),
+		Price:   priceEthStr,
+		Url:     url,
+		Image:   image,
+		Owner:   tx.From,
+		Wrapped: wrapped,
 	})
 	if err != nil {
 		i.logger.Error("Failed to update tile", zap.Error(err), zap.String("location", location.String()))
@@ -866,9 +914,23 @@ func (i *Ingestor) processTransfer(ctx context.Context, args []interface{}, tx *
 	}
 
 	// Update tile owner
+	if to.Hex() == "" {
+		i.logger.Warn("Transaction has no Owner address?",
+			zap.String("tx", tx.Hash))
+		os.Exit(1)
+	}
+
+	// Lookup ENS
+	ensName, err := lookupENS(i.ethClient, to.Hex())
+	if err != nil {
+		i.logger.Error("Failed to lookup ENS", zap.Error(err), zap.String("address", to.Hex()))
+	}
+	i.logger.Debug("ENS", zap.String("ens", ensName), zap.String("address", to.Hex()))
+
 	err = i.queries.UpdateTileOwner(ctx, db.UpdateTileOwnerParams{
 		ID:    int32(location.Int64()),
 		Owner: to.Hex(),
+		Ens:   ensName,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to update tile owner: %w", err)
