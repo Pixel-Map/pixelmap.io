@@ -265,42 +265,11 @@ func (i *Ingestor) processBlockRange(ctx context.Context, currentBlock, endBlock
 func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransaction) error {
 	// Check if this is a "bad jump destination" transaction
 	if tx.IsError == "1" {
-		i.logger.Debug("Skipping bad transaction", zap.String("hash", tx.Hash))
+		i.logger.Debug("Skipping bad transaction",
+			zap.String("hash", tx.Hash))
 		return nil
 	}
 
-	// Convert types and insert into database
-	transaction, err := i.convertToDBTransaction(tx)
-	if err != nil {
-		return fmt.Errorf("failed to convert transaction: %w", err)
-	}
-
-	// Decode the input data
-	abi, err := i.getABIForTransaction(tx)
-	if err != nil {
-		return fmt.Errorf("failed to get ABI: %w", err)
-	}
-
-	method, args, err := i.decodeTransactionInput(abi, tx.Input)
-	if err != nil {
-		return fmt.Errorf("failed to decode transaction input: %w", err)
-	}
-
-	// Process the transaction based on the method
-	if err := i.processMethod(ctx, method, args, tx, transaction); err != nil {
-		return fmt.Errorf("failed to process method %s: %w", method.Name, err)
-	}
-
-	// Insert the transaction into the database
-	_, err = i.queries.InsertPixelMapTransaction(ctx, transaction)
-	if err != nil {
-		return fmt.Errorf("failed to insert transaction: %w", err)
-	}
-
-	return nil
-}
-
-func (i *Ingestor) convertToDBTransaction(tx *EtherscanTransaction) (db.InsertPixelMapTransactionParams, error) {
 	// Convert types and insert into database
 	blockNumber, _ := new(big.Int).SetString(tx.BlockNumber, 10)
 	timeStamp, _ := new(big.Int).SetString(tx.TimeStamp, 10)
@@ -335,10 +304,9 @@ func (i *Ingestor) convertToDBTransaction(tx *EtherscanTransaction) (db.InsertPi
 		Confirmations:     confirmations.Int64(),
 	}
 
-	return transaction, nil
-}
+	// fmt.Printf("transaction: %+v\n", transaction)
 
-func (i *Ingestor) getABIForTransaction(tx *EtherscanTransaction) (*abi.ABI, error) {
+	// Decode the input data
 	// If tx involves contract at 0x015A06a433353f8db634dF4eDdF0C109882A15AB, use non wrapper ABI
 	var abi *abi.ABI
 	if tx.To == "0x015a06a433353f8db634df4eddf0c109882a15ab" {
@@ -348,48 +316,244 @@ func (i *Ingestor) getABIForTransaction(tx *EtherscanTransaction) (*abi.ABI, err
 		abi, _ = pixelmapWrapper.PixelMapWrapperMetaData.GetAbi()
 	} else {
 		fmt.Println("Unknown contract address", tx.To)
-		return nil, fmt.Errorf("unknown contract address: %s", tx.To)
+		return nil
 	}
 
-	return abi, nil
-}
-
-func (i *Ingestor) decodeTransactionInput(abi *abi.ABI, input string) (*abi.Method, []interface{}, error) {
 	// Check if the input data is long enough to contain a method ID
-	if len(input) < 10 {
-		return nil, nil, fmt.Errorf("transaction input too short to contain method ID")
+	if len(tx.Input) < 10 {
+		i.logger.Warn("Transaction input too short to contain method ID",
+			zap.String("hash", tx.Hash),
+			zap.String("input", tx.Input))
+		return nil
 	}
 
 	// The first 4 bytes of the input data represent the method ID
-	methodID := input[:10]
+	methodID := tx.Input[:10]
 	if string(methodID) == constructorMethodID {
 		fmt.Println("Constructor called")
-		return nil, nil, nil
+		return nil
 	}
 	method, err := abi.MethodById(common.FromHex(methodID))
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get method: %w", err)
+		return fmt.Errorf("failed to get method: %w", err)
 	}
 	// Decode the parameters
-	args, err := method.Inputs.Unpack(common.FromHex(input)[4:])
+	args, err := method.Inputs.Unpack(common.FromHex(tx.Input)[4:])
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to unpack inputs: %w", err)
+		return fmt.Errorf("failed to unpack inputs: %w", err)
 	}
 
-	return method, args, nil
-}
-
-func (i *Ingestor) processMethod(ctx context.Context, method *abi.Method, args []interface{}, tx *EtherscanTransaction, dbTx db.InsertPixelMapTransactionParams) error {
 	switch method.Name {
 	case "buyTile":
-		return i.processBuyTile(ctx, args, tx, dbTx)
+		if len(args) > 0 {
+			location, ok := args[0].(*big.Int)
+			if ok {
+				i.logger.Debug("buyTile called",
+					zap.String("location", location.String()),
+					zap.String("tx", tx.Hash),
+					zap.String("from", tx.From))
+
+				// Fetch the current tile data
+				tile, err := i.queries.GetTileById(ctx, int32(location.Int64()))
+				if err != nil {
+					return fmt.Errorf("failed to get tile data: %w", err)
+				}
+
+				// Insert purchase history
+				purchaseHistory := db.InsertPurchaseHistoryParams{
+					TileID:      int32(location.Int64()),
+					SoldBy:      tile.Owner,
+					PurchasedBy: tx.From,
+					Price:       "0",
+					Tx:          tx.Hash,
+					TimeStamp:   time.Unix(timeStamp.Int64(), 0),
+					BlockNumber: blockNumber.Int64(),
+					LogIndex:    int32(transactionIndex),
+				}
+				if tile.Price != "" {
+					purchaseHistory.Price = tile.Price
+				}
+
+				_, err = i.queries.InsertPurchaseHistory(ctx, purchaseHistory)
+				if err != nil {
+					// Check if it's a duplicate key error
+					if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {
+						// This is a duplicate entry, log it and continue
+						i.logger.Warn("Duplicate purchase history entry",
+							zap.String("tx", tx.Hash),
+							zap.Int32("tileID", purchaseHistory.TileID),
+							zap.Int32("logIndex", purchaseHistory.LogIndex))
+					} else {
+						// If it's not a duplicate key error, return the error
+						return fmt.Errorf("failed to insert purchase history: %w", err)
+					}
+				}
+
+				// Update tile owner
+				if tx.From == "" {
+					i.logger.Warn("Transaction has no Owner address?",
+						zap.String("tx", tx.Hash))
+					os.Exit(1)
+				}
+				err = i.queries.UpdateTileOwner(ctx, db.UpdateTileOwnerParams{
+					ID:    int32(location.Int64()),
+					Owner: tx.From,
+				})
+				if err != nil {
+					return fmt.Errorf("failed to update tile owner: %w", err)
+				}
+
+				i.logger.Info("Tile purchased",
+					zap.String("location", location.String()),
+					zap.String("newOwner", tx.From),
+					zap.String("transaction", tx.Hash))
+			}
+		}
+
 	case "setTile":
-		return i.processSetTile(ctx, args, tx, dbTx)
-	// ... other cases ...
+		if len(args) >= 4 {
+			location, _ := args[0].(*big.Int)
+			image, _ := args[1].(string)
+			url, _ := args[2].(string)
+			priceWei, _ := args[3].(*big.Int)
+			wrapped := false
+
+			if err := i.processTileUpdate(ctx, location, image, url, priceWei, tx, timeStamp.Int64(), blockNumber.Int64(), int32(transactionIndex), wrapped); err != nil {
+				return err
+			}
+		}
+
+	case "setTileData":
+		if len(args) >= 3 {
+			location, _ := args[0].(*big.Int)
+			image, _ := args[1].(string)
+			url, _ := args[2].(string)
+			wrapped := true
+
+			// For setTileData, we don't change the price, so we pass nil for priceWei
+			if err := i.processTileUpdate(ctx, location, image, url, nil, tx, timeStamp.Int64(), blockNumber.Int64(), int32(transactionIndex), wrapped); err != nil {
+				return err
+			}
+		}
+
+	case "getTile":
+		if len(args) >= 1 {
+			location, _ := args[0].(*big.Int)
+			i.logger.Debug("getTile called",
+				zap.String("location", location.String()),
+				zap.String("tx", tx.Hash),
+				zap.String("from", tx.From))
+		}
+	case "setBaseTokenURI":
+		i.logger.Info("setBaseTokenURI called",
+			zap.String("tx", tx.Hash),
+			zap.String("from", tx.From))
+	case "setTokenExtension":
+		i.logger.Info("setTokenExtension called",
+			zap.String("tx", tx.Hash),
+			zap.String("from", tx.From))
+	case "setApprovalForAll":
+		i.logger.Info("setApprovalForAll called",
+			zap.String("tx", tx.Hash),
+			zap.String("from", tx.From))
+	case "wrap":
+		i.logger.Info("wrap called",
+			zap.String("tx", tx.Hash),
+			zap.String("from", tx.From))
+		if len(args) >= 2 {
+			location, _ := args[0].(*big.Int)
+			wrapped, _ := args[1].(string)
+			i.logger.Info("wrap called",
+				zap.String("location", location.String()),
+				zap.String("wrapped", wrapped),
+				zap.String("tx", tx.Hash),
+				zap.String("from", tx.From))
+			wrappingHistory := db.InsertWrappingHistoryParams{
+				TileID:      int32(location.Int64()),
+				Wrapped:     wrapped == "true",
+				Tx:          tx.Hash,
+				TimeStamp:   time.Unix(timeStamp.Int64(), 0),
+				BlockNumber: blockNumber.Int64(),
+				UpdatedBy:   tx.From,
+				LogIndex:    int32(transactionIndex),
+			}
+			_, err := i.queries.InsertWrappingHistory(ctx, wrappingHistory)
+			if err != nil {
+				return fmt.Errorf("failed to insert wrapping history: %w", err)
+			}
+			if tx.From == "" {
+				i.logger.Warn("Transaction has no Owner address?",
+					zap.String("tx", tx.Hash))
+				os.Exit(1)
+			}
+			err = i.queries.UpdateTile(ctx, db.UpdateTileParams{
+				ID:      int32(location.Int64()),
+				Owner:   tx.From,
+				Wrapped: true,
+			})
+			if err != nil {
+				return fmt.Errorf("failed to update tile owner: %w", err)
+			}
+		}
+	case "unwrap":
+		i.logger.Info("wrap called",
+			zap.String("tx", tx.Hash),
+			zap.String("from", tx.From))
+		if len(args) >= 2 {
+			location, _ := args[0].(*big.Int)
+			wrapped, _ := args[1].(string)
+			i.logger.Info("unwrap called",
+				zap.String("location", location.String()),
+				zap.String("unwrapped", wrapped),
+				zap.String("tx", tx.Hash),
+				zap.String("from", tx.From))
+			wrappingHistory := db.InsertWrappingHistoryParams{
+				TileID:      int32(location.Int64()),
+				Wrapped:     wrapped == "false",
+				Tx:          tx.Hash,
+				TimeStamp:   time.Unix(timeStamp.Int64(), 0),
+				BlockNumber: blockNumber.Int64(),
+				UpdatedBy:   tx.From,
+				LogIndex:    int32(transactionIndex),
+			}
+			_, err := i.queries.InsertWrappingHistory(ctx, wrappingHistory)
+			if err != nil {
+				return fmt.Errorf("failed to insert wrapping history: %w", err)
+			}
+			if tx.From == "" {
+				i.logger.Warn("Transaction has no Owner address?",
+					zap.String("tx", tx.Hash))
+				os.Exit(1)
+			}
+			err = i.queries.UpdateTile(ctx, db.UpdateTileParams{
+				ID:      int32(location.Int64()),
+				Owner:   tx.From,
+				Wrapped: false,
+			})
+			if err != nil {
+				return fmt.Errorf("failed to update tile owner: %w", err)
+			}
+		}
+	case "transferFrom", "safeTransferFrom", "safeTransferFrom0":
+		if err := i.processTransfer(ctx, args, tx, timeStamp.Int64(), blockNumber.Int64(), int32(transactionIndex)); err != nil {
+			return err
+		}
+	case "withdrawETH":
+		i.logger.Info("withdrawETH called",
+			zap.String("tx", tx.Hash),
+			zap.String("from", tx.From))
+	case "approve":
+		i.logger.Info("approve called",
+			zap.String("tx", tx.Hash),
+			zap.String("from", tx.From))
 	default:
-		i.logger.Info("Unknown method called", zap.String("method", method.Name))
-		return nil
+		fmt.Printf("Unknown method called: %s\n", method.Name)
+		os.Exit(2)
 	}
+
+	_, err = i.queries.InsertPixelMapTransaction(ctx, transaction)
+
+	return err
 }
 
 func (i *Ingestor) fetchTransactions(ctx context.Context, fromBlock, toBlock int64) ([]EtherscanTransaction, error) {
@@ -621,91 +785,6 @@ func (i *Ingestor) renderAndSaveImage(location *big.Int, imageData string, block
 	i.logger.Info("Image rendered and saved",
 		zap.String("blockPath", blockFilePath),
 		zap.String("latestPath", latestFilePath))
-	return nil
-}
-
-func (i *Ingestor) processBuyTile(ctx context.Context, args []interface{}, tx *EtherscanTransaction, dbTx db.InsertPixelMapTransactionParams) error {
-	if len(args) > 0 {
-		location, ok := args[0].(*big.Int)
-		if ok {
-			i.logger.Debug("buyTile called",
-				zap.String("location", location.String()),
-				zap.String("tx", tx.Hash),
-				zap.String("from", tx.From))
-
-			// Fetch the current tile data
-			tile, err := i.queries.GetTileById(ctx, int32(location.Int64()))
-			if err != nil {
-				return fmt.Errorf("failed to get tile data: %w", err)
-			}
-
-			// Insert purchase history
-			purchaseHistory := db.InsertPurchaseHistoryParams{
-				TileID:      int32(location.Int64()),
-				SoldBy:      tile.Owner,
-				PurchasedBy: tx.From,
-				Price:       "0",
-				Tx:          tx.Hash,
-				TimeStamp:   dbTx.TimeStamp,
-				BlockNumber: dbTx.BlockNumber,
-				LogIndex:    dbTx.TransactionIndex,
-			}
-			if tile.Price != "" {
-				purchaseHistory.Price = tile.Price
-			}
-
-			_, err = i.queries.InsertPurchaseHistory(ctx, purchaseHistory)
-			if err != nil {
-				// Check if it's a duplicate key error
-				if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {
-					// This is a duplicate entry, log it and continue
-					i.logger.Warn("Duplicate purchase history entry",
-						zap.String("tx", tx.Hash),
-						zap.Int32("tileID", purchaseHistory.TileID),
-						zap.Int32("logIndex", purchaseHistory.LogIndex))
-				} else {
-					// If it's not a duplicate key error, return the error
-					return fmt.Errorf("failed to insert purchase history: %w", err)
-				}
-			}
-
-			// Update tile owner
-			if tx.From == "" {
-				i.logger.Warn("Transaction has no Owner address?",
-					zap.String("tx", tx.Hash))
-				os.Exit(1)
-			}
-			err = i.queries.UpdateTileOwner(ctx, db.UpdateTileOwnerParams{
-				ID:    int32(location.Int64()),
-				Owner: tx.From,
-			})
-			if err != nil {
-				return fmt.Errorf("failed to update tile owner: %w", err)
-			}
-
-			i.logger.Info("Tile purchased",
-				zap.String("location", location.String()),
-				zap.String("newOwner", tx.From),
-				zap.String("transaction", tx.Hash))
-		}
-	}
-
-	return nil
-}
-
-func (i *Ingestor) processSetTile(ctx context.Context, args []interface{}, tx *EtherscanTransaction, dbTx db.InsertPixelMapTransactionParams) error {
-	if len(args) >= 4 {
-		location, _ := args[0].(*big.Int)
-		image, _ := args[1].(string)
-		url, _ := args[2].(string)
-		priceWei, _ := args[3].(*big.Int)
-		wrapped := false
-
-		if err := i.processTileUpdate(ctx, location, image, url, priceWei, tx, dbTx.TimeStamp.Unix(), dbTx.BlockNumber, dbTx.TransactionIndex, wrapped); err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 
