@@ -141,6 +141,8 @@ func (i *Ingestor) StartContinuousIngestion(ctx context.Context) error {
 		}
 
 		i.logger.Info("Finished ingestion cycle, waiting for 30 seconds before next check")
+		// Start up the render process
+		i.signalNewData()
 
 		select {
 		case <-time.After(30 * time.Second):
@@ -416,9 +418,8 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 			image, _ := args[1].(string)
 			url, _ := args[2].(string)
 			priceWei, _ := args[3].(*big.Int)
-			wrapped := false
 
-			if err := i.processTileUpdate(ctx, location, image, url, priceWei, tx, timeStamp.Int64(), blockNumber.Int64(), int32(transactionIndex), wrapped); err != nil {
+			if err := i.processTileUpdate(ctx, location, image, url, priceWei, tx, timeStamp.Int64(), blockNumber.Int64(), int32(transactionIndex)); err != nil {
 				return err
 			}
 		}
@@ -428,10 +429,9 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 			location, _ := args[0].(*big.Int)
 			image, _ := args[1].(string)
 			url, _ := args[2].(string)
-			wrapped := true
 
 			// For setTileData, we don't change the price, so we pass nil for priceWei
-			if err := i.processTileUpdate(ctx, location, image, url, nil, tx, timeStamp.Int64(), blockNumber.Int64(), int32(transactionIndex), wrapped); err != nil {
+			if err := i.processTileUpdate(ctx, location, image, url, nil, tx, timeStamp.Int64(), blockNumber.Int64(), int32(transactionIndex)); err != nil {
 				return err
 			}
 		}
@@ -460,80 +460,77 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 		i.logger.Info("wrap called",
 			zap.String("tx", tx.Hash),
 			zap.String("from", tx.From))
-		if len(args) >= 2 {
-			location, _ := args[0].(*big.Int)
-			wrapped, _ := args[1].(string)
-			i.logger.Info("wrap called",
-				zap.String("location", location.String()),
-				zap.String("wrapped", wrapped),
-				zap.String("tx", tx.Hash),
-				zap.String("from", tx.From))
-			wrappingHistory := db.InsertWrappingHistoryParams{
-				TileID:      int32(location.Int64()),
-				Wrapped:     wrapped == "true",
-				Tx:          tx.Hash,
-				TimeStamp:   time.Unix(timeStamp.Int64(), 0),
-				BlockNumber: blockNumber.Int64(),
-				UpdatedBy:   tx.From,
-				LogIndex:    int32(transactionIndex),
-			}
-			_, err := i.queries.InsertWrappingHistory(ctx, wrappingHistory)
-			if err != nil {
-				return fmt.Errorf("failed to insert wrapping history: %w", err)
-			}
-			if tx.From == "" {
-				i.logger.Warn("Transaction has no Owner address?",
-					zap.String("tx", tx.Hash))
-				os.Exit(1)
-			}
-			err = i.queries.UpdateTile(ctx, db.UpdateTileParams{
-				ID:      int32(location.Int64()),
-				Owner:   tx.From,
-				Wrapped: true,
-			})
-			if err != nil {
-				return fmt.Errorf("failed to update tile owner: %w", err)
-			}
+
+		location, _ := args[0].(*big.Int)
+		i.logger.Info("wrap called",
+			zap.String("location", location.String()),
+			zap.String("wrapped", "true"),
+			zap.String("tx", tx.Hash),
+			zap.String("from", tx.From))
+		wrappingHistory := db.InsertWrappingHistoryParams{
+			TileID:      int32(location.Int64()),
+			Wrapped:     true,
+			Tx:          tx.Hash,
+			TimeStamp:   time.Unix(timeStamp.Int64(), 0),
+			BlockNumber: blockNumber.Int64(),
+			UpdatedBy:   tx.From,
+			LogIndex:    int32(transactionIndex),
 		}
+		_, err := i.queries.InsertWrappingHistory(ctx, wrappingHistory)
+		if err != nil {
+			return fmt.Errorf("failed to insert wrapping history: %w", err)
+		}
+		if tx.From == "" {
+			i.logger.Warn("Transaction has no Owner address?",
+				zap.String("tx", tx.Hash))
+			os.Exit(1)
+		}
+		err = i.queries.UpdateWrappedStatus(ctx, db.UpdateWrappedStatusParams{
+			ID:      int32(location.Int64()),
+			Wrapped: true,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to update tile owner: %w", err)
+		}
+
 	case "unwrap":
 		i.logger.Info("wrap called",
 			zap.String("tx", tx.Hash),
 			zap.String("from", tx.From))
-		if len(args) >= 2 {
-			location, _ := args[0].(*big.Int)
-			wrapped, _ := args[1].(string)
-			i.logger.Info("unwrap called",
-				zap.String("location", location.String()),
-				zap.String("unwrapped", wrapped),
-				zap.String("tx", tx.Hash),
-				zap.String("from", tx.From))
-			wrappingHistory := db.InsertWrappingHistoryParams{
-				TileID:      int32(location.Int64()),
-				Wrapped:     wrapped == "false",
-				Tx:          tx.Hash,
-				TimeStamp:   time.Unix(timeStamp.Int64(), 0),
-				BlockNumber: blockNumber.Int64(),
-				UpdatedBy:   tx.From,
-				LogIndex:    int32(transactionIndex),
-			}
-			_, err := i.queries.InsertWrappingHistory(ctx, wrappingHistory)
-			if err != nil {
-				return fmt.Errorf("failed to insert wrapping history: %w", err)
-			}
-			if tx.From == "" {
-				i.logger.Warn("Transaction has no Owner address?",
-					zap.String("tx", tx.Hash))
-				os.Exit(1)
-			}
-			err = i.queries.UpdateTile(ctx, db.UpdateTileParams{
-				ID:      int32(location.Int64()),
-				Owner:   tx.From,
-				Wrapped: false,
-			})
-			if err != nil {
-				return fmt.Errorf("failed to update tile owner: %w", err)
-			}
+
+		location, _ := args[0].(*big.Int)
+		wrapped, _ := args[1].(string)
+		i.logger.Info("unwrap called",
+			zap.String("location", location.String()),
+			zap.String("unwrapped", wrapped),
+			zap.String("tx", tx.Hash),
+			zap.String("from", tx.From))
+		wrappingHistory := db.InsertWrappingHistoryParams{
+			TileID:      int32(location.Int64()),
+			Wrapped:     false,
+			Tx:          tx.Hash,
+			TimeStamp:   time.Unix(timeStamp.Int64(), 0),
+			BlockNumber: blockNumber.Int64(),
+			UpdatedBy:   tx.From,
+			LogIndex:    int32(transactionIndex),
 		}
+		_, err := i.queries.InsertWrappingHistory(ctx, wrappingHistory)
+		if err != nil {
+			return fmt.Errorf("failed to insert wrapping history: %w", err)
+		}
+		if tx.From == "" {
+			i.logger.Warn("Transaction has no Owner address?",
+				zap.String("tx", tx.Hash))
+			os.Exit(1)
+		}
+		err = i.queries.UpdateWrappedStatus(ctx, db.UpdateWrappedStatusParams{
+			ID:      int32(location.Int64()),
+			Wrapped: false,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to update tile owner: %w", err)
+		}
+
 	case "transferFrom", "safeTransferFrom", "safeTransferFrom0":
 		if err := i.processTransfer(ctx, args, tx, timeStamp.Int64(), blockNumber.Int64(), int32(transactionIndex)); err != nil {
 			return err
@@ -788,7 +785,7 @@ func (i *Ingestor) renderAndSaveImage(location *big.Int, imageData string, block
 	return nil
 }
 
-func (i *Ingestor) processTileUpdate(ctx context.Context, location *big.Int, image, url string, priceWei *big.Int, tx *EtherscanTransaction, timestamp, blockNumber int64, transactionIndex int32, wrapped bool) error {
+func (i *Ingestor) processTileUpdate(ctx context.Context, location *big.Int, image, url string, priceWei *big.Int, tx *EtherscanTransaction, timestamp, blockNumber int64, transactionIndex int32) error {
 	var priceEthStr string
 	if priceWei == nil {
 		// Fetch the current price from the database
@@ -845,12 +842,11 @@ func (i *Ingestor) processTileUpdate(ctx context.Context, location *big.Int, ima
 
 	// Update the tile in the database
 	err := i.queries.UpdateTile(ctx, db.UpdateTileParams{
-		ID:      int32(location.Int64()),
-		Price:   priceEthStr,
-		Url:     url,
-		Image:   image,
-		Owner:   tx.From,
-		Wrapped: wrapped,
+		ID:    int32(location.Int64()),
+		Price: priceEthStr,
+		Url:   url,
+		Image: image,
+		Owner: tx.From,
 	})
 	if err != nil {
 		i.logger.Error("Failed to update tile", zap.Error(err), zap.String("location", location.String()))
@@ -923,9 +919,16 @@ func (i *Ingestor) processTransfer(ctx context.Context, args []interface{}, tx *
 	// Lookup ENS
 	ensName, err := lookupENS(i.ethClient, to.Hex())
 	if err != nil {
-		i.logger.Error("Failed to lookup ENS", zap.Error(err), zap.String("address", to.Hex()))
+		if strings.Contains(err.Error(), "not a resolver") {
+			// This is an expected error for addresses without ENS names
+			i.logger.Debug("Address does not have an ENS name", zap.String("address", to.Hex()))
+		} else {
+			// Log other errors as warnings
+			i.logger.Warn("Failed to lookup ENS", zap.Error(err), zap.String("address", to.Hex()))
+		}
+		ensName = "" // Ensure ensName is empty if lookup failed
 	}
-	i.logger.Debug("ENS", zap.String("ens", ensName), zap.String("address", to.Hex()))
+	i.logger.Debug("ENS lookup result", zap.String("ens", ensName), zap.String("address", to.Hex()))
 
 	err = i.queries.UpdateTileOwner(ctx, db.UpdateTileOwnerParams{
 		ID:    int32(location.Int64()),

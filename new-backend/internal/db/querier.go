@@ -38,6 +38,7 @@ type Querier interface {
 	UpdateTileENS(ctx context.Context, arg UpdateTileENSParams) error
 	UpdateTileOpenSeaPrice(ctx context.Context, arg UpdateTileOpenSeaPriceParams) error
 	UpdateTileOwner(ctx context.Context, arg UpdateTileOwnerParams) error
+	UpdateWrappedStatus(ctx context.Context, arg UpdateWrappedStatusParams) error
 }
 
 var _ Querier = (*Queries)(nil)
