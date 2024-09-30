@@ -1,8 +1,0 @@
-{
-	"collection": "@nestjs/schematics",
-	"sourceRoot": "src",
-	"exclude": ["node_modules", "dist", "**/*spec.ts"],
-	"compilerOptions": {
-		"tsConfigPath": "tsconfig.json"
-	}
-}

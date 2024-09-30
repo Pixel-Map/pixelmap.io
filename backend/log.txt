@@ -1,4 +1,0 @@
-
-> backend@0.0.1 start /Users/kendog/Documents/pixelmap.io/backend
-> nest start
-
