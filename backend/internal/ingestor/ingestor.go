@@ -603,7 +603,7 @@ func (i *Ingestor) fetchTransactions(ctx context.Context, fromBlock, toBlock int
 	return transactions, nil
 }
 
-	unc (i *Ingestor) updateLastProcessedBlock(ctx context.Context, blockNumber int64) error {
+func (i *Ingestor) updateLastProcessedBlock(ctx context.Context, blockNumber int64) error {
 	if err := i.queries.UpdateLastProcessedBlock(ctx, blockNumber); err != nil {
 		i.logger.Error("Failed to update last processed block", zap.Error(err), zap.Int64("block", blockNumber))
 		return fmt.Errorf("failed to update last processed block: %w", err)
