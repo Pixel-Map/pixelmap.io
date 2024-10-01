@@ -284,7 +284,12 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 	confirmations, _ := new(big.Int).SetString(tx.Confirmations, 10)
 
 	transactionIndex, _ := strconv.Atoi(tx.TransactionIndex)
-
+	// Make sure nonce is valid
+	if tx.Nonce == "" {
+		i.logger.Warn("Skipping transaction with invalid nonce", zap.String("hash", tx.Hash))
+		i.logger.Info("Transaction", zap.Any("transaction", tx))
+		return nil
+	}
 	transaction := db.InsertPixelMapTransactionParams{
 		BlockNumber:       blockNumber.Int64(),
 		TimeStamp:         time.Unix(timeStamp.Int64(), 0),
@@ -317,7 +322,9 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 	} else if tx.To == "0x050dc61dfb867e0fe3cf2948362b6c0f3faf790b" {
 		abi, _ = pixelmapWrapper.PixelMapWrapperMetaData.GetAbi()
 	} else {
+		// It's a transfer
 		fmt.Println("Unknown contract address", tx.To)
+		fmt.Printf("transaction: %+v\n", tx)
 		return nil
 	}
 
@@ -566,7 +573,6 @@ func (i *Ingestor) fetchTransactions(ctx context.Context, fromBlock, toBlock int
 		}
 
 		if err.Error() == "API error: No transactions found" {
-			// i.logger.Info("No transactions found in block range", zap.Int64("from", fromBlock), zap.Int64("to", toBlock))
 			return nil, nil
 		}
 
@@ -593,11 +599,11 @@ func (i *Ingestor) fetchTransactions(ctx context.Context, fromBlock, toBlock int
 		return nil, fmt.Errorf("failed to get transactions for blocks %d-%d after %d attempts: %w", fromBlock, toBlock, i.maxRetries, err)
 	}
 
-	i.logger.Info("Processing transactions", zap.Int("count", len(transactions)), zap.Int64("from", fromBlock), zap.Int64("to", toBlock))
+	i.logger.Debug("Processing transactions", zap.Int("count", len(transactions)), zap.Int64("from", fromBlock), zap.Int64("to", toBlock))
 	return transactions, nil
 }
 
-func (i *Ingestor) updateLastProcessedBlock(ctx context.Context, blockNumber int64) error {
+	unc (i *Ingestor) updateLastProcessedBlock(ctx context.Context, blockNumber int64) error {
 	if err := i.queries.UpdateLastProcessedBlock(ctx, blockNumber); err != nil {
 		i.logger.Error("Failed to update last processed block", zap.Error(err), zap.Int64("block", blockNumber))
 		return fmt.Errorf("failed to update last processed block: %w", err)
@@ -869,21 +875,29 @@ func (i *Ingestor) processTileUpdate(ctx context.Context, location *big.Int, ima
 
 func (i *Ingestor) processTransfer(ctx context.Context, args []interface{}, tx *EtherscanTransaction, timestamp, blockNumber int64, transactionIndex int32) error {
 	if len(args) < 3 {
+		i.logger.Error("Insufficient arguments for transfer")
+		os.Exit(1)
 		return fmt.Errorf("insufficient arguments for transfer")
 	}
 
 	from, ok := args[0].(common.Address)
 	if !ok {
+		i.logger.Error("Invalid 'from' address")
+		os.Exit(1)
 		return fmt.Errorf("invalid 'from' address")
 	}
 
 	to, ok := args[1].(common.Address)
 	if !ok {
+		i.logger.Error("Invalid 'to' address")
+		os.Exit(1)
 		return fmt.Errorf("invalid 'to' address")
 	}
 
 	location, ok := args[2].(*big.Int)
 	if !ok {
+		i.logger.Error("Invalid location")
+		os.Exit(1)
 		return fmt.Errorf("invalid location")
 	}
 
@@ -936,6 +950,8 @@ func (i *Ingestor) processTransfer(ctx context.Context, args []interface{}, tx *
 		Ens:   ensName,
 	})
 	if err != nil {
+		i.logger.Error("Failed to update tile owner", zap.Error(err), zap.String("location", location.String()))
+		os.Exit(1)
 		return fmt.Errorf("failed to update tile owner: %w", err)
 	}
 

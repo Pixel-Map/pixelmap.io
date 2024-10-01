@@ -18,7 +18,7 @@ import (
 )
 
 func main() {
-	logger := prettyconsole.NewLogger(zap.DebugLevel)
+	logger := prettyconsole.NewLogger(zap.InfoLevel)
 	if err := godotenv.Load(); err != nil {
 		log.Fatal("Error loading .env file")
 	}

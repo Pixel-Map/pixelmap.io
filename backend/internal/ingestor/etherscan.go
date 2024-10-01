@@ -51,6 +51,23 @@ type EtherscanTransaction struct {
 	Confirmations     string `json:"confirmations"`
 }
 
+type EtherscanTransferEvent struct {
+	BlockNumber       string   `json:"blockNumber"`
+	TimeStamp         string   `json:"timeStamp"`
+	TransactionHash   string   `json:"transactionHash"`
+	LogIndex          string   `json:"logIndex"`
+	From              string   `json:"from"`
+	To                string   `json:"to"`
+	Value             string   `json:"value"`
+	ContractAddress   string   `json:"address"`
+	TransactionIndex  string   `json:"transactionIndex"`
+	GasUsed           string   `json:"gasUsed"`
+	CumulativeGasUsed string   `json:"cumulativeGasUsed"`
+	BlockHash         string   `json:"blockHash"`
+	Data              string   `json:"data"`
+	Topics            []string `json:"topics"`
+}
+
 func NewEtherscanClient(apiKey string, logger *zap.Logger) *EtherscanClient {
 	return &EtherscanClient{
 		apiKey:  apiKey,
@@ -127,7 +144,7 @@ func (c *EtherscanClient) GetTransactions(ctx context.Context, startBlock, endBl
 		var rawResp json.RawMessage
 		if err := c.makeRequestWithRetry(ctx, params, &rawResp); err != nil {
 			if strings.Contains(err.Error(), "No transactions found") {
-				c.logger.Info("No transactions found for address",
+				c.logger.Debug("No transactions found for address",
 					zap.String("address", address))
 				continue // Skip this address and continue with the next one
 			}
@@ -181,10 +198,78 @@ func (c *EtherscanClient) GetTransactions(ctx context.Context, startBlock, endBl
 		allTransactions = append(allTransactions, transactions...)
 	}
 
-	c.logger.Info("Finished processing all addresses",
+	// Fetch Transfer events for the NFT contracts
+	transferEvents, err := c.GetTransferEvents(ctx, startBlock, endBlock)
+
+	if err != nil {
+		c.logger.Info(err.Error())
+		if strings.Contains(err.Error(), "No records found") {
+			c.logger.Debug("No records found for contract")
+		} else {
+			c.logger.Error("Failed to fetch transfer events", zap.Error(err))
+		}
+	} else {
+		c.logger.Debug("Transfer events found", zap.Int("count", len(transferEvents)))
+		c.logger.Debug("Transfer events", zap.Any("events", transferEvents))
+		for _, event := range transferEvents {
+			transaction := ConvertTransferEventToTransaction(event)
+			c.logger.Debug("Transaction", zap.Any("transaction", transaction))
+			allTransactions = append(allTransactions, transaction)
+		}
+	}
+
+	c.logger.Debug("Finished processing all transactions",
 		zap.Int("totalTransactions", len(allTransactions)))
 
 	return allTransactions, nil
+}
+
+func (c *EtherscanClient) GetTransferEvents(ctx context.Context, startBlock, endBlock int64) ([]EtherscanTransferEvent, error) {
+	contractAddresses := []string{
+		"0x050dc61dFB867E0fE3Cf2948362b6c0F3fAF790b", // OpenSea contract address
+		// Add other relevant contract addresses here
+	}
+
+	var allEvents []EtherscanTransferEvent
+
+	for _, contract := range contractAddresses {
+		params := map[string]string{
+			"module":    "logs",
+			"action":    "getLogs",
+			"fromBlock": strconv.FormatInt(startBlock, 10),
+			"toBlock":   strconv.FormatInt(endBlock, 10),
+			"address":   contract,
+			"topic0":    "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef", // Transfer event signature
+			"apikey":    c.apiKey,
+		}
+
+		var rawResp json.RawMessage
+		if err := c.makeRequestWithRetry(ctx, params, &rawResp); err != nil {
+			if strings.Contains(err.Error(), "No records found") {
+				c.logger.Debug("No records found for contract", zap.String("contract", contract))
+				continue
+			} else {
+				c.logger.Error("Failed to fetch transfer events",
+					zap.Error(err),
+					zap.String("contract", contract))
+				continue
+			}
+		}
+		c.logger.Debug("Raw response", zap.String("rawResponse", string(rawResp)))
+
+		var events []EtherscanTransferEvent
+		if err := json.Unmarshal(rawResp, &events); err != nil {
+			c.logger.Error("Failed to unmarshal transfer events",
+				zap.Error(err),
+				zap.String("rawResponse", string(rawResp)),
+				zap.String("contract", contract))
+			continue
+		}
+
+		allEvents = append(allEvents, events...)
+	}
+
+	return allEvents, nil
 }
 
 func (c *EtherscanClient) makeRequest(ctx context.Context, params map[string]string, result interface{}) error {
@@ -257,4 +342,51 @@ func (c *EtherscanClient) makeRequestWithRetry(ctx context.Context, params map[s
 	}
 
 	return backoff.Retry(operation, b)
+}
+
+// ConvertTransferEventToTransaction converts an EtherscanTransferEvent to an EtherscanTransaction
+func ConvertTransferEventToTransaction(event EtherscanTransferEvent) EtherscanTransaction {
+	// event.BlockNumber is a string hex value, need to convert to int but still as string
+	blockNumber, _ := strconv.ParseInt(event.BlockNumber[2:], 16, 64)
+	timeStamp, _ := strconv.ParseInt(event.TimeStamp[2:], 16, 64) // Convert hex to int64
+	nonce, _ := strconv.ParseInt(event.LogIndex[2:], 16, 64)      // Convert hex to int64
+	gas, _ := strconv.ParseInt(event.GasUsed[2:], 16, 64)         // Convert hex to int64
+
+	// Construct the input data for safeTransferFrom
+	from := "0x" + event.Topics[1][26:] // Extracting the 'from' address from topics
+	to := "0x" + event.Topics[2][26:]   // Extracting the 'to' address from topics
+	tokenId := event.Topics[3]          // Token ID in hex
+
+	// Pad addresses and tokenId to 32 bytes (64 hex characters)
+	paddedFrom := fmt.Sprintf("%064s", strings.TrimPrefix(from, "0x"))
+	paddedTo := fmt.Sprintf("%064s", strings.TrimPrefix(to, "0x"))
+	paddedTokenId := fmt.Sprintf("%064s", strings.TrimPrefix(tokenId, "0x"))
+
+	// safeTransferFrom(address,address,uint256) method signature
+	methodSignature := "0x42842e0e"
+	inputData := methodSignature + paddedFrom + paddedTo + paddedTokenId
+
+	return EtherscanTransaction{
+		BlockNumber:       strconv.FormatInt(blockNumber, 10),
+		TimeStamp:         strconv.FormatInt(timeStamp, 10), // Convert int64 to string
+		Hash:              event.TransactionHash,
+		From:              from,
+		To:                "0x050dc61dfb867e0fe3cf2948362b6c0f3faf790b",
+		Value:             "0", // safeTransferFrom typically has no value transfer
+		ContractAddress:   event.ContractAddress,
+		TransactionIndex:  event.TransactionIndex,
+		Gas:               strconv.FormatInt(gas, 10),
+		GasUsed:           strconv.FormatInt(gas, 10),
+		GasPrice:          "0",
+		CumulativeGasUsed: "0",
+		Nonce:             strconv.FormatInt(nonce, 10),
+		Confirmations:     "0",
+		Input:             inputData, // Set the input data to mimic safeTransferFrom
+	}
+}
+
+// Helper function to parse hex string to uint64
+func parseHexToUint64(hexStr string) uint64 {
+	value, _ := strconv.ParseUint(hexStr[2:], 16, 64)
+	return value
 }
