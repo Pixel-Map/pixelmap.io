@@ -704,27 +704,12 @@ func (i *Ingestor) processDataHistory(ctx context.Context) error {
 	}
 	utils.RenderFullMap(tiles, "cache/tilemap.png")
 
-	// get all tiles
-	all_tiles, err := i.queries.ListTiles(ctx, db.ListTilesParams{
-		Limit:  int32(3970),
-		Offset: 0,
-	})
-
-	if err != nil {
-		return fmt.Errorf("failed to get all tiles: %w", err)
+	// Call the reusable function
+	if err := i.updateTileDataAndSync(ctx); err != nil {
+		return err
 	}
-	GenerateTiledataJSON(all_tiles)
 
 	i.logger.Info("Finished processing data history", zap.Int("count", len(history)))
-
-	// Sync with S3 after processing only if s3Syncer is initialized
-	if i.s3Syncer != nil {
-		err := i.s3Syncer.SyncWithS3(ctx)
-		if err != nil {
-			i.logger.Error("Failed to sync with S3", zap.Error(err))
-			// Note: We're not returning this error as it shouldn't stop the main process
-		}
-	}
 
 	return nil
 }
@@ -953,6 +938,37 @@ func (i *Ingestor) processTransfer(ctx context.Context, args []interface{}, tx *
 		i.logger.Error("Failed to update tile owner", zap.Error(err), zap.String("location", location.String()))
 		os.Exit(1)
 		return fmt.Errorf("failed to update tile owner: %w", err)
+	}
+
+	// Call the reusable function
+	if err := i.updateTileDataAndSync(ctx); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (i *Ingestor) updateTileDataAndSync(ctx context.Context) error {
+	i.logger.Info("Updating tiledata.json and syncing with S3")
+	// Fetch all tiles
+	allTiles, err := i.queries.ListTiles(ctx, db.ListTilesParams{
+		Limit:  int32(3970),
+		Offset: 0,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to get all tiles: %w", err)
+	}
+
+	// Generate tiledata.json
+	GenerateTiledataJSON(allTiles)
+
+	// Sync with S3 if s3Syncer is initialized
+	if i.s3Syncer != nil {
+		err := i.s3Syncer.SyncWithS3(ctx)
+		if err != nil {
+			i.logger.Error("Failed to sync with S3", zap.Error(err))
+			// Note: We're not returning this error as it shouldn't stop the main process
+		}
 	}
 
 	return nil
