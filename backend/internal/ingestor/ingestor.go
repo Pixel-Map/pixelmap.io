@@ -960,7 +960,9 @@ func (i *Ingestor) updateTileDataAndSync(ctx context.Context) error {
 	}
 
 	// Generate tiledata.json
-	GenerateTiledataJSON(allTiles)
+	if err := GenerateTiledataJSON(allTiles, i.queries, ctx); err != nil {
+		return fmt.Errorf("failed to generate tiledata.json: %w", err)
+	}
 
 	// Sync with S3 if s3Syncer is initialized
 	if i.s3Syncer != nil {

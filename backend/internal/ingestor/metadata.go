@@ -1,6 +1,7 @@
 package ingestor
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -28,27 +29,39 @@ type MetadataPixelMapTile struct {
 }
 
 // GenerateTiledataJSON generates the tiledata.json file
-func GenerateTiledataJSON(tiles []db.Tile) error {
-
+func GenerateTiledataJSON(tiles []db.Tile, queries *db.Queries, ctx context.Context) error {
 	logger.Println("Generating tiledata.json")
-	tiledataJSON := make([]map[string]interface{}, 3970)
+	tiledataJSON := make([]map[string]interface{}, len(tiles))
 
-	for i := 0; i <= 3969; i++ {
-		tile := tiles[i]
-		if err := updateTileMetadata(tile, nil); err != nil {
-			return fmt.Errorf("error updating tile metadata: %w", err)
+	for i, tile := range tiles {
+		// Fetch data history for the tile
+		dataHistory, err := queries.GetDataHistoryByTileId(ctx, tile.ID)
+		if err != nil {
+			return fmt.Errorf("error fetching data history for tile %d: %w", tile.ID, err)
+		}
+
+		// Convert data history to a format suitable for JSON
+		historicalImages := make([]map[string]interface{}, len(dataHistory))
+		for j, history := range dataHistory {
+			historicalImages[j] = map[string]interface{}{
+				"blockNumber": history.BlockNumber,
+				"date":        history.TimeStamp,
+				"image":       history.Image,
+				"image_url":   fmt.Sprintf("https://pixelmap.art/%d/%d.png", tile.ID, history.BlockNumber),
+			}
 		}
 
 		tiledataJSON[i] = map[string]interface{}{
-			"id":           tile.ID,
-			"url":          tile.Url,
-			"image":        tile.Image,
-			"owner":        tile.Owner,
-			"price":        tile.Price,
-			"wrapped":      tile.Wrapped,
-			"openseaPrice": tile.OpenseaPrice,
-			"lastUpdated":  time.Date(2021, time.December, 13, 1, 1, 0, 0, time.UTC),
-			"ens":          tile.Ens,
+			"id":                tile.ID,
+			"url":               tile.Url,
+			"image":             tile.Image,
+			"owner":             tile.Owner,
+			"price":             tile.Price,
+			"wrapped":           tile.Wrapped,
+			"openseaPrice":      tile.OpenseaPrice,
+			"lastUpdated":       time.Date(2021, time.December, 13, 1, 1, 0, 0, time.UTC),
+			"ens":               tile.Ens,
+			"historical_images": historicalImages, // Add historical images here
 		}
 	}
 
