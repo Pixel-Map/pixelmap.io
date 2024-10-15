@@ -814,6 +814,25 @@ func (i *Ingestor) processTileUpdate(ctx context.Context, location *big.Int, ima
 	if len(image) > 800 {
 		image = image[:800]
 	}
+
+	// Try to lookup tx.From ENS
+	// Lookup ENS
+	ensName, err := lookupENS(i.ethClient, tx.From)
+	if err != nil {
+		if strings.Contains(err.Error(), "not a resolver") {
+			// This is an expected error for addresses without ENS names
+			i.logger.Debug("Address does not have an ENS name", zap.String("address", tx.From))
+		} else {
+			// Log other errors as warnings
+			i.logger.Warn("Failed to lookup ENS", zap.Error(err), zap.String("address", tx.From))
+		}
+		ensName = "" // Ensure ensName is empty if lookup failed
+	}
+	i.logger.Debug("ENS lookup result", zap.String("ens", ensName), zap.String("address", tx.From))
+	updatedBy := tx.From
+	if ensName != "" {
+		updatedBy = ensName
+	}
 	// Add to dataHistory
 	dataHistory := db.InsertDataHistoryParams{
 		TileID:      int32(location.Int64()),
@@ -823,7 +842,7 @@ func (i *Ingestor) processTileUpdate(ctx context.Context, location *big.Int, ima
 		TimeStamp:   time.Unix(timestamp, 0),
 		BlockNumber: blockNumber,
 		Image:       image,
-		UpdatedBy:   tx.From,
+		UpdatedBy:   updatedBy,
 		LogIndex:    transactionIndex,
 	}
 
@@ -832,7 +851,7 @@ func (i *Ingestor) processTileUpdate(ctx context.Context, location *big.Int, ima
 	}
 
 	// Update the tile in the database
-	err := i.queries.UpdateTile(ctx, db.UpdateTileParams{
+	err = i.queries.UpdateTile(ctx, db.UpdateTileParams{
 		ID:    int32(location.Int64()),
 		Price: priceEthStr,
 		Url:   url,

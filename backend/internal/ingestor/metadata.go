@@ -48,6 +48,7 @@ func GenerateTiledataJSON(tiles []db.Tile, queries *db.Queries, ctx context.Cont
 				"date":        history.TimeStamp,
 				"image":       history.Image,
 				"image_url":   fmt.Sprintf("https://pixelmap.art/%d/%d.png", tile.ID, history.BlockNumber),
+				"updatedBy":   history.UpdatedBy,
 			}
 		}
 
