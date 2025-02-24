@@ -8,7 +8,7 @@ import {
   openseaLink,
   convertEthToWei
 } from '../utils/misc';
-import { PixelMapTile } from '@pixelmap/common/types/PixelMapTile';
+import type { PixelMapTile } from '@pixelmap/common/types/PixelMapTile';
 
 describe('misc utils', () => {
   describe('shortenIfHex', () => {

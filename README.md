@@ -122,6 +122,26 @@ You can also run the combined coverage report directly with npm:
 npm run test:coverage:combined
 ```
 
+#### Codecov Integration
+
+The project is integrated with [Codecov](https://codecov.io/) for tracking coverage metrics over time. When you push changes to GitHub, our CI workflow automatically runs tests and uploads coverage reports to Codecov.
+
+[![codecov](https://codecov.io/gh/username/pixelmap.io/branch/main/graph/badge.svg)](https://codecov.io/gh/username/pixelmap.io)
+
+To upload coverage reports manually:
+
+```bash
+# Install dependencies (first time only)
+npm install
+
+# Run tests with coverage and upload to Codecov
+npm run codecov
+```
+
+This uses the official Codecov uploader script which will automatically fetch and execute the latest version of the uploader.
+
+You'll need to set up a `CODECOV_TOKEN` in your repository secrets for the GitHub Actions workflow to authenticate with Codecov.
+
 #### Coverage Configuration
 
 The frontend coverage is configured to exclude the following directories and files:

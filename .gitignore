@@ -15,6 +15,10 @@ coverage-combined/
 coverage.html
 coverage.out
 
+# Codecov
+codecov
+codecov.yml
+
 # dependencies
 .pnp
 .pnp.js

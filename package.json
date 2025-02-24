@@ -13,7 +13,8 @@
 		"test:coverage": "npm run test:frontend:coverage && npm run test:backend:coverage",
 		"test:frontend:coverage": "cd frontend && npm run test:coverage",
 		"test:backend:coverage": "cd backend && go test ./... -coverprofile=coverage.out && go tool cover -html=coverage.out -o coverage.html",
-		"test:coverage:combined": "npm run test:coverage && node ./combine-coverage.js"
+		"test:coverage:combined": "npm run test:coverage && node ./combine-coverage.js",
+		"codecov": "npm run test:coverage && node ./combine-coverage.js && curl -Os https://uploader.codecov.io/latest/linux/codecov && chmod +x codecov && ./codecov"
 	},
 	"author": "",
 	"license": "ISC",

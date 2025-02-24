@@ -9,6 +9,7 @@
 - Run single test file: `cd frontend && npm test -- MyComponent.test.tsx`
 - Generate coverage: `./run-tests.sh -c` or `npm run test:coverage`
 - Combined coverage: `./run-tests.sh -m` or `npm run test:coverage:combined`
+- Upload to Codecov: `npm run codecov`
 
 ### Development
 - Start frontend dev server: `cd frontend && npm run dev`

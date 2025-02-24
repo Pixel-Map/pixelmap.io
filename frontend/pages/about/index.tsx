@@ -231,19 +231,21 @@ function About() {
                 <Link href="https://etheria.world/">
                   <a className="nes-text is-success">Etheria</a>
                 </Link>
-                , the first NFT was created by Cyrus Adkisson.{" "}
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "center",
-                  }}
-                >
-                  <img
-                    className="h-auto"
-                    src="/assets/images/etheria.png"
-                    alt="Etheria"
-                  />
-                </div>
+                , the first NFT was created by Cyrus Adkisson.
+              </p>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                }}
+              >
+                <img
+                  className="h-auto"
+                  src="/assets/images/etheria.png"
+                  alt="Etheria"
+                />
+              </div>
+              <p>
                 Cyrus would then go on to publish some of the earliest solidity
                 (the programming language for Ethereum) tutorials to{" "}
                 <Link href="https://github.com/cyrusadkisson/solidity-baby-steps/tree/c04a6928b631200847556522874f73e62c9a3b98/contracts">
@@ -262,19 +264,19 @@ function About() {
                     (Original PixelMap Contract)
                   </a>
                 </Link>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "center",
-                  }}
-                >
-                  <img
-                    className="h-auto"
-                    src="/assets/images/pixelmap-2016-contract.png"
-                    alt="Contract"
-                  />
-                </div>
               </p>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                }}
+              >
+                <img
+                  className="h-auto"
+                  src="/assets/images/pixelmap-2016-contract.png"
+                  alt="Contract"
+                />
+              </div>
               <p>
                 A developer named{" "}
                 <Link href="https://twitter.com/bnolan">

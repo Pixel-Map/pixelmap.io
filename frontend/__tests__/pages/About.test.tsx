@@ -21,6 +21,26 @@ describe('About page', () => {
     jest.clearAllMocks();
   });
 
+  it('renders without DOM nesting warnings', () => {
+    // Mock console.error
+    const originalError = console.error;
+    const errorMock = jest.fn();
+    console.error = errorMock;
+    
+    try {
+      render(<About />);
+      
+      // Check for validateDOMNesting errors
+      const domNestingErrors = errorMock.mock.calls.filter(
+        call => String(call[0]).includes('validateDOMNesting')
+      );
+      
+      expect(domNestingErrors.length).toBe(0);
+    } finally {
+      console.error = originalError;
+    }
+  });
+
   it('renders without crashing', () => {
     render(<About />);
     
