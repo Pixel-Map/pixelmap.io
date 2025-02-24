@@ -8,8 +8,8 @@
     "export": "next export",
     "start": "next start",
     "lint": "next lint",
-    "test": "jest",
-    "test:coverage": "jest --coverage"
+    "test": "npx jest",
+    "test:coverage": "npx jest --coverage"
   },
   "dependencies": {
     "@babel/core": "^7.18.6",
