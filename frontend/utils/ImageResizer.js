@@ -225,4 +225,6 @@ export default {
       forceResize,
     );
   },
+  // Export the Resizer class to make it accessible for testing
+  Resizer,
 };

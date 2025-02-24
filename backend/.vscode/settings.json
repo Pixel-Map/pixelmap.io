@@ -1,0 +1,24 @@
+{
+  "go.testOnSave": false,
+  "go.coverOnSave": false,
+  "go.testExplorer.enable": true,
+  "go.coverageDecorator": {
+    "type": "highlight",
+    "coveredHighlightColor": "rgba(64,128,128,0.5)",
+    "uncoveredHighlightColor": "rgba(128,64,64,0.25)"
+  },
+  "go.testFlags": ["-v"],
+  "go.coverMode": "atomic",
+  "go.toolsManagement.autoUpdate": true,
+  "go.useLanguageServer": true,
+  "go.testTimeout": "30s",
+  "go.buildFlags": [],
+  "go.buildTags": "",
+  "go.testTags": "",
+  "go.lintTool": "golangci-lint",
+  "go.lintFlags": [],
+  "go.vetFlags": [],
+  "go.formatTool": "goimports",
+  "go.formatFlags": [],
+  "go.inferGopath": false
+}

@@ -1,0 +1,38 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Run All Go Tests",
+      "type": "shell",
+      "command": "cd ${workspaceFolder} && go test -v ./...",
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "Run Utils Tests",
+      "type": "shell",
+      "command": "cd ${workspaceFolder} && go test -v ./internal/utils/...",
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "Run Ingestor Tests",
+      "type": "shell",
+      "command": "cd ${workspaceFolder} && go test -v ./internal/ingestor/...",
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    }
+  ]
+}

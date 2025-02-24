@@ -1,0 +1,63 @@
+{
+  "folders": [
+    {
+      "path": "."
+    }
+  ],
+  "settings": {
+    "javascript.validate.enable": true,
+    "typescript.validate.enable": true,
+    
+    // Jest configuration for frontend tests
+    "jest.autoRun": "off",
+    "jest.jestCommandLine": "cd frontend && npm test --",
+    "jest.testExplorer.enabled": true,
+    "jest.showCoverageOnLoad": false,
+    "jest.pathToJest": "cd frontend && npm test --",
+    "jest.enableInlineErrorMessages": true,
+    "jest.enableCodeLens": true,
+    "jest.debugCodeLens.showWhenTestStateIn": [
+      "fail",
+      "unknown",
+      "pass"
+    ],
+    
+    // Go configuration for backend tests
+    "go.testOnSave": false,
+    "go.coverOnSave": false,
+    "go.testExplorer.enable": true,
+    "go.coverageDecorator": {
+      "type": "highlight",
+      "coveredHighlightColor": "rgba(64,128,128,0.5)",
+      "uncoveredHighlightColor": "rgba(128,64,64,0.25)"
+    },
+    "go.testFlags": ["-v"],
+    "go.coverMode": "atomic",
+    "go.toolsManagement.autoUpdate": true,
+    "go.useLanguageServer": true,
+    "go.testTimeout": "30s",
+    "go.buildFlags": [],
+    "go.buildTags": "",
+    "go.testTags": "",
+    "go.lintTool": "golangci-lint",
+    "go.lintFlags": [],
+    "go.vetFlags": [],
+    "go.formatTool": "goimports",
+    "go.formatFlags": [],
+    "go.inferGopath": false,
+    "go.gopath": "",
+    "go.goroot": "",
+    "go.alternateTools": {},
+    "go.delveConfig": {
+      "dlvLoadConfig": {
+        "followPointers": true,
+        "maxVariableRecurse": 1,
+        "maxStringLen": 64,
+        "maxArrayValues": 64,
+        "maxStructFields": -1
+      },
+      "apiVersion": 2,
+      "showGlobalVariables": false
+    }
+  }
+}
