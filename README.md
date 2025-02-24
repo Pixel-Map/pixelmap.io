@@ -1,3 +1,14 @@
+# PixelMap.io
+
+[![codecov](https://codecov.io/gh/Pixel-Map/pixelmap.io/branch/main/graph/badge.svg)](https://codecov.io/gh/Pixel-Map/pixelmap.io)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+[![TypeScript](https://img.shields.io/github/package-json/dependency-version/Pixel-Map/pixelmap.io/dev/typescript?filename=frontend%2Fpackage.json&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/github/package-json/dependency-version/Pixel-Map/pixelmap.io/react?filename=frontend%2Fpackage.json&logo=react&logoColor=white)](https://reactjs.org/)
+[![Next.js](https://img.shields.io/github/package-json/dependency-version/Pixel-Map/pixelmap.io/next?filename=frontend%2Fpackage.json&logo=next.js&logoColor=white)](https://nextjs.org/)
+[![Go](https://img.shields.io/badge/Go-blue.svg?logo=go&logoColor=white)](https://golang.org/)
+[![Solidity](https://img.shields.io/badge/Solidity-0.4.2-lightgrey.svg?logo=solidity&logoColor=white)](https://soliditylang.org/)
+[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/Pixel-Map/pixelmap.io/main.yml?branch=main&logo=github)](https://github.com/Pixel-Map/pixelmap.io/actions)
+
 ### What is PixelMap.io?
 
 A little over a decade ago, a website called MillionDollarHomePage.com was created by Alex Tew.  The page consisted (and still consists) of a 1000x1000 pixel grid, with a total of 1,000,000 pixels being sold for $1 each.  Because the pixels themselves were too small to be seen individually, they were sold in 10x10 pixel tiles for $100 each.  The purchasers of each tile then provided a 10x10 pixel image to be used, as well as optionally a URL for the tile to link to.  Once an image had been configured for a given tile however, it could never be changed (nor could the ownership of the tile).
@@ -126,7 +137,7 @@ npm run test:coverage:combined
 
 The project is integrated with [Codecov](https://codecov.io/) for tracking coverage metrics over time. When you push changes to GitHub, our CI workflow automatically runs tests and uploads coverage reports to Codecov.
 
-[![codecov](https://codecov.io/gh/username/pixelmap.io/branch/main/graph/badge.svg)](https://codecov.io/gh/username/pixelmap.io)
+[![codecov](https://codecov.io/gh/Pixel-Map/pixelmap.io/branch/main/graph/badge.svg)](https://codecov.io/gh/Pixel-Map/pixelmap.io)
 
 To upload coverage reports manually:
 
