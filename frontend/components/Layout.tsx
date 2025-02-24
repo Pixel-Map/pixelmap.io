@@ -1,32 +1,36 @@
-import {useContext} from 'react';
+import {useContext, ReactNode} from 'react';
 
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 
 import styles from '../styles/pages/Home.module.scss';
 
-export default function Layout({children}) {
+interface LayoutProps {
+  children: ReactNode;
+}
+
+export default function Layout({children}: LayoutProps) {
   const hours = new Date().getHours();
 
   // Is it a leap year?
   function isLeapYear(date) {
-    var year = date.getFullYear();
-    if ((year & 3) != 0) return false;
-    return ((year % 100) != 0 || (year % 400) == 0);
+    const year = date.getFullYear();
+    if ((year & 3) !== 0) return false;
+    return ((year % 100) !== 0 || (year % 400) === 0);
   };
 
   // Get Day of Year
   function getDOY(date) {
-    var dayCount = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
-    var mn = date.getMonth();
-    var dn = date.getDate();
-    var dayOfYear = dayCount[mn] + dn;
+    const dayCount = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
+    const mn = date.getMonth();
+    const dn = date.getDate();
+    let dayOfYear = dayCount[mn] + dn;
     if (mn > 1 && isLeapYear(date)) dayOfYear++;
     return dayOfYear;
   };
 
   const todaysDay = getDOY(new Date())
-  const isDayTime = hours > 7 && hours < 20;
+  const isDayTime = hours >= 7 && hours < 20;
 
   function getBgClass(todaysDay) {
     // Winter

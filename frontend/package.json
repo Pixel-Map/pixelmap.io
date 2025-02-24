@@ -49,6 +49,7 @@
     "eslint-config-next": "12.2.2",
     "identity-obj-proxy": "^3.0.0",
     "jest": "^28.1.2",
+    "jest-environment-jsdom": "^29.7.0",
     "node-base91": "^0.3.4",
     "pako": "^2.0.4",
     "postcss": "^8.4.14",
