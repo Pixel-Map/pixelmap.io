@@ -11,6 +11,10 @@ build/
 generated/
 cache/
 
+coverage-combined/
+coverage.html
+coverage.out
+
 # dependencies
 .pnp
 .pnp.js

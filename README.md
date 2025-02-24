@@ -50,6 +50,96 @@ We're currently working on a tile editor that should make it MUCH easier to
 generate the hexadecimal string, but it's currently a WIP.
 
 Once a pixel is updated, the website should update within about 5-10 minutes.  If for any reason it doesn't work, feel free to contact me at ken@devopslibrary.com.
+
+### Testing PixelMap.io
+
+PixelMap.io includes comprehensive test suites for both the frontend and backend components. We've created a simple test runner script to make it easy to run tests and generate coverage reports.
+
+#### Running Tests
+
+To run all tests (frontend and backend):
+
+```bash
+./run-tests.sh
+```
+
+To run only frontend tests:
+
+```bash
+./run-tests.sh -f
+# or
+./run-tests.sh --frontend
+```
+
+To run only backend tests:
+
+```bash
+./run-tests.sh -b
+# or
+./run-tests.sh --backend
+```
+
+#### Generating Coverage Reports
+
+To generate coverage reports for all tests:
+
+```bash
+./run-tests.sh -c
+# or
+./run-tests.sh --coverage
+```
+
+You can also combine options:
+
+```bash
+# Run frontend tests with coverage
+./run-tests.sh -f -c
+
+# Run backend tests with coverage
+./run-tests.sh -b -c
+```
+
+After generating coverage reports, you can view them by opening the HTML files in your browser:
+- Frontend coverage: `frontend/coverage/lcov-report/index.html`
+- Backend coverage: `backend/coverage.html`
+
+#### Combined Coverage Report
+
+To generate a combined coverage report that provides access to both frontend and backend coverage in a single interface:
+
+```bash
+./run-tests.sh -m
+# or
+./run-tests.sh --combined
+```
+
+This will run all tests with coverage and generate a combined report at:
+- Combined coverage: `coverage-combined/index.html`
+
+You can also run the combined coverage report directly with npm:
+
+```bash
+npm run test:coverage:combined
+```
+
+#### Coverage Configuration
+
+The frontend coverage is configured to exclude the following directories and files:
+- `.next/` - Next.js build output
+- `coverage/` - Coverage reports
+- `out/` - Static export output
+- `*.config.js` - Configuration files
+- `.eslintrc.js` - ESLint configuration
+
+If you need to exclude additional files or directories from coverage reports, you can modify the `collectCoverageFrom` array in `frontend/jest.config.js`.
+
+For more options and help:
+
+```bash
+./run-tests.sh -h
+# or
+./run-tests.sh --help
+```
 ```
 pragma solidity ^0.4.2;
 contract PixelMap {
