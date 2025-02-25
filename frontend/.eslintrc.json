@@ -1,4 +1,10 @@
 {
   "extends": "next/core-web-vitals",
-  "ignorePatterns": ["node_modules/", "dist", "**/*spec.ts"]
+  "ignorePatterns": ["node_modules/", "dist", "**/*spec.ts"],
+  "rules": {
+    "react/jsx-key": "error",
+    "react-hooks/exhaustive-deps": "warn",
+    "@next/next/no-css-tags": "warn",
+    "react/no-unknown-property": "error"
+  }
 }

@@ -63,7 +63,7 @@ function About() {
                 By far the easiest (and cheapest) way is to buy the cheapest
                 tile available on{" "}
                 <Link href="https://opensea.io/collection/pixelmap">
-                  <a className="nes-text is-success">OpenSea</a>
+                  <a className="nes-text is-success" href="https://opensea.io/collection/pixelmap">OpenSea</a>
                 </Link>
                 . You can always update the image on a tile that you own (but
                 ALL previous versions are also permanently stored on-chain!)
@@ -85,18 +85,18 @@ function About() {
               <p>
                 Heavily inspired by Alex Tew&apos;s{" "}
                 <Link href="https://en.wikipedia.org/wiki/The_Million_Dollar_Homepage">
-                  <a className="nes-text is-success">
+                  <a className="nes-text is-success" href="https://en.wikipedia.org/wiki/The_Million_Dollar_Homepage">
                     The Million Dollar Homepage
                   </a>
                 </Link>
                 ,{" "}
                 <Link href="https://twitter.com/KenErwin88">
-                  <a className="nes-text is-success">Ken Erwin</a>
+                  <a className="nes-text is-success" href="https://twitter.com/KenErwin88">Ken Erwin</a>
                 </Link>{" "}
                 created the first fully decentralized equivalent, going live
                 with PixelMap on{" "}
                 <Link href="https://etherscan.io/tx/0x79e41799591e99ffb0aad02d270ac92328e441d0d6a0e49fd6cb9948efb40656">
-                  <a className="nes-text is-success">November 17, 2016</a>
+                  <a className="nes-text is-success" href="https://etherscan.io/tx/0x79e41799591e99ffb0aad02d270ac92328e441d0d6a0e49fd6cb9948efb40656">November 17, 2016</a>
                 </Link>
                 , years before the Non-Fungible Token (NFT) Standard (EIP-721)
                 would even be written.
@@ -116,7 +116,7 @@ function About() {
               <p>
                 The{" "}
                 <Link href="https://en.wikipedia.org/wiki/The_Million_Dollar_Homepage">
-                  <a className="nes-text is-success">
+                  <a className="nes-text is-success" href="https://en.wikipedia.org/wiki/The_Million_Dollar_Homepage">
                     The Million Dollar Homepage
                   </a>
                 </Link>{" "}
@@ -147,11 +147,11 @@ function About() {
                 During the rediscovery of PixelMap in August 2021, Ken reached
                 out to{" "}
                 <Link href="https://en.wikipedia.org/wiki/Ira_Glass">
-                  <a className="nes-text is-success">Ira Glass</a>
+                  <a className="nes-text is-success" href="https://en.wikipedia.org/wiki/Ira_Glass">Ira Glass</a>
                 </Link>{" "}
                 of{" "}
                 <Link href="https://www.thisamericanlife.org/769/the-reluctant-explorer">
-                  <a className="nes-text is-success">This American Life</a>
+                  <a className="nes-text is-success" href="https://www.thisamericanlife.org/769/the-reluctant-explorer">This American Life</a>
                 </Link>{" "}
                 to blow the lid on a big conspiracy surrounding PixelMap.
                 It&apos;s definitely worth a listen, and if you&apos;re here
@@ -167,7 +167,7 @@ function About() {
               <p>
                 In many ways, PixelMap.io is similar to the{" "}
                 <Link href="https://en.wikipedia.org/wiki/The_Million_Dollar_Homepage">
-                  <a className="nes-text is-success">
+                  <a className="nes-text is-success" href="https://en.wikipedia.org/wiki/The_Million_Dollar_Homepage">
                     The Million Dollar Homepage
                   </a>
                 </Link>
@@ -179,7 +179,7 @@ function About() {
               <p>
                 However, unlike{" "}
                 <Link href="https://en.wikipedia.org/wiki/The_Million_Dollar_Homepage">
-                  <a className="nes-text is-success">
+                  <a className="nes-text is-success" href="https://en.wikipedia.org/wiki/The_Million_Dollar_Homepage">
                     The Million Dollar Homepage
                   </a>
                 </Link>
@@ -211,7 +211,7 @@ function About() {
                   <li>
                     The project has been{" "}
                     <Link href="https://github.com/Pixel-Map/pixelmap.io/blob/main/LICENSE">
-                      <a className="nes-text is-success">open sourced</a>
+                      <a className="nes-text is-success" href="https://github.com/Pixel-Map/pixelmap.io/blob/main/LICENSE">open sourced</a>
                     </Link>
                     , which means anyone can view the code, audit the Solidity
                     contract, or even set up more frontends if they&apos;d like.
@@ -229,7 +229,7 @@ function About() {
               <p>
                 Yes, and it&apos;s a very interesting story! In 2015,{" "}
                 <Link href="https://etheria.world/">
-                  <a className="nes-text is-success">Etheria</a>
+                  <a className="nes-text is-success" href="https://etheria.world/">Etheria</a>
                 </Link>
                 , the first NFT was created by Cyrus Adkisson.
               </p>
@@ -249,7 +249,9 @@ function About() {
                 Cyrus would then go on to publish some of the earliest solidity
                 (the programming language for Ethereum) tutorials to{" "}
                 <Link href="https://github.com/cyrusadkisson/solidity-baby-steps/tree/c04a6928b631200847556522874f73e62c9a3b98/contracts">
-                  <a className="nes-text is-success">Github</a>
+                  <a className="nes-text is-success" href="https://github.com/cyrusadkisson/solidity-baby-steps/tree/c04a6928b631200847556522874f73e62c9a3b98/contracts">
+                    Github
+                  </a>
                 </Link>
                 .
               </p>
@@ -260,7 +262,7 @@ function About() {
                 Cyrus, I also chose to &quot;Open Source&quot; all of my code
                 directly on Github for others to learn from.{" "}
                 <Link href="https://github.com/Pixel-Map/pixelmap.io/blob/main/contracts/PixelMap.sol">
-                  <a className="nes-text is-success">
+                  <a className="nes-text is-success" href="https://github.com/Pixel-Map/pixelmap.io/blob/main/contracts/PixelMap.sol">
                     (Original PixelMap Contract)
                   </a>
                 </Link>
@@ -280,11 +282,11 @@ function About() {
               <p>
                 A developer named{" "}
                 <Link href="https://twitter.com/bnolan">
-                  <a className="nes-text is-success">Ben Nolan</a>
+                  <a className="nes-text is-success" href="https://twitter.com/bnolan">Ben Nolan</a>
                 </Link>{" "}
                 eventually stumbled upon PixelMap through{" "}
                 <Link href="https://gitter.im/Pixel-Map/Lobby">
-                  <a className="nes-text is-success">
+                  <a className="nes-text is-success" href="https://gitter.im/Pixel-Map/Lobby">
                     Gitter (lots of funny conversations here btw!)
                   </a>
                 </Link>
@@ -306,7 +308,7 @@ function About() {
                 Ben wasn&apos;t kidding. He quickly created what is arguably one
                 of the earliest metaverses, a world known as{" "}
                 <Link href="https://medium.com/@bnolan/fontus-501efd5a9b">
-                  <a className="nes-text is-success">Fontus</a>
+                  <a className="nes-text is-success" href="https://medium.com/@bnolan/fontus-501efd5a9b">Fontus</a>
                 </Link>
               </p>
               <img
@@ -329,7 +331,7 @@ function About() {
               <p>
                 Shortly after (late 2017), Ben (and the assets of Fontus) were{" "}
                 <Link href="https://medium.com/@bnolan/finishing-up-at-decentraland-9dc5b7a4f93e">
-                  <a className="nes-text is-success">
+                  <a className="nes-text is-success" href="https://medium.com/@bnolan/finishing-up-at-decentraland-9dc5b7a4f93e">
                     acquired by an Argentinean company
                   </a>
                 </Link>
@@ -382,12 +384,12 @@ function About() {
               <p>
                 On August 22, 2021,{" "}
                 <Link href="https://twitter.com/adamamcbride">
-                  <a className="nes-text is-success">Adam McBride</a>
+                  <a className="nes-text is-success" href="https://twitter.com/adamamcbride">Adam McBride</a>
                 </Link>
                 , an &quot;NFT Archaeologist&quot; as he&apos;s best described,
                 reached out to myself (
                 <Link href="https://twitter.com/KenErwin88">
-                  <a className="nes-text is-success">Ken Erwin</a>
+                  <a className="nes-text is-success" href="https://twitter.com/KenErwin88">Ken Erwin</a>
                 </Link>
                 ), asking if I had created PixelMap. That was the beginning of
                 the &quot;rediscovery&quot;, leading to a massive amount of
@@ -395,7 +397,7 @@ function About() {
                 wrapper to make PixelMap easier to use, and a revival of the
                 website. More information about the rediscovery can be found on{" "}
                 <Link href="https://adamamcbride.medium.com/pixel-map-lost-2016-nft-project-78fc00e62179">
-                  <a className="nes-text is-success">Adam&apos;s Blog</a>
+                  <a className="nes-text is-success" href="https://adamamcbride.medium.com/pixel-map-lost-2016-nft-project-78fc00e62179">Adam&apos;s Blog</a>
                 </Link>
                 .
               </p>
