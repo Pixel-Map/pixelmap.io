@@ -211,6 +211,22 @@ if (fileExists(backendCoverageFile)) {
       `cd backend && go tool cover -func=coverage.out > ${path.join(codecovDir, "backend-coverage.txt")}`,
     );
     console.log("✅ Generated backend coverage text for Codecov");
+    
+    // Convert Go coverage to Codecov-compatible format
+    try {
+      execSync('cd backend && go install github.com/axw/gocov/gocov@latest && go install github.com/AlekSi/gocov-xml@latest');
+      execSync(`cd backend && gocov convert coverage.out | gocov-xml > coverage.xml`);
+      fs.copyFileSync(
+        path.join(__dirname, 'backend', 'coverage.xml'), 
+        path.join(codecovDir, 'backend-coverage.xml')
+      );
+      // Also create lcov format for better compatibility
+      execSync(`cd backend && go tool cover -html=coverage.out -o coverage.html`);
+      execSync(`cd backend && go tool cover -html=coverage.out -o ${path.join(codecovDir, "backend-lcov.info")}`);
+      console.log("✅ Generated backend coverage XML and lcov for Codecov");
+    } catch (error) {
+      console.error("❌ Failed to generate backend coverage XML:", error.message);
+    }
   } catch (error) {
     console.error(
       "❌ Failed to generate backend coverage for Codecov:",
