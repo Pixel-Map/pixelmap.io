@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"go.uber.org/zap"
 	db "pixelmap.io/backend/internal/db"
 )
 
@@ -126,28 +127,50 @@ func (m *MockEtherscanClient) GetTransactions(ctx context.Context, fromBlock, to
 	return args.Get(0).([]EtherscanTransaction), args.Error(1)
 }
 
-func TestNewIngestor(t *testing.T) {
-	t.Skip("Skipping test that requires database connection")
-	
-	/*
-	logger, _ := zap.NewDevelopment()
-	db, err := sql.Open("postgres", "postgresql://postgres:postgres@localhost:5432/pixelmap?sslmode=disable")
-	require.NoError(t, err)
-	defer db.Close()
-
-	ingestor := NewIngestor(logger, db, "test_api_key")
-	
-	assert.NotNil(t, ingestor)
-	assert.NotNil(t, ingestor.logger)
-	assert.NotNil(t, ingestor.queries)
-	assert.NotNil(t, ingestor.etherscanClient)
-	assert.NotNil(t, ingestor.pubSub)
-	assert.NotNil(t, ingestor.renderSignal)
-	assert.Equal(t, 5, ingestor.maxRetries)
-	assert.Equal(t, time.Second, ingestor.baseDelay)
-	*/
+// MockS3Syncer mocks the S3Syncer
+type MockS3Syncer struct {
+	mock.Mock
 }
 
+func (m *MockS3Syncer) SyncWithS3(ctx context.Context) error {
+	args := m.Called(ctx)
+	return args.Error(0)
+}
+
+// TestableIngestor is a wrapper that provides access to the Ingestor methods but uses mocked dependencies
+type TestableIngestor struct {
+	logger          *zap.Logger
+	queries         *MockQueries
+	etherscanClient *MockEtherscanClient
+	s3Syncer        *MockS3Syncer
+	pubSub          *PubSub
+	renderSignal    chan struct{}
+	maxRetries      int
+	baseDelay       time.Duration
+}
+
+// NewTestableIngestor creates a new instance of TestableIngestor with mocked dependencies
+func NewTestableIngestor(t *testing.T) *TestableIngestor {
+	logger, _ := zap.NewDevelopment()
+	mockQueries := new(MockQueries)
+	mockEtherscanClient := new(MockEtherscanClient)
+	mockS3Syncer := new(MockS3Syncer)
+
+	renderSignal := make(chan struct{}, 1)
+
+	return &TestableIngestor{
+		logger:          logger,
+		queries:         mockQueries,
+		etherscanClient: mockEtherscanClient,
+		s3Syncer:        mockS3Syncer,
+		pubSub:          NewPubSub(),
+		renderSignal:    renderSignal,
+		maxRetries:      5,
+		baseDelay:       time.Second,
+	}
+}
+
+// Tests for PubSub
 func TestPubSub(t *testing.T) {
 	pubSub := NewPubSub()
 	
@@ -170,199 +193,84 @@ func TestPubSub(t *testing.T) {
 	}
 }
 
-// This function is commented out as the tests are skipped
-/*
-func processTileUpdateWrapper(t *testing.T) (*MockQueries, *MockEtherscanClient, context.Context) {
-	logger, _ := zap.NewDevelopment()
-	mockQueries := new(MockQueries)
-	mockEtherscanClient := new(MockEtherscanClient)
-	ctx := context.Background()
-	
-	return mockQueries, mockEtherscanClient, ctx
-}
-*/
-
-// Skip this test until we refactor the code to make it more testable
-func TestProcessTileUpdate(t *testing.T) {
-	t.Skip("This test requires refactoring to use interfaces for better mocking")
-	
-	/*
-	mockQueries, mockEtherscanClient, ctx := processTileUpdateWrapper(t)
-	
-	location := big.NewInt(123)
-	image := "390390390390390390390000000390390390390390390390390390390390390390000FF0FF0000390390"
-	url := "https://example.com"
-	priceWei := big.NewInt(2000000000000000000) // 2 ETH in Wei
-	tx := &EtherscanTransaction{
-		Hash:      "0x123",
-		From:      "0x456",
-		TimeStamp: "1617192000",
-	}
-	timestamp := int64(1617192000)
-	blockNumber := int64(12345678)
-	txIndex := int32(1)
-	
-	// Mock GetTileById
-	mockQueries.On("GetTileById", ctx, int32(123)).Return(db.Tile{
-		ID:    123,
-		Price: "1.00",
-		Url:   "https://old-example.com",
-		Image: "old-image-data",
-		Owner: "0x456",
-	}, nil)
-	
-	// Mock InsertDataHistory
-	dataHistoryArg := mock.MatchedBy(func(arg db.InsertDataHistoryParams) bool {
-		return arg.TileID == 123 && arg.Price.String == "2.00" && arg.Url == url
-	})
-	mockQueries.On("InsertDataHistory", ctx, dataHistoryArg).Return(db.DataHistory{}, nil)
-	
-	// Mock UpdateTile
-	updateTileArg := mock.MatchedBy(func(arg db.UpdateTileParams) bool {
-		return arg.ID == 123 && arg.Price == "2.00" && arg.Url == url && arg.Image == image
-	})
-	mockQueries.On("UpdateTile", ctx, updateTileArg).Return(nil)
-	
-	err := ingestor.processTileUpdate(ctx, location, image, url, priceWei, tx, timestamp, blockNumber, txIndex)
-	assert.NoError(t, err)
-	
-	mockQueries.AssertExpectations(t)
-	*/
-}
-
-func TestProcessTransaction_BuyTile(t *testing.T) {
-	t.Skip("This test requires refactoring to use interfaces for better mocking")
-	
-	/*
-	logger, _ := zap.NewDevelopment()
-	mockQueries := new(MockQueries)
-	mockEtherscanClient := new(MockEtherscanClient)
-	
-	ctx := context.Background()
-	tx := &EtherscanTransaction{
-		Hash:             "0x123",
-		BlockNumber:      "12345678",
-		TimeStamp:        "1617192000",
-		From:             "0xbuyer",
-		To:               "0x015a06a433353f8db634df4eddf0c109882a15ab", // PixelMap contract
-		Nonce:            "1",
-		Value:            "2000000000000000000", // 2 ETH
-		Gas:              "100000",
-		GasPrice:         "10000000000",
-		Input:            "0x4b43ed1200000000000000000000000000000000000000000000000000000000000000fa", // buyTile method with location 250
-		TransactionIndex: "1",
-		IsError:          "0",
-		TxreceiptStatus:  "1",
-		CumulativeGasUsed: "50000",
-		GasUsed:          "40000",
-		Confirmations:    "100",
-	}
-	
-	// Mock GetTileById
-	mockQueries.On("GetTileById", ctx, int32(250)).Return(db.Tile{
-		ID:    250,
-		Price: "2.00",
-		Owner: "0x4f4b7e7edf5ec41235624ce207a6ef352aca7050", // Creator
-	}, nil)
-	
-	// Mock InsertPurchaseHistory
-	mockQueries.On("InsertPurchaseHistory", ctx, mock.AnythingOfType("db.InsertPurchaseHistoryParams")).Return(db.PurchaseHistory{}, nil)
-	
-	// Mock UpdateTileOwner
-	mockQueries.On("UpdateTileOwner", ctx, db.UpdateTileOwnerParams{
-		ID:    250,
-		Owner: "0xbuyer",
-	}).Return(nil)
-	
-	// Mock InsertPixelMapTransaction
-	mockQueries.On("InsertPixelMapTransaction", ctx, mock.AnythingOfType("db.InsertPixelMapTransactionParams")).Return(db.PixelMapTransaction{}, nil)
-	
-	err := ingestor.processTransaction(ctx, tx)
-	assert.NoError(t, err)
-	
-	mockQueries.AssertExpectations(t)
-	*/
-}
-
-func TestProcessTransfer(t *testing.T) {
-	t.Skip("This test requires refactoring to use interfaces for better mocking")
-	
-	/*
-	ctx := context.Background()
-	mockQueries := new(MockQueries)
-	mockEtherscanClient := new(MockEtherscanClient)
-	
-	from := common.HexToAddress("0xseller")
-	to := common.HexToAddress("0xbuyer")
-	tokenId := big.NewInt(123)
-	tx := &EtherscanTransaction{
-		Hash:      "0x123",
-		From:      "0xuser",
-		TimeStamp: "1617192000",
-	}
-	timestamp := int64(1617192000)
-	blockNumber := int64(12345678)
-	logIndex := int32(1)
-	
-	// Mock InsertTransferHistory
-	mockQueries.On("InsertTransferHistory", ctx, mock.AnythingOfType("db.InsertTransferHistoryParams")).Return(db.TransferHistory{}, nil)
-	
-	// Mock UpdateTileOwner
-	mockQueries.On("UpdateTileOwner", ctx, mock.AnythingOfType("db.UpdateTileOwnerParams")).Return(nil)
-	
-	// Mock ListTiles for updateTileDataAndSync
-	mockQueries.On("ListTiles", ctx, db.ListTilesParams{Limit: 3970, Offset: 0}).Return([]db.Tile{}, nil)
-	
-	args := []interface{}{from, to, tokenId}
-	err := ingestor.processTransfer(ctx, args, tx, timestamp, blockNumber, logIndex)
-	assert.NoError(t, err)
-	
-	mockQueries.AssertExpectations(t)
-	*/
-}
-
+// Test for getStartBlock functionality
 func TestGetStartBlock(t *testing.T) {
-	t.Skip("This test requires refactoring to use interfaces for better mocking")
-	
-	/*
-	ctx := context.Background()
-	mockQueries := new(MockQueries)
-	
-	t.Run("LastProcessedBlock exists", func(t *testing.T) {
-		mockQueries.On("GetLastProcessedBlock", ctx).Return(int64(1000), nil).Once()
-		
-		startBlock, err := ingestor.getStartBlock(ctx)
-		assert.NoError(t, err)
-		assert.Equal(t, int64(1001), startBlock)
-	})
-	
-	t.Run("LastProcessedBlock is 0", func(t *testing.T) {
-		mockQueries.On("GetLastProcessedBlock", ctx).Return(int64(0), nil).Once()
-		
-		// Mock initializeTiles
-		for i := 0; i < 3970; i++ {
-			mockQueries.On("InsertTile", ctx, mock.AnythingOfType("db.InsertTileParams")).Return(db.Tile{}, nil).Once()
-		}
-		
-		startBlock, err := ingestor.getStartBlock(ctx)
-		assert.NoError(t, err)
-		assert.Equal(t, startBlockNumber, startBlock)
-	})
-	*/
+	t.Skip("Function requires refactoring to make it more testable")
 }
 
+// Test for getEndBlock functionality
 func TestGetEndBlock(t *testing.T) {
-	t.Skip("This test requires refactoring to use interfaces for better mocking")
+	t.Skip("Function requires refactoring to make it more testable")
+}
+
+// Test for processBlockRange functionality
+func TestProcessBlockRange(t *testing.T) {
+	t.Skip("Function requires refactoring to make it more testable")
+}
+
+// Test for fetchTransactions functionality
+func TestFetchTransactions(t *testing.T) {
+	t.Skip("Function requires refactoring to make it more testable")
+}
+
+// Test for updateLastProcessedBlock functionality
+func TestUpdateLastProcessedBlock(t *testing.T) {
+	t.Skip("Function requires refactoring to make it more testable")
+}
+
+// Test for processDataHistory functionality
+func TestProcessDataHistory(t *testing.T) {
+	t.Skip("Function requires refactoring to make it more testable")
+}
+
+// Test for signalNewData
+func TestSignalNewData(t *testing.T) {
+	// Create a testable ingestor with a signal channel
+	ingestor := &Ingestor{
+		renderSignal: make(chan struct{}, 1),
+	}
 	
-	/*
-	mockEtherscanClient := new(MockEtherscanClient)
+	// Test that signalNewData adds a signal to the channel
+	ingestor.signalNewData()
 	
-	mockEtherscanClient.On("GetLatestBlockNumber").Return(uint64(10000), nil)
+	// Verify that the signal was sent
+	select {
+	case <-ingestor.renderSignal:
+		// Signal was received, test passed
+	default:
+		t.Fatal("No signal was sent to the renderSignal channel")
+	}
 	
-	endBlock, err := ingestor.getEndBlock()
-	assert.NoError(t, err)
-	assert.Equal(t, int64(10000-safetyBlockOffset), endBlock)
+	// Test that signalNewData doesn't block when channel already has a signal
+	ingestor.signalNewData() // First signal (already tested above)
+	ingestor.signalNewData() // Second signal (shouldn't block)
 	
-	mockEtherscanClient.AssertExpectations(t)
-	*/
+	// Verify that exactly one signal is in the channel
+	select {
+	case <-ingestor.renderSignal:
+		// Signal was received
+		select {
+		case <-ingestor.renderSignal:
+			t.Fatal("Multiple signals were sent to the renderSignal channel")
+		default:
+			// No more signals, which is correct
+		}
+	default:
+		t.Fatal("No signal was available in the renderSignal channel")
+	}
+}
+
+// Test for updateTileDataAndSync functionality
+func TestUpdateTileDataAndSync(t *testing.T) {
+	t.Skip("Function requires refactoring to make it more testable")
+}
+
+// Test for processTileUpdate functionality
+func TestProcessTileUpdate(t *testing.T) {
+	t.Skip("Function requires refactoring to make it more testable")
+}
+
+// Test for processTransfer functionality
+func TestProcessTransfer(t *testing.T) {
+	t.Skip("Function requires refactoring to make it more testable")
 }
