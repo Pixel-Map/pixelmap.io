@@ -30,6 +30,8 @@
 - Use React Testing Library for component tests
 - Mock external dependencies appropriately
 - Test UI elements and user interactions
+- For backend Go tests, follow the patterns in `backend/internal/ingestor/ingestor_test.go`
+- Prefer interface-based design for better testability (see `backend/internal/ingestor/README.md`)
 
 ### Formatting & Structure
 - NextJS/React standardized imports order
