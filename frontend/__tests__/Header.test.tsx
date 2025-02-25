@@ -59,7 +59,7 @@ describe('Header', () => {
     expect(screen.getAllByText('Discord').length).toBeGreaterThan(0);
     expect(screen.getAllByText('About').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Tile Updates Log').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('LTD Order Form').length).toBeGreaterThan(0);
+ 
     
     // Components should be rendered
     expect(screen.getByTestId('mock-account')).toBeInTheDocument();

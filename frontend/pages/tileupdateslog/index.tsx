@@ -26,7 +26,7 @@ function TileUpdatesLog() {
   // @ts-ignore
   return (
     <>
-      <style jsx>{`
+      <style>{`
         body {
           background: #ddd;
           font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
