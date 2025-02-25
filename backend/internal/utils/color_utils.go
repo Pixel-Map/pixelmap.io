@@ -274,8 +274,15 @@ var Colors8bit = [][3]byte{
 }
 
 func Get8bitColor(index uint) [3]byte {
+	if int(index) >= len(Colors8bit) {
+		return Colors8bit[0]
+	}
 	return Colors8bit[index]
 }
+
 func Get4bitColor(index uint) [3]byte {
+	if int(index) >= len(Colors4bit) {
+		return Colors4bit[0]
+	}
 	return Colors4bit[index]
 }
