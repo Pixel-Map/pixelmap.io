@@ -1,6 +1,6 @@
 # example netlify.toml
 [build]
-command = "pnpm run build"
+command = "cd frontend && pnpm install && pnpm build && pnpm export"
 #   functions = "netlify/functions"
 #   publish = "frontend/.next"
 
