@@ -1,7 +1,6 @@
-import { BigNumber, BigNumberish } from "@ethersproject/bignumber";
+import type { BigNumberish } from "@ethersproject/bignumber";
 import { formatUnits, parseUnits } from "@ethersproject/units";
-import { parse } from "path";
-import { PixelMapTile } from "@pixelmap/common/types/PixelMapTile";
+import type { PixelMapTile } from "@pixelmap/common/types/PixelMapTile";
 
 export function shortenIfHex(hex: string, length = 12) {
   if (hex.length < length) {
@@ -44,7 +43,7 @@ export const parseBalance = (
   return new Intl.NumberFormat("en-US", {
     currency: "USD",
     style: "decimal",
-  }).format(parseFloat(formatUnits(value, decimals)));
+  }).format(Number.parseFloat(formatUnits(value, decimals)));
 };
 
 export const cleanUrl = (url: string) => {
