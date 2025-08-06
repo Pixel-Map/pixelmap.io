@@ -40,7 +40,7 @@ export default function SearchBar() {
           </div>
           <input
             id="desktop-search"
-            className="nes-input font-semibold text-sm is-dark py-1 pl-6 bg-clip-border my-0 placeholder-gray-300 focus:outline-none focus:bg-blue-500 focus:placeholder-gray-200 transition duration-150"
+            className="nes-input font-semibold text-sm is-dark py-1 pl-6 bg-clip-border my-0 placeholder-gray-300 focus:outline-none focus:bg-blue-500 focus:placeholder-gray-200 transition duration-150 border-white border-solid"
             placeholder="Search tile / address"
             type="search"
             name="search"

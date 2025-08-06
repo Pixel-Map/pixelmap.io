@@ -11,8 +11,8 @@ import { PixelMapTile } from "@pixelmap/common/types/PixelMapTile";
 export default function Map(props: any) {
   const [showOwned, setShowOwned] = useState(false);
   const [showForSale, setShowForSale] = useState(false);
-  const [ownedTiles, setOwnedTiles] = useState(false);
-  const [forSaleTiles, setForSaleTiles] = useState(false);
+  const [ownedTiles, setOwnedTiles] = useState<PixelMapTile[] | false>(false);
+  const [forSaleTiles, setForSaleTiles] = useState<PixelMapTile[] | false>(false);
   const { account } = useWeb3React();
 
   const toggleForSale = (value: boolean) => {
@@ -30,7 +30,8 @@ export default function Map(props: any) {
       props.tiles.filter((tile: PixelMapTile) => {
         return (
           account &&
-          account != "" &&
+          account !== "" &&
+          tile.owner &&
           account.toLowerCase() === tile.owner.toLowerCase()
         );
       })
@@ -38,7 +39,7 @@ export default function Map(props: any) {
 
     setForSaleTiles(
       props.tiles.filter((tile: PixelMapTile) => {
-        return tile.openseaPrice && tile.openseaPrice != 0;
+        return tile.openseaPrice !== undefined && tile.openseaPrice !== 0;
       })
     );
   }, [props.tiles, account]);

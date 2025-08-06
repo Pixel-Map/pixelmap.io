@@ -1,10 +1,19 @@
 import React from "react";
 import { PixelMapTile } from "@pixelmap/common/types/PixelMapTile";
 
-function TileOverlay({ tiles, bgColor }) {
+interface TileOverlayProps {
+  tiles: PixelMapTile[] | false;
+  bgColor: string;
+}
+
+function TileOverlay({ tiles, bgColor }: TileOverlayProps) {
+  if (!tiles || !Array.isArray(tiles)) return null;
+  
   return (
     <>
       {tiles.map((tile: PixelMapTile, idx: number) => {
+        if (tile.id === undefined) return null;
+        
         let y = Math.floor(tile.id / 81) + 1;
         let x = tile.id + 1 - (y - 1) * 81;
 

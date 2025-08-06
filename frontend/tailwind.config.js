@@ -1,11 +1,11 @@
 const colors = require('tailwindcss/colors');
 
+/** @type {import('tailwindcss').Config} */
 module.exports = {
-  purge: ['./pages/**/*.{js,ts,jsx,tsx}', './components/**/*.{js,ts,jsx,tsx}'],
-  darkMode: false, // or 'media' or 'class'
+  content: ['./pages/**/*.{js,ts,jsx,tsx}', './components/**/*.{js,ts,jsx,tsx}'],
   theme: {
     fontFamily: {
-      'sans': ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', "Liberation Mono", "Courier New", 'monospace'],
+      'sans': ['vcr_osd_monoregular', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', "Liberation Mono", "Courier New", 'monospace'],
     },
     extend: {
       colors: {
@@ -31,13 +31,9 @@ module.exports = {
       }
     },
   },
-  variants: {
-    extend: {
-      ringWidth: ['hover', 'active']
-    },
-  },
   plugins: [
     require('@tailwindcss/typography'),
+    require('@tailwindcss/forms'),
     require('@tailwindcss/aspect-ratio'),
   ],
 }

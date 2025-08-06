@@ -23,15 +23,18 @@ export function formatEtherscanLink(
   type: "Account" | "Transaction",
   data: [number, string]
 ) {
+  const [chainId, addressOrHash] = data;
+  const prefix = ETHERSCAN_PREFIXES[chainId] || "";
+  
   switch (type) {
     case "Account": {
-      const [chainId, address] = data;
-      return `https://${ETHERSCAN_PREFIXES[chainId]}etherscan.io/address/${address}`;
+      return `https://${prefix}etherscan.io/address/${addressOrHash}`;
     }
     case "Transaction": {
-      const [chainId, hash] = data;
-      return `https://${ETHERSCAN_PREFIXES[chainId]}etherscan.io/tx/${hash}`;
+      return `https://${prefix}etherscan.io/tx/${addressOrHash}`;
     }
+    default:
+      return `https://${prefix}etherscan.io`;
   }
 }
 
@@ -46,7 +49,9 @@ export const parseBalance = (
   }).format(Number.parseFloat(formatUnits(value, decimals)));
 };
 
-export const cleanUrl = (url: string) => {
+export const cleanUrl = (url: string | undefined) => {
+  if (!url) return '#';
+  
   let regex = new RegExp("^(http|https)://", "i");
 
   if (regex.test(url)) {
@@ -66,10 +71,11 @@ export const formatPrice = (tile: PixelMapTile) => {
   return `${price}Ξ`;
 };
 
-export const openseaLink = (id: number) => {
+export const openseaLink = (id: number | undefined) => {
+  if (!id) return 'https://opensea.io/collection/pixelmap-io';
   return `https://opensea.io/assets/${process.env.NEXT_PUBLIC_PIXELMAP_WRAPPER_CONTRACT}/${id}`;
 };
 
-export const convertEthToWei = (price: string) => {
+export const convertEthToWei = (price: string | undefined) => {
   return parseUnits(price || "0", "ether");
 };

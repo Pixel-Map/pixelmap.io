@@ -17,7 +17,6 @@ const Account = ({ triedToEagerConnect }: Props) => {
     activate,
     chainId,
     account,
-    setError,
   } = useWeb3React();
 
   // initialize metamask onboarding
@@ -65,7 +64,8 @@ const Account = ({ triedToEagerConnect }: Props) => {
                 if (error instanceof UserRejectedRequestError) {
                   setConnecting(false);
                 } else {
-                  setError(error);
+                  console.error(error);
+                  setConnecting(false);
                 }
               });
             }}
@@ -85,14 +85,16 @@ const Account = ({ triedToEagerConnect }: Props) => {
     );
   }
 
+  const etherscanUrl = chainId 
+    ? formatEtherscanLink("Account", [chainId, account]) 
+    : `https://etherscan.io/address/${account}`;
+    
   return (
     <a
-      {...{
-        href: formatEtherscanLink("Account", [chainId, account]),
-        target: "_blank",
-        rel: "noopener noreferrer",
-        className: "nes-btn py-1 is-primary text-sm font-semibold transition duration-150"
-      }}
+      href={etherscanUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="nes-btn py-1 is-primary text-sm font-semibold transition duration-150"
     >
       {ENSName || `${shortenIfHex(account, 12)}`}
     </a>

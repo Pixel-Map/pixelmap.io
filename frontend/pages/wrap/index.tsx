@@ -37,7 +37,7 @@ function Wrap() {
   useEffect(() => {
     if (account) {
       let owned = tiles.filter((tile: PixelMapTile) => {
-        return tile.owner.toLowerCase() === account.toLowerCase();
+        return tile.owner && account && tile.owner.toLowerCase() === account.toLowerCase();
       });
 
       owned = owned.map((tile: PixelMapTile) => {
@@ -61,6 +61,10 @@ function Wrap() {
     setTileErrorMessage(tile, index, "");
 
     try {
+      if (!library || !account || tile.id === undefined || !tile.image) {
+        return;
+      }
+      
       const contract = new Contract(
         PIXELMAP_CONTRACT,
         ContractABI,
@@ -69,7 +73,7 @@ function Wrap() {
       contract.setTile(
         tile.id,
         tile.image,
-        tile.url,
+        tile.url || "",
         convertEthToWei(tile.newPrice)
       );
     } catch (error) {
@@ -81,6 +85,10 @@ function Wrap() {
     setTileErrorMessage(tile, index, "");
 
     try {
+      if (!library || !account || tile.id === undefined) {
+        return;
+      }
+      
       const contract = new Contract(
         WRAPPED_PIXELMAP_CONTRACT,
         WrappedContractABI,
@@ -97,6 +105,10 @@ function Wrap() {
     let _tiles = ownedTiles;
 
     try {
+      if (!library || !account || tile.id === undefined) {
+        return;
+      }
+      
       const contract = new Contract(
         PIXELMAP_CONTRACT,
         ContractABI,

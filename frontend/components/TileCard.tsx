@@ -17,27 +17,31 @@ interface TileCardProps {
 }
 
 export default function TileCard({ tile, large }: TileCardProps) {
-  const ownerName = tile.ens ? tile.ens : shortenIfHex(tile.owner, 12);
+  const ownerName = tile.ens ? tile.ens : (tile.owner ? shortenIfHex(tile.owner, 12) : "Unknown");
   const [tileExtended, setTile] = useState<PixelMapTile>();
   const [fetching, setFetching] = useState(false);
   const [tileImage, setTileImage] = useState(tile.image);
   const [sortedHistoricalImages, setSortedHistoricalImages] =
     useState<PixelMapTile[]>();
   useEffect(() => {
-    setFetching(true);
+    if (tile.id !== undefined) {
+      setFetching(true);
 
-    fetchSingleTile(tile.id.toString()).then((_tile) => {
-      setTile(_tile);
+      fetchSingleTile(tile.id.toString()).then((_tile) => {
+        setTile(_tile);
 
-      const unsortedArray = [..._tile.historical_images];
-      setSortedHistoricalImages(
-        unsortedArray.sort(function (a, b) {
-          return b.blockNumber - a.blockNumber;
-        })
-      );
-      setFetching(false);
-    });
-  }, [, tile.id.toString()]);
+        if (_tile.historical_images && Array.isArray(_tile.historical_images)) {
+          const unsortedArray = [..._tile.historical_images];
+          setSortedHistoricalImages(
+            unsortedArray.sort(function (a, b) {
+              return b.blockNumber - a.blockNumber;
+            })
+          );
+        }
+        setFetching(false);
+      });
+    }
+  }, [tile.id]);
 
   return (
     <>
@@ -88,10 +92,12 @@ export default function TileCard({ tile, large }: TileCardProps) {
       <div className={"px-4 text-sm text-gray-700 items-center flex py-1"}>
         {tileExtended &&
           !fetching &&
+          tileExtended.historical_images && 
+          Array.isArray(tileExtended.historical_images) &&
           tileExtended.historical_images.length > 0 && (
             <>
               <p>Previous Images:</p>
-              {sortedHistoricalImages.map(
+              {sortedHistoricalImages?.map(
                 (image: PixelMapImage, idx: number) => (
                   <img
                     onMouseEnter={() => {
@@ -101,6 +107,7 @@ export default function TileCard({ tile, large }: TileCardProps) {
                     src={image.image_url}
                     height={16}
                     width={16}
+                    alt={`Historical image ${idx}`}
                   />
                 )
               )}
@@ -128,7 +135,7 @@ export default function TileCard({ tile, large }: TileCardProps) {
                 href={openseaLink(tile.id)}
                 rel="noreferrer"
               >
-                {tile.openseaPrice != 0
+                {tile.openseaPrice !== undefined && tile.openseaPrice !== 0
                   ? "Buy for " + formatPrice(tile)
                   : "View on OpenSea"}
               </a>

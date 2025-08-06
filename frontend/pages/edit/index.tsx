@@ -40,7 +40,7 @@ function Edit() {
   useEffect(() => {
     if (account) {
       let owned = tiles.filter((tile: PixelMapTile) => {
-        return tile.owner.toLowerCase() === account.toLowerCase();
+        return tile.owner && account && tile.owner.toLowerCase() === account.toLowerCase();
       });
 
       owned = owned.map((tile: PixelMapTile) => {
@@ -87,10 +87,12 @@ function Edit() {
   };
 
   const handleSave = (tile: PixelMapTile) => {
-    console.log(tile.image);
+    if (!tile.image) return;
+    
     let compressedImage = compressTileCode(tile.image);
-    console.log(compressedImage);
     if (tile.wrapped === true) {
+      if (!library || !account) return;
+      
       const contract = new Contract(
         WRAPPED_PIXELMAP_CONTRACT,
         WrappedContractABI,
@@ -98,6 +100,8 @@ function Edit() {
       );
       contract.setTileData(tile.id, compressedImage, tile.url);
     } else {
+      if (!library || !account) return;
+      
       const contract = new Contract(
         PIXELMAP_CONTRACT,
         ContractABI,

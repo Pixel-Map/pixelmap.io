@@ -19,6 +19,7 @@ import (
 type EtherscanClient struct {
 	apiKey  string
 	baseURL string
+	chainId int
 	logger  *zap.Logger
 	client  *http.Client
 	limiter *rate.Limiter
@@ -68,10 +69,11 @@ type EtherscanTransferEvent struct {
 	Topics            []string `json:"topics"`
 }
 
-func NewEtherscanClient(apiKey string, logger *zap.Logger) *EtherscanClient {
+func NewEtherscanClient(apiKey string, chainId int, logger *zap.Logger) *EtherscanClient {
 	return &EtherscanClient{
 		apiKey:  apiKey,
-		baseURL: "https://api.etherscan.io/api",
+		baseURL: "https://api.etherscan.io/v2/api",
+		chainId: chainId,
 		logger:  logger,
 		client:  &http.Client{Timeout: 10 * time.Second},
 		limiter: rate.NewLimiter(rate.Every(300*time.Millisecond), 1),
@@ -79,7 +81,7 @@ func NewEtherscanClient(apiKey string, logger *zap.Logger) *EtherscanClient {
 }
 
 func (c *EtherscanClient) GetLatestBlockNumber() (uint64, error) {
-	url := fmt.Sprintf("%s?module=proxy&action=eth_blockNumber&apikey=%s", c.baseURL, c.apiKey)
+	url := fmt.Sprintf("%s?chainid=%d&module=proxy&action=eth_blockNumber&apikey=%s", c.baseURL, c.chainId, c.apiKey)
 
 	resp, err := http.Get(url)
 	if err != nil {
@@ -283,6 +285,8 @@ func (c *EtherscanClient) makeRequest(ctx context.Context, params map[string]str
 	}
 
 	q := req.URL.Query()
+	// Add chainId parameter for V2 API
+	q.Add("chainid", strconv.Itoa(c.chainId))
 	for k, v := range params {
 		q.Add(k, v)
 	}

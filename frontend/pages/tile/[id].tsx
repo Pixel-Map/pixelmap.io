@@ -61,7 +61,7 @@ const Tile = () => {
 };
 
 export async function getStaticPaths() {
-  const paths = [];
+  const paths: { params: { id: string } }[] = [];
   for (let i = 0; i < 3970; i++) {
     paths.push({ params: { id: i.toString() } });
   }
@@ -71,7 +71,7 @@ export async function getStaticPaths() {
   };
 }
 
-export async function getStaticProps(context) {
+export async function getStaticProps(context: { params: { id: string } }) {
   return {
     // Passed to the page component as props
     props: { post: {} },

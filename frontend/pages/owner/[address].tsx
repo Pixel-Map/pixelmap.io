@@ -33,7 +33,7 @@ const Owner = () => {
   useEffect(() => {
     if (address) {
       let owned = tiles.filter((tile: PixelMapTile) => {
-        return tile.owner.toLowerCase() === address.toLowerCase();
+        return tile.owner && tile.owner.toLowerCase() === address.toLowerCase();
       });
 
       setOwnedTiles(owned);

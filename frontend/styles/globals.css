@@ -16,6 +16,12 @@ html, body, #__next {
   @apply relative w-full h-full;
 }
 
+/* Fix for nes-input styling in Tailwind v3 */
+.nes-input.is-dark {
+  @apply border-2 border-white border-solid;
+  background-color: #212529;
+}
+
 .img-pixel {
   image-rendering: auto;
   image-rendering: crisp-edges;

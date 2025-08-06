@@ -30,7 +30,7 @@ export default function ImageDisplay({image, cols, rows, maxColors, colorDepth, 
     rgbBytes = lowerBytesColorDepth(rgbBytes, colorDepth);
     
     //convert computed byte array to color array of hex triplets
-    let colorArray = [];
+    let colorArray: string[] = [];
     for( let i = 0; i < width * height * 3; i+=3 ) {
         colorArray.push(rgbToHexTriplet(rgbBytes[i+0], rgbBytes[i+1], rgbBytes[i+2]));
     }
@@ -38,7 +38,8 @@ export default function ImageDisplay({image, cols, rows, maxColors, colorDepth, 
   }
   
   function processTileCode(colorArray: Array<string>, width: number, height: number): Array<string[]> {
-    let tileArray = new Array(rows * cols).fill([]);
+    // Initialize with arrays, not a shared reference
+    let tileArray: string[][] = Array(rows * cols).fill(null).map(() => [] as string[]);
 
     //split data into array of hex triplets broken down for each grid
     let pixelRowIndex = 0;
@@ -48,10 +49,9 @@ export default function ImageDisplay({image, cols, rows, maxColors, colorDepth, 
 
       for( let i = 0; i < cols; i++ ) {
         let index = i + (rowIndex * cols);
-        let arr = tileArray[index];
         let slice = pixelSlice.slice(i * defaultPixelMapImageSize, (i + 1) * defaultPixelMapImageSize);
 
-        tileArray[index] = arr.concat(slice);
+        tileArray[index] = [...tileArray[index], ...slice];
       }
 
       pixelRowIndex++;
@@ -120,7 +120,7 @@ export default function ImageDisplay({image, cols, rows, maxColors, colorDepth, 
   }, [imageColors]);
   
   const gridSelect = () => {
-    let gridBoxes = [];
+    let gridBoxes: JSX.Element[] = [];
 
     for( let grid = 0; grid < tileCode.length; grid++) {
       gridBoxes.push(

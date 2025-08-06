@@ -12,11 +12,12 @@ import (
 
 func TestNewEtherscanClient(t *testing.T) {
 	logger, _ := zap.NewDevelopment()
-	client := NewEtherscanClient("test_api_key", logger)
+	client := NewEtherscanClient("test_api_key", 1, logger)
 
 	assert.NotNil(t, client)
 	assert.Equal(t, "test_api_key", client.apiKey)
-	assert.Equal(t, "https://api.etherscan.io/api", client.baseURL)
+	assert.Equal(t, "https://api.etherscan.io/v2/api", client.baseURL)
+	assert.Equal(t, 1, client.chainId)
 	assert.NotNil(t, client.logger)
 	assert.NotNil(t, client.client)
 	assert.NotNil(t, client.limiter)
@@ -25,6 +26,7 @@ func TestNewEtherscanClient(t *testing.T) {
 func TestGetLatestBlockNumber(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/api", r.URL.Path)
+		assert.Equal(t, "1", r.URL.Query().Get("chainid"))
 		assert.Equal(t, "proxy", r.URL.Query().Get("module"))
 		assert.Equal(t, "eth_blockNumber", r.URL.Query().Get("action"))
 		assert.Equal(t, "test_api_key", r.URL.Query().Get("apikey"))
@@ -35,7 +37,7 @@ func TestGetLatestBlockNumber(t *testing.T) {
 	defer server.Close()
 
 	logger, _ := zap.NewDevelopment()
-	client := NewEtherscanClient("test_api_key", logger)
+	client := NewEtherscanClient("test_api_key", 1, logger)
 	client.baseURL = server.URL + "/api"
 
 	blockNumber, err := client.GetLatestBlockNumber()

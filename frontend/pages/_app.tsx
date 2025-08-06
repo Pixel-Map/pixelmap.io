@@ -1,14 +1,13 @@
-import React, { useState } from 'react';
+import React from 'react';
+import type { AppProps } from 'next/app';
 
 import { Web3ReactProvider } from '@web3-react/core';
 
 import getLibrary from '../utils/getLibrary';
-import Layout from '../components/Layout'
 
 import '../styles/globals.css'
 
-function App({ Component, pageProps }) {
-
+function App({ Component, pageProps }: AppProps) {
   return (
     <Web3ReactProvider getLibrary={getLibrary}>
       <Component {...pageProps} />

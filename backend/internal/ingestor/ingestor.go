@@ -113,7 +113,7 @@ func NewIngestor(logger *zap.Logger, sqlDB *sql.DB, apiKey string) *Ingestor {
 	ingestor := &Ingestor{
 		logger:          logger,
 		queries:         db.New(sqlDB),
-		etherscanClient: NewEtherscanClient(apiKey, logger),
+		etherscanClient: NewEtherscanClient(apiKey, 1, logger), // chainId 1 for Ethereum mainnet
 		pubSub:          pubSub,
 		renderSignal:    make(chan struct{}, 1),
 		maxRetries:      5,

@@ -29,15 +29,13 @@ export default function Header() {
         <div className="flex items-center justify-between px-3 md:px-6 py-2 md:py-3">
           <div className="flex items-center flex-1">
             <div className="flex items-center justify-between w-full md:w-auto">
-              <Link href="/">
-                <a className="w-8 h-8 md:h-10 md:w-10">
-                  <span className="sr-only">PixelMap</span>
-                  <img
-                    className="w-full h-auto"
-                    src="/assets/images/logo.png"
-                    alt="PixelMap"
-                  />
-                </a>
+              <Link href="/" className="w-8 h-8 md:h-10 md:w-10">
+                <span className="sr-only">PixelMap</span>
+                <img
+                  className="w-full h-auto"
+                  src="/assets/images/logo.png"
+                  alt="PixelMap"
+                />
               </Link>
             </div>
 
@@ -48,10 +46,12 @@ export default function Header() {
                 {navigation.map((item) => {
                   if (item.link) {
                     return (
-                      <Link key={item.name} href={item.link}>
-                        <a className="inline-flex items-center px-4 py-1 border border-white shadow-sm text-sm font-semibold rounded-full text-white bg-blur hover:opacity-80 transition duration-150">
-                          {item.name}
-                        </a>
+                      <Link 
+                        key={item.name} 
+                        href={item.link}
+                        className="inline-flex items-center px-4 py-1 border border-white shadow-sm text-sm font-semibold rounded-full text-white bg-blur hover:opacity-80 transition duration-150"
+                      >
+                        {item.name}
                       </Link>
                     );
                   } else {
@@ -69,10 +69,11 @@ export default function Header() {
                 })}
               </div>
               {account && (
-                <Link href="/edit">
-                  <a className="px-6 py-1.5 rounded-full bg-gray-900 bg-opacity-70 border ml-auto text-sm font-bold text-white hover:text-white transition duration-150">
-                    Edit tiles
-                  </a>
+                <Link 
+                  href="/edit"
+                  className="px-6 py-1.5 rounded-full bg-gray-900 bg-opacity-70 border ml-auto text-sm font-bold text-white hover:text-white transition duration-150"
+                >
+                  Edit tiles
                 </Link>
               )}
             </div>
@@ -88,10 +89,12 @@ export default function Header() {
           {navigation.map((item) => {
             if (item.link) {
               return (
-                <Link key={item.name} href={item.link}>
-                  <a className="text-sm font-semibold text-gray-300 hover:text-white transition duration-150">
-                    {item.name}
-                  </a>
+                <Link 
+                  key={item.name} 
+                  href={item.link}
+                  className="text-sm font-semibold text-gray-300 hover:text-white transition duration-150"
+                >
+                  {item.name}
                 </Link>
               );
             } else {
@@ -109,10 +112,11 @@ export default function Header() {
           })}
 
           {account && (
-            <Link href="/edit">
-              <a className="self-end ml-auto text-sm font-semibold text-gray-300 hover:text-white transition duration-150">
-                Edit tiles
-              </a>
+            <Link 
+              href="/edit"
+              className="self-end ml-auto text-sm font-semibold text-gray-300 hover:text-white transition duration-150"
+            >
+              Edit tiles
             </Link>
           )}
         </div>

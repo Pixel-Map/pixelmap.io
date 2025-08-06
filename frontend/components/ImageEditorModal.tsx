@@ -1,13 +1,20 @@
 import { useState } from 'react'
 
-import { Dialog, Switch } from '@headlessui/react'
+import { Dialog } from '@headlessui/react'
 
 import ImageUpload from "./ImageUpload";
 import GridSelect from "./GridSelect";
 import ImageDisplay from "./ImageDisplay";
 
-export default function ImageEditorModal({isOpen, setIsOpen, tile, changeImage}) {
-  const [img, setImg] = useState();
+type ImageEditorModalProps = {
+  isOpen: boolean;
+  setIsOpen: (isOpen: boolean) => void;
+  tile: { id?: number };
+  changeImage: (code: string) => void;
+};
+
+export default function ImageEditorModal({isOpen, setIsOpen, tile, changeImage}: ImageEditorModalProps) {
+  const [img, setImg] = useState<string>("");
 
   const [{col, row}, setGrid] = useState({
     col: 1,
@@ -20,7 +27,7 @@ export default function ImageEditorModal({isOpen, setIsOpen, tile, changeImage})
     pixelSize: 16
   });
 
-  const handleImageChange = (src: any) => {
+  const handleImageChange = (src: string) => {
     setImg(src);
   }
 
@@ -44,18 +51,19 @@ export default function ImageEditorModal({isOpen, setIsOpen, tile, changeImage})
     setIsOpen(true)
   }
 
-  function updateMaxColors(newMaxColors) {
-    if(!newMaxColors || isNaN(newMaxColors)) newMaxColors = null;
-    else if(newMaxColors > 256) newMaxColors = 256;
-    else if(newMaxColors < 1) newMaxColors = 1;
+  function updateMaxColors(newMaxColors: number | string) {
+    let numValue = typeof newMaxColors === 'string' ? parseInt(newMaxColors) : newMaxColors;
+    if(!numValue || isNaN(numValue)) numValue = 256;
+    else if(numValue > 256) numValue = 256;
+    else if(numValue < 1) numValue = 1;
     setCompression({
-      maxColors: newMaxColors,
+      maxColors: numValue,
       colorDepth: colorDepth,
       pixelSize: pixelSize
     });
   }
 
-  function updateColorDepth(newColorDepth) {
+  function updateColorDepth(newColorDepth: number) {
     setCompression({
       maxColors: maxColors,
       colorDepth: newColorDepth,
@@ -63,7 +71,7 @@ export default function ImageEditorModal({isOpen, setIsOpen, tile, changeImage})
     });
   }
 
-  function updatePixelSize(newPixelSize) {
+  function updatePixelSize(newPixelSize: number) {
     setCompression({
       maxColors: maxColors,
       colorDepth: colorDepth,
@@ -128,7 +136,14 @@ export default function ImageEditorModal({isOpen, setIsOpen, tile, changeImage})
             <div className="mx-4 lg:inline-block"></div>
             
             <div className="comp-inp">
-              <input type="number" min="1" max="256" className="comp-inp-num" value={maxColors} onChange={() => { updateMaxColors((event.target as HTMLInputElement).value); }}></input>
+              <input 
+                type="number" 
+                min="1" 
+                max="256" 
+                className="comp-inp-num" 
+                value={maxColors} 
+                onChange={(e) => { updateMaxColors(e.target.value); }}
+              />
               <label className="comp-inp-num-label">Colors</label>
             </div>
           </div>
