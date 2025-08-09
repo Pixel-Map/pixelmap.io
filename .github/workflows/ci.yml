@@ -49,7 +49,7 @@ jobs:
 
       # Run tests with coverage
       - name: Run tests with coverage
-        run: npm run test:coverage:combined
+        run: pnpm run test:coverage:combined
 
       # Upload coverage to Codecov
       - name: Upload coverage to Codecov
