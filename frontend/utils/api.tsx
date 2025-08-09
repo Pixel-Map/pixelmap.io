@@ -13,20 +13,19 @@ export const fetchTiles = async () => {
   }
 };
 
-export const fetchSingleTile = async (id: string): Promise<PixelMapTile> => {
-  let tile: PixelMapTile = { id: parseInt(id) };
-  
-  if (id != undefined) {
-    try {
-      const res = await fetch(`https://pixelmap.art/tile/${id}.json`);
-      const data = await res.json();
-      tile = { ...tile, ...data };
-    } catch (err) {
-      console.error("Error fetching tile data:", err);
-    }
+export const fetchSingleTile = async (id: string): Promise<PixelMapTile | undefined> => {
+  if (id == undefined) {
+    return undefined;
   }
-
-  return tile;
+  
+  try {
+    const res = await fetch(`https://pixelmap.art/tile/${id}.json`);
+    const data = await res.json();
+    return { id: parseInt(id), ...data };
+  } catch (err) {
+    console.error("Error fetching tile data:", err);
+    return undefined;
+  }
 };
 
 export interface TimeCapsuleTile {

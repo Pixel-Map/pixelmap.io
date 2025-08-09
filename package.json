@@ -7,14 +7,14 @@
 		"doc": "docs"
 	},
 	"scripts": {
-		"test": "npm run test:frontend && npm run test:backend",
-		"test:frontend": "cd frontend && npm test",
+		"test": "pnpm run test:frontend && pnpm run test:backend",
+		"test:frontend": "cd frontend && pnpm test",
 		"test:backend": "cd backend && go test ./...",
-		"test:coverage": "npm run test:frontend:coverage && npm run test:backend:coverage",
-		"test:frontend:coverage": "cd frontend && npm run test:coverage",
+		"test:coverage": "pnpm run test:frontend:coverage && pnpm run test:backend:coverage",
+		"test:frontend:coverage": "cd frontend && pnpm run test:coverage",
 		"test:backend:coverage": "cd backend && go test ./... -coverprofile=coverage.out && go tool cover -html=coverage.out -o coverage.html",
-		"test:coverage:combined": "npm run test:coverage && node ./combine-coverage.js",
-		"codecov": "npm run test:coverage && node ./combine-coverage.js && curl -Os https://uploader.codecov.io/latest/linux/codecov && chmod +x codecov && ./codecov"
+		"test:coverage:combined": "pnpm run test:coverage && node ./combine-coverage.js",
+		"codecov": "pnpm run test:coverage && node ./combine-coverage.js && curl -Os https://uploader.codecov.io/latest/linux/codecov && chmod +x codecov && ./codecov"
 	},
 	"author": "",
 	"license": "ISC",

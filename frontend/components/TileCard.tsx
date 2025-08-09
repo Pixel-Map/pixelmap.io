@@ -28,15 +28,17 @@ export default function TileCard({ tile, large }: TileCardProps) {
       setFetching(true);
 
       fetchSingleTile(tile.id.toString()).then((_tile) => {
-        setTile(_tile);
+        if (_tile) {
+          setTile(_tile);
 
-        if (_tile.historical_images && Array.isArray(_tile.historical_images)) {
-          const unsortedArray = [..._tile.historical_images];
-          setSortedHistoricalImages(
-            unsortedArray.sort(function (a, b) {
-              return b.blockNumber - a.blockNumber;
+          if (_tile.historical_images && Array.isArray(_tile.historical_images)) {
+            const unsortedArray = [..._tile.historical_images];
+            setSortedHistoricalImages(
+              unsortedArray.sort(function (a, b) {
+                return b.blockNumber - a.blockNumber;
             })
           );
+        }
         }
         setFetching(false);
       });
