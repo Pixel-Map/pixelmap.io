@@ -687,7 +687,7 @@ func (i *Ingestor) processDataHistory(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("failed to get data history: %w", err)
 		}
-		if err := updateTileMetadata(tile, dataHistory); err != nil {
+		if err := UpdateTileMetadata(tile, dataHistory, i.queries, ctx); err != nil {
 			return fmt.Errorf("failed to update metadata: %w", err)
 		}
 

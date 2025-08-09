@@ -6,6 +6,7 @@ import { fetchSingleTile } from "../../utils/api";
 
 import Loader from "../../components/Loader";
 import TileCard from "../../components/TileCard";
+import TileHistory from "../../components/TileHistory";
 import Layout from "../../components/Layout";
 import { PixelMapTile } from "@pixelmap/common/types/PixelMapTile";
 
@@ -51,6 +52,12 @@ const Tile = () => {
             <div className="min-h-80">
               <div className="w-full max-w-2xl mx-auto nes-container bg-white p-0 relative my-6 lg:my-16">
                 <TileCard tile={tile} large />
+              </div>
+              <div className="w-full max-w-6xl mx-auto my-6 lg:my-8">
+                <TileHistory 
+                  tile={tile} 
+                  historicalImages={tile.historical_images}
+                />
               </div>
             </div>
           </Layout>

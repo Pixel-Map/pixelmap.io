@@ -17,15 +17,46 @@ import (
 var logger = log.New(os.Stdout, "metadata", log.LstdFlags)
 
 type MetadataPixelMapTile struct {
-	ID               int             `json:"id"`
-	Image            string          `json:"image"`
-	URL              string          `json:"url"`
-	Price            string          `json:"price"`
-	Owner            string          `json:"owner"`
-	Wrapped          bool            `json:"wrapped"`
-	OpenseaPrice     string          `json:"opensea_price"`
-	Ens              string          `json:"ens"`
-	HistoricalImages []PixelMapImage `json:"historical_images"`
+	ID               int                   `json:"id"`
+	Image            string                `json:"image"`
+	URL              string                `json:"url"`
+	Price            string                `json:"price"`
+	Owner            string                `json:"owner"`
+	Wrapped          bool                  `json:"wrapped"`
+	OpenseaPrice     string                `json:"opensea_price"`
+	Ens              string                `json:"ens"`
+	HistoricalImages []PixelMapImage       `json:"historical_images"`
+	PurchaseHistory  []PurchaseHistoryItem `json:"purchase_history"`
+	TransferHistory  []TransferHistoryItem `json:"transfer_history"`
+	WrappingHistory  []WrappingHistoryItem `json:"wrapping_history"`
+}
+
+type PurchaseHistoryItem struct {
+	ID          int32     `json:"id"`
+	Timestamp   time.Time `json:"timestamp"`
+	BlockNumber int64     `json:"block_number"`
+	Tx          string    `json:"tx"`
+	SoldBy      string    `json:"sold_by"`
+	PurchasedBy string    `json:"purchased_by"`
+	Price       string    `json:"price"`
+}
+
+type TransferHistoryItem struct {
+	ID              int32     `json:"id"`
+	Timestamp       time.Time `json:"timestamp"`
+	BlockNumber     int64     `json:"block_number"`
+	Tx              string    `json:"tx"`
+	TransferredFrom string    `json:"transferred_from"`
+	TransferredTo   string    `json:"transferred_to"`
+}
+
+type WrappingHistoryItem struct {
+	ID          int32     `json:"id"`
+	Timestamp   time.Time `json:"timestamp"`
+	BlockNumber int64     `json:"block_number"`
+	Tx          string    `json:"tx"`
+	Wrapped     bool      `json:"wrapped"`
+	UpdatedBy   string    `json:"updated_by"`
 }
 
 // GenerateTiledataJSON generates the tiledata.json file
@@ -82,8 +113,8 @@ func GenerateTiledataJSON(tiles []db.Tile, queries *db.Queries, ctx context.Cont
 	return nil
 }
 
-// updateTileMetadata updates the metadata for a given tile
-func updateTileMetadata(tile db.Tile, dataHistory []db.DataHistory) error {
+// UpdateTileMetadata updates the metadata for a given tile (exported for regeneration scripts)
+func UpdateTileMetadata(tile db.Tile, dataHistory []db.DataHistory, queries *db.Queries, ctx context.Context) error {
 	tileMetaData := map[string]interface{}{
 		"description": "Official PixelMap Wrapped Tile. Created in 2016, PixelMap is considered the second oldest NFT, the " +
 			"oldest verified collection on OpenSea, and provides the ability to create, display, and immortalize artwork " +
@@ -149,6 +180,40 @@ func updateTileMetadata(tile db.Tile, dataHistory []db.DataHistory) error {
 	}
 
 	historicalImages := GetHistoricalImages(tile, dataHistory)
+	
+	// Initialize empty slices
+	purchaseItems := []PurchaseHistoryItem{}
+	transferItems := []TransferHistoryItem{}
+	wrappingItems := []WrappingHistoryItem{}
+	
+	// Only fetch history if queries is not nil (for testing)
+	if queries != nil {
+		// Fetch purchase history
+		purchaseHistory, err := queries.GetPurchaseHistoryByTileId(ctx, tile.ID)
+		if err != nil {
+			logger.Printf("Error fetching purchase history for tile %d: %v", tile.ID, err)
+			purchaseHistory = []db.PurchaseHistory{}
+		}
+		
+		// Convert purchase history to API format
+		purchaseItems = make([]PurchaseHistoryItem, len(purchaseHistory))
+		for i, p := range purchaseHistory {
+			purchaseItems[i] = PurchaseHistoryItem{
+				ID:          p.ID,
+				Timestamp:   p.TimeStamp,
+				BlockNumber: p.BlockNumber,
+				Tx:          p.Tx,
+				SoldBy:      p.SoldBy,
+				PurchasedBy: p.PurchasedBy,
+				Price:       p.Price,
+			}
+		}
+		
+		// Note: Transfer and Wrapping history queries don't exist yet in the database
+		// We'll leave them empty for now until the queries are added
+		// TODO: Add GetTransferHistoryByTileId and GetWrappingHistoryByTileId queries
+	}
+	
 	// Create PixelMapTile API data
 	pixelMapTile := MetadataPixelMapTile{
 		ID:               int(tile.ID),
@@ -160,6 +225,9 @@ func updateTileMetadata(tile db.Tile, dataHistory []db.DataHistory) error {
 		OpenseaPrice:     tile.OpenseaPrice,
 		Ens:              tile.Ens,
 		HistoricalImages: historicalImages,
+		PurchaseHistory:  purchaseItems,
+		TransferHistory:  transferItems,
+		WrappingHistory:  wrappingItems,
 	}
 
 	if err := os.MkdirAll(filepath.Dir("cache/metadata/"), os.ModePerm); err != nil {

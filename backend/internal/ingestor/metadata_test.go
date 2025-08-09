@@ -1,6 +1,7 @@
 package ingestor
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"testing"
@@ -37,7 +38,7 @@ func TestUpdateTileMetadataForTileZero(t *testing.T) {
 	}
 
 	// Execute
-	err := updateTileMetadata(tile, dataHistory)
+	err := UpdateTileMetadata(tile, dataHistory, nil, context.Background())
 
 	// Assert
 	assert.NoError(t, err)
@@ -92,7 +93,7 @@ func TestUpdateTileMetadataForTileCenter(t *testing.T) {
 	}
 
 	// Execute
-	err := updateTileMetadata(tile, dataHistory)
+	err := UpdateTileMetadata(tile, dataHistory, nil, context.Background())
 
 	// Assert
 	assert.NoError(t, err)

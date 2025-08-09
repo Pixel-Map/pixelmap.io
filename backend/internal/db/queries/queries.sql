@@ -187,6 +187,16 @@ SELECT * FROM purchase_histories
 WHERE tile_id = $1
 ORDER BY time_stamp DESC, log_index DESC;
 
+-- name: GetTransferHistoryByTileId :many
+SELECT * FROM transfer_histories
+WHERE tile_id = $1
+ORDER BY time_stamp DESC, log_index DESC;
+
+-- name: GetWrappingHistoryByTileId :many
+SELECT * FROM wrapping_histories
+WHERE tile_id = $1
+ORDER BY time_stamp DESC, log_index DESC;
+
 -- name: GetLatestPurchaseHistoryByTileId :one
 SELECT * FROM purchase_histories
 WHERE tile_id = $1
