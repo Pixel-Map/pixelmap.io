@@ -15,11 +15,10 @@ echo "Syncing cache directory to S3 bucket: $BUCKET"
 # Remove --delete if you want to keep old files
 aws s3 sync cache/ s3://$BUCKET/ \
   --exclude ".DS_Store" \
-  --exclude "*.log" \
-  --acl public-read
+  --exclude "*.log"
 
 echo "Sync complete!"
 
 # Optionally, you can sync just specific directories:
-# aws s3 sync cache/tile/ s3://$BUCKET/tile/ --acl public-read
-# aws s3 cp cache/tiledata.json s3://$BUCKET/tiledata.json --acl public-read
+# aws s3 sync cache/tile/ s3://$BUCKET/tile/
+# aws s3 cp cache/tiledata.json s3://$BUCKET/tiledata.json
