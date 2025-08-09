@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"log"
 	"os"
 
@@ -30,8 +29,8 @@ func main() {
 
 	log.Println("Starting tile JSON regeneration...")
 
-	// Get all tiles
-	tiles, err := queries.GetAllTiles(ctx, db.GetAllTilesParams{
+	// Get all tiles (PixelMap has 3969 tiles)
+	tiles, err := queries.ListTiles(ctx, db.ListTilesParams{
 		Limit:  4000,
 		Offset: 0,
 	})
