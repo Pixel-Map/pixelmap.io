@@ -97,23 +97,34 @@ export default function TileCard({ tile, large }: TileCardProps) {
           tileExtended.historical_images && 
           Array.isArray(tileExtended.historical_images) &&
           tileExtended.historical_images.length > 0 && (
-            <>
-              <p>Previous Images:</p>
-              {sortedHistoricalImages?.map(
-                (image: PixelMapImage, idx: number) => (
-                  <img
-                    onMouseEnter={() => {
-                      setTileImage(image.image);
-                    }}
-                    key={idx}
-                    src={image.image_url}
-                    height={16}
-                    width={16}
-                    alt={`Historical image ${idx}`}
-                  />
-                )
-              )}
-            </>
+            <div className="flex items-center space-x-2">
+              <p className="font-semibold">History:</p>
+              <span className="text-blue-600">{tileExtended.historical_images.length} image changes</span>
+              <div className="flex space-x-1">
+                {sortedHistoricalImages?.slice(0, 5).map(
+                  (image: PixelMapImage, idx: number) => (
+                    <img
+                      onMouseEnter={() => {
+                        setTileImage(image.image);
+                      }}
+                      onMouseLeave={() => {
+                        setTileImage(tile.image);
+                      }}
+                      key={idx}
+                      src={image.image_url}
+                      height={16}
+                      width={16}
+                      className="cursor-pointer hover:ring-2 hover:ring-blue-400"
+                      title={`Block #${image.blockNumber}`}
+                      alt={`Historical image ${idx}`}
+                    />
+                  )
+                )}
+                {tileExtended.historical_images.length > 5 && (
+                  <span className="text-gray-500">+{tileExtended.historical_images.length - 5} more</span>
+                )}
+              </div>
+            </div>
           )}
       </div>
       <div className={`px-4 py-3 bg-gray-50 ${large ? "md:px-8 md:py-4" : ""}`}>

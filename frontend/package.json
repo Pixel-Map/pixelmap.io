@@ -27,6 +27,7 @@
 		"@web3-react/core": "^6.1.9",
 		"@web3-react/injected-connector": "^6.0.7",
 		"@web3-react/network-connector": "^6.1.9",
+		"date-fns": "^4.1.0",
 		"detect-collisions": "^6.0.2",
 		"next": "^13.5.6",
 		"node-base91": "^0.3.4",
