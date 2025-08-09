@@ -69,6 +69,13 @@ export default function TileHistory({
   const backendPurchaseHistory = (tile as any).purchase_history || [];
   const backendTransferHistory = (tile as any).transfer_history || [];
   const backendWrappingHistory = (tile as any).wrapping_history || [];
+  const backendDataHistory = (tile as any).data_history || [];
+  
+  // Debug logging
+  console.log('Tile data:', tile);
+  console.log('Backend purchase history:', backendPurchaseHistory);
+  console.log('Backend transfer history:', backendTransferHistory);
+  console.log('Backend data history:', backendDataHistory);
   
   // Use backend data if available, otherwise use props
   const actualPurchaseHistory = backendPurchaseHistory.length > 0 ? 
@@ -110,9 +117,19 @@ export default function TileHistory({
     // Use real data from backend, mock data, or passed props
     let finalPurchaseHistory = actualPurchaseHistory;
     let finalTransferHistory = actualTransferHistory;
-    let finalDataHistory = dataHistory;
+    let finalDataHistory = backendDataHistory.length > 0 ? 
+      backendDataHistory.map((d: any) => ({
+        id: d.id,
+        timestamp: new Date(d.timestamp),
+        blockNumber: d.block_number,
+        tx: d.tx,
+        image: d.image || undefined,
+        url: d.url || undefined,
+        price: d.price || undefined,
+        updatedBy: d.updated_by
+      })) : dataHistory;
     
-    if (mockData && actualPurchaseHistory.length === 0) {
+    if (mockData && actualPurchaseHistory.length === 0 && backendDataHistory.length === 0) {
       finalPurchaseHistory = mockData.purchases;
       finalTransferHistory = mockData.transfers;
       finalDataHistory = mockData.changes;
@@ -210,7 +227,7 @@ export default function TileHistory({
     // Sort by timestamp descending (newest first)
     allEvents.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
     setEvents(allEvents);
-  }, [mockData, actualPurchaseHistory, actualTransferHistory, dataHistory, backendWrappingHistory]);
+  }, [mockData, actualPurchaseHistory, actualTransferHistory, dataHistory, backendWrappingHistory, backendDataHistory]);
 
   const getEventIcon = (type: string) => {
     switch (type) {
@@ -236,12 +253,20 @@ export default function TileHistory({
     }
   };
 
-  const formatEthPrice = (wei: string) => {
+  const formatEthPrice = (price: string) => {
     try {
-      const eth = parseFloat(wei) / 1e18;
-      return `${eth.toFixed(4)} ETH`;
+      // Check if price is already in ETH (has decimal point and is small)
+      const numPrice = parseFloat(price);
+      if (price.includes('.') || numPrice < 1000) {
+        // Already in ETH
+        return `${numPrice.toFixed(4)} ETH`;
+      } else {
+        // In Wei, convert to ETH
+        const eth = numPrice / 1e18;
+        return `${eth.toFixed(4)} ETH`;
+      }
     } catch {
-      return wei;
+      return price;
     }
   };
 
@@ -255,7 +280,14 @@ export default function TileHistory({
     let totalVolume = 0;
     
     actualPurchaseHistory.forEach(p => {
-      const price = parseFloat(p.price) / 1e18;
+      // Handle price whether it's in ETH or Wei
+      let price = parseFloat(p.price);
+      if (p.price.includes('.') || price < 1000) {
+        // Already in ETH, use as is
+      } else {
+        // In Wei, convert to ETH
+        price = price / 1e18;
+      }
       if (price > highestPrice) highestPrice = price;
       if (price < lowestPrice) lowestPrice = price;
       totalVolume += price;

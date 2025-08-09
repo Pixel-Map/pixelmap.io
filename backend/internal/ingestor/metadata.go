@@ -29,6 +29,7 @@ type MetadataPixelMapTile struct {
 	PurchaseHistory  []PurchaseHistoryItem `json:"purchase_history"`
 	TransferHistory  []TransferHistoryItem `json:"transfer_history"`
 	WrappingHistory  []WrappingHistoryItem `json:"wrapping_history"`
+	DataHistory      []DataHistoryItem     `json:"data_history"`
 }
 
 type PurchaseHistoryItem struct {
@@ -56,6 +57,17 @@ type WrappingHistoryItem struct {
 	BlockNumber int64     `json:"block_number"`
 	Tx          string    `json:"tx"`
 	Wrapped     bool      `json:"wrapped"`
+	UpdatedBy   string    `json:"updated_by"`
+}
+
+type DataHistoryItem struct {
+	ID          int32     `json:"id"`
+	Timestamp   time.Time `json:"timestamp"`
+	BlockNumber int64     `json:"block_number"`
+	Tx          string    `json:"tx"`
+	Image       string    `json:"image,omitempty"`
+	URL         string    `json:"url,omitempty"`
+	Price       string    `json:"price,omitempty"`
 	UpdatedBy   string    `json:"updated_by"`
 }
 
@@ -185,6 +197,7 @@ func UpdateTileMetadata(tile db.Tile, dataHistory []db.DataHistory, queries *db.
 	purchaseItems := []PurchaseHistoryItem{}
 	transferItems := []TransferHistoryItem{}
 	wrappingItems := []WrappingHistoryItem{}
+	dataItems := []DataHistoryItem{}
 	
 	// Only fetch history if queries is not nil (for testing)
 	if queries != nil {
@@ -214,6 +227,25 @@ func UpdateTileMetadata(tile db.Tile, dataHistory []db.DataHistory, queries *db.
 		// TODO: Add GetTransferHistoryByTileId and GetWrappingHistoryByTileId queries
 	}
 	
+	// Convert data history to API format
+	dataItems = make([]DataHistoryItem, len(dataHistory))
+	for i, d := range dataHistory {
+		price := ""
+		if d.Price.Valid {
+			price = d.Price.String
+		}
+		dataItems[i] = DataHistoryItem{
+			ID:          d.ID,
+			Timestamp:   d.TimeStamp,
+			BlockNumber: d.BlockNumber,
+			Tx:          d.Tx,
+			Image:       d.Image,
+			URL:         d.Url,
+			Price:       price,
+			UpdatedBy:   d.UpdatedBy,
+		}
+	}
+	
 	// Create PixelMapTile API data
 	pixelMapTile := MetadataPixelMapTile{
 		ID:               int(tile.ID),
@@ -228,6 +260,7 @@ func UpdateTileMetadata(tile db.Tile, dataHistory []db.DataHistory, queries *db.
 		PurchaseHistory:  purchaseItems,
 		TransferHistory:  transferItems,
 		WrappingHistory:  wrappingItems,
+		DataHistory:      dataItems,
 	}
 
 	if err := os.MkdirAll(filepath.Dir("cache/metadata/"), os.ModePerm); err != nil {
