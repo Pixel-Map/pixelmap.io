@@ -73,7 +73,7 @@ export const formatPrice = (tile: PixelMapTile) => {
 
 export const openseaLink = (id: number | undefined) => {
   if (!id) return 'https://opensea.io/collection/pixelmap-io';
-  return `https://opensea.io/assets/${process.env.NEXT_PUBLIC_PIXELMAP_WRAPPER_CONTRACT}/${id}`;
+  return `https://opensea.io/item/ethereum/${process.env.NEXT_PUBLIC_PIXELMAP_WRAPPER_CONTRACT}/${id}`;
 };
 
 export const convertEthToWei = (price: string | undefined) => {

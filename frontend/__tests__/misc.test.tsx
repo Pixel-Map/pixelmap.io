@@ -126,7 +126,7 @@ describe('misc utils', () => {
     it('generates correct OpenSea links', () => {
       const tileId = 123;
       const link = openseaLink(tileId);
-      expect(link).toEqual(`https://opensea.io/assets/${process.env.NEXT_PUBLIC_PIXELMAP_WRAPPER_CONTRACT}/${tileId}`);
+      expect(link).toEqual(`https://opensea.io/item/ethereum/${process.env.NEXT_PUBLIC_PIXELMAP_WRAPPER_CONTRACT}/${tileId}`);
     });
   });
 
