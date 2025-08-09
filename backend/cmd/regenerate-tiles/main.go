@@ -5,17 +5,55 @@ import (
 	"database/sql"
 	"log"
 	"os"
+	"path/filepath"
+	"bufio"
+	"strings"
 
 	_ "github.com/lib/pq"
 	"pixelmap.io/backend/internal/db"
 	"pixelmap.io/backend/internal/ingestor"
 )
 
+func loadEnv() {
+	// Try to load .env file from backend directory
+	envPath := ".env"
+	if _, err := os.Stat(envPath); os.IsNotExist(err) {
+		envPath = filepath.Join("..", ".env")
+	}
+	
+	file, err := os.Open(envPath)
+	if err != nil {
+		log.Printf("Warning: Could not load .env file: %v", err)
+		return
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) == 2 {
+			key := strings.TrimSpace(parts[0])
+			value := strings.TrimSpace(parts[1])
+			// Remove quotes if present
+			value = strings.Trim(value, `"'`)
+			os.Setenv(key, value)
+		}
+	}
+}
+
 func main() {
+	// Load environment variables from .env file
+	loadEnv()
+	
 	// Connect to database
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
-		dbURL = "postgresql://localhost/pixelmap?sslmode=disable"
+		log.Fatal("DATABASE_URL environment variable is not set. Please check your .env file")
 	}
 
 	conn, err := sql.Open("postgres", dbURL)
