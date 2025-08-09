@@ -9,7 +9,10 @@ interface TileImageComparisonProps {
 }
 
 export default function TileImageComparison({ images, currentImage }: TileImageComparisonProps) {
-  const [leftIndex, setLeftIndex] = useState(images.length - 1);
+  // Handle empty or null images array
+  const safeImages = images || [];
+  
+  const [leftIndex, setLeftIndex] = useState(Math.max(0, safeImages.length - 1));
   const [rightIndex, setRightIndex] = useState(0);
   const [sliderPosition, setSliderPosition] = useState(50);
   const [isDragging, setIsDragging] = useState(false);
@@ -20,11 +23,11 @@ export default function TileImageComparison({ images, currentImage }: TileImageC
   const playbackInterval = useRef<NodeJS.Timeout>();
 
   const allImages = currentImage ? 
-    [{ image: currentImage, image_url: '', blockNumber: 0, date: new Date() }, ...images] : 
-    images;
+    [{ image: currentImage, image_url: '', blockNumber: 0, date: new Date() }, ...safeImages] : 
+    safeImages;
 
   useEffect(() => {
-    if (isPlaying) {
+    if (isPlaying && allImages.length > 0) {
       playbackInterval.current = setInterval(() => {
         setCurrentFrame(prev => (prev + 1) % allImages.length);
       }, playbackSpeed);
@@ -76,28 +79,38 @@ export default function TileImageComparison({ images, currentImage }: TileImageC
   const pixelDifferences = getPixelDifferences();
   const percentChanged = ((pixelDifferences / 256) * 100).toFixed(1);
 
+  // Handle case where there are no images
+  if (allImages.length === 0) {
+    return (
+      <div className="nes-container is-dark is-rounded text-center py-8">
+        <p className="text-gray-400">No images available</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <div className="bg-gray-50 rounded-lg p-6">
-        <h3 className="text-lg font-semibold mb-4">Image Evolution Viewer</h3>
+      <div className="nes-container is-dark is-rounded">
+        <h3 className="text-lg font-bold text-white mb-4" style={{fontFamily: 'vcr_osd_monoregular, monospace'}}>🎮 Image Evolution Viewer</h3>
         
-        <div className="mb-4 flex space-x-4">
+        <div className="mb-4 flex flex-wrap gap-4">
           <button
+            type="button"
             onClick={() => setIsPlaying(!isPlaying)}
-            className={`px-4 py-2 rounded ${isPlaying ? 'bg-red-600 text-white' : 'bg-green-600 text-white'}`}
+            className={`nes-btn ${isPlaying ? 'is-error' : 'is-success'}`}
           >
-            {isPlaying ? 'Stop Playback' : 'Play Timeline'}
+            {isPlaying ? '⏸ Stop' : '▶ Play'}
           </button>
           
           <select
             value={playbackSpeed}
             onChange={(e) => setPlaybackSpeed(Number(e.target.value))}
-            className="px-4 py-2 border rounded"
+            className="nes-select is-dark"
           >
-            <option value={2000}>Slow (2s)</option>
-            <option value={1000}>Normal (1s)</option>
-            <option value={500}>Fast (0.5s)</option>
-            <option value={250}>Very Fast (0.25s)</option>
+            <option value={2000}>Slow</option>
+            <option value={1000}>Normal</option>
+            <option value={500}>Fast</option>
+            <option value={250}>Turbo</option>
           </select>
         </div>
 
@@ -211,28 +224,28 @@ export default function TileImageComparison({ images, currentImage }: TileImageC
             </div>
 
             {leftIndex !== rightIndex && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
-                <h4 className="font-semibold text-blue-900 mb-2">Comparison Statistics</h4>
+              <div className="nes-container is-dark is-rounded mt-4">
+                <h4 className="text-lg font-bold text-cyan-400 mb-3" style={{fontFamily: 'vcr_osd_monoregular, monospace'}}>📊 COMPARISON STATS</h4>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                   <div>
-                    <p className="text-gray-600">Pixels Changed</p>
-                    <p className="font-bold text-lg">{pixelDifferences}</p>
+                    <p className="text-gray-400 text-xs uppercase">Pixels</p>
+                    <p className="text-2xl font-bold text-green-400" style={{fontFamily: 'vcr_osd_monoregular, monospace'}}>{pixelDifferences}</p>
                   </div>
                   <div>
-                    <p className="text-gray-600">Percent Changed</p>
-                    <p className="font-bold text-lg">{percentChanged}%</p>
+                    <p className="text-gray-400 text-xs uppercase">Changed</p>
+                    <p className="text-2xl font-bold text-yellow-400" style={{fontFamily: 'vcr_osd_monoregular, monospace'}}>{percentChanged}%</p>
                   </div>
                   <div>
-                    <p className="text-gray-600">Time Between</p>
-                    <p className="font-bold text-lg">
+                    <p className="text-gray-400 text-xs uppercase">Time Gap</p>
+                    <p className="text-lg font-bold text-purple-400" style={{fontFamily: 'vcr_osd_monoregular, monospace'}}>
                       {formatDistanceToNow(allImages[leftIndex].date, { 
                         addSuffix: false 
                       })}
                     </p>
                   </div>
                   <div>
-                    <p className="text-gray-600">Block Difference</p>
-                    <p className="font-bold text-lg">
+                    <p className="text-gray-400 text-xs uppercase">Blocks</p>
+                    <p className="text-2xl font-bold text-red-400" style={{fontFamily: 'vcr_osd_monoregular, monospace'}}>
                       {Math.abs(allImages[rightIndex].blockNumber - allImages[leftIndex].blockNumber).toLocaleString()}
                     </p>
                   </div>
@@ -243,13 +256,13 @@ export default function TileImageComparison({ images, currentImage }: TileImageC
         )}
       </div>
 
-      <div className="bg-gray-50 rounded-lg p-6">
-        <h3 className="text-lg font-semibold mb-4">Image History Grid</h3>
-        <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
+      <div className="nes-container is-dark is-rounded">
+        <h3 className="text-lg font-bold text-white mb-4" style={{fontFamily: 'vcr_osd_monoregular, monospace'}}>🖼️ Image History Gallery</h3>
+        <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
           {allImages.map((img, idx) => (
             <div 
               key={idx}
-              className="relative group cursor-pointer"
+              className="relative group cursor-pointer transform transition-transform hover:scale-110"
               onClick={() => {
                 if (idx < allImages.length / 2) {
                   setLeftIndex(idx);
@@ -260,13 +273,18 @@ export default function TileImageComparison({ images, currentImage }: TileImageC
             >
               <TileImage 
                 image={img.image} 
-                className="w-full h-auto border-2 border-gray-300 hover:border-blue-500 transition-all"
+                className="w-full h-auto border-2 border-gray-600 hover:border-cyan-400 transition-all img-pixel"
               />
-              <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-60 transition-all flex items-center justify-center">
-                <p className="text-white text-xs opacity-0 group-hover:opacity-100 text-center p-1">
-                  {idx === 0 && currentImage ? 'Current' : formatDistanceToNow(img.date, { addSuffix: true })}
+              <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-80 transition-all flex items-center justify-center">
+                <p className="text-cyan-400 text-xs opacity-0 group-hover:opacity-100 text-center p-1 font-mono">
+                  {idx === 0 && currentImage ? 'NOW' : formatDistanceToNow(img.date, { addSuffix: true })}
                 </p>
               </div>
+              {(idx === leftIndex || idx === rightIndex) && (
+                <div className={`absolute -top-2 -right-2 w-6 h-6 ${idx === leftIndex ? 'bg-purple-500' : 'bg-green-500'} rounded-full flex items-center justify-center text-white text-xs font-bold`}>
+                  {idx === leftIndex ? 'L' : 'R'}
+                </div>
+              )}
             </div>
           ))}
         </div>

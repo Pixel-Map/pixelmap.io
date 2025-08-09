@@ -271,29 +271,31 @@ export default function TileHistory({
   };
 
   const calculateStats = () => {
-    const totalChanges = historicalImages.length;
-    const totalSales = actualPurchaseHistory.length;
-    const totalTransfers = actualTransferHistory.length + backendWrappingHistory.length;
+    const totalChanges = historicalImages?.length || 0;
+    const totalSales = actualPurchaseHistory?.length || 0;
+    const totalTransfers = (actualTransferHistory?.length || 0) + (backendWrappingHistory?.length || 0);
     
     let highestPrice = 0;
     let lowestPrice = Infinity;
     let totalVolume = 0;
     
-    actualPurchaseHistory.forEach(p => {
-      // Handle price whether it's in ETH or Wei
-      let price = parseFloat(p.price);
-      if (p.price.includes('.') || price < 1000) {
-        // Already in ETH, use as is
-      } else {
-        // In Wei, convert to ETH
-        price = price / 1e18;
-      }
-      if (price > highestPrice) highestPrice = price;
-      if (price < lowestPrice) lowestPrice = price;
-      totalVolume += price;
-    });
+    if (actualPurchaseHistory && actualPurchaseHistory.length > 0) {
+      actualPurchaseHistory.forEach(p => {
+        // Handle price whether it's in ETH or Wei
+        let price = parseFloat(p.price);
+        if (p.price.includes('.') || price < 1000) {
+          // Already in ETH, use as is
+        } else {
+          // In Wei, convert to ETH
+          price = price / 1e18;
+        }
+        if (price > highestPrice) highestPrice = price;
+        if (price < lowestPrice) lowestPrice = price;
+        totalVolume += price;
+      });
+    }
 
-    const firstOwner = actualPurchaseHistory[actualPurchaseHistory.length - 1]?.purchasedBy || tile.owner;
+    const firstOwner = actualPurchaseHistory?.[actualPurchaseHistory.length - 1]?.purchasedBy || tile.owner;
     const holdDuration = tile.owner === firstOwner ? 
       formatDistanceToNow(new Date('2016-11-17')) : 
       'Multiple Owners';
@@ -306,39 +308,60 @@ export default function TileHistory({
       lowestPrice: lowestPrice === Infinity ? 'N/A' : `${lowestPrice.toFixed(2)} ETH`,
       totalVolume: `${totalVolume.toFixed(2)} ETH`,
       holdDuration,
-      uniqueOwners: new Set([...actualPurchaseHistory.map(p => p.purchasedBy), tile.owner]).size
+      uniqueOwners: new Set([...(actualPurchaseHistory?.map(p => p.purchasedBy) || []), tile.owner]).size
     };
   };
 
   const stats = calculateStats();
 
   return (
-    <div className="w-full bg-white rounded-lg shadow-lg p-6">
+    <div className="w-full nes-container is-dark with-title">
+      <p className="title">Tile #{tile.id} History</p>
+      
+      {/* Wrapped/Unwrapped Status */}
+      <div className="mb-4">
+        {tile.wrapped ? (
+          <div className="nes-container is-success is-rounded inline-block">
+            <p className="text-sm font-bold">
+              🎁 WRAPPED - ERC721 Token
+            </p>
+          </div>
+        ) : (
+          <div className="nes-container is-warning is-rounded inline-block">
+            <p className="text-sm font-bold">
+              📦 UNWRAPPED - Original PixelMap Format
+            </p>
+          </div>
+        )}
+      </div>
+      
       {isUsingMockData && (
-        <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <p className="text-sm text-yellow-800">
+        <div className="mb-4 p-3 nes-container is-rounded is-dark" style={{backgroundColor: '#4a4a00'}}>
+          <p className="text-sm text-yellow-300">
             📊 <strong>Demo Mode:</strong> Showing sample history data. Real blockchain data will be available when backend APIs are connected.
           </p>
         </div>
       )}
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">Tile #{tile.id} Complete History</h2>
-        <div className="flex space-x-2">
+        <div className="flex space-x-4">
           <button
+            type="button"
             onClick={() => setViewMode('timeline')}
-            className={`px-4 py-2 rounded ${viewMode === 'timeline' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
+            className={`nes-btn ${viewMode === 'timeline' ? 'is-primary' : ''}`}
           >
             Timeline
           </button>
           <button
+            type="button"
             onClick={() => setViewMode('gallery')}
-            className={`px-4 py-2 rounded ${viewMode === 'gallery' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
+            className={`nes-btn ${viewMode === 'gallery' ? 'is-primary' : ''}`}
           >
             Gallery
           </button>
           <button
+            type="button"
             onClick={() => setViewMode('stats')}
-            className={`px-4 py-2 rounded ${viewMode === 'stats' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
+            className={`nes-btn ${viewMode === 'stats' ? 'is-primary' : ''}`}
           >
             Stats
           </button>
@@ -348,76 +371,93 @@ export default function TileHistory({
       {viewMode === 'timeline' && (
         <div className="space-y-4">
           <div className="relative">
-            <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-gray-300"></div>
+            <div className="absolute left-8 top-0 bottom-0 w-1 bg-gray-600" style={{imageRendering: 'pixelated'}}></div>
             
             {events.map((event, index) => (
-              <div key={index} className="relative flex items-start mb-6">
-                <div className={`absolute left-6 w-5 h-5 rounded-full border-2 ${getEventColor(event.type)} bg-white z-10`}>
-                  <span className="absolute -left-1 -top-1 text-lg">{getEventIcon(event.type)}</span>
+              <div key={index} className="relative flex items-start mb-8">
+                <div className="absolute left-5 w-7 h-7 flex items-center justify-center bg-black border-2 border-white z-10">
+                  <span className="text-lg">{getEventIcon(event.type)}</span>
                 </div>
                 
-                <div className={`ml-16 flex-1 p-4 rounded-lg border-2 ${getEventColor(event.type)} cursor-pointer transition-all hover:shadow-md`}
+                <div className={`ml-16 flex-1 nes-container is-rounded ${event.type === 'genesis' ? 'is-dark' : ''} cursor-pointer`}
+                     style={{
+                       backgroundColor: event.type === 'purchase' ? '#1a3a1a' : 
+                                       event.type === 'transfer' ? '#1a1a3a' :
+                                       event.type === 'image' ? '#2a1a3a' :
+                                       event.type === 'url' ? '#3a3a1a' :
+                                       event.type === 'price' ? '#3a2a1a' :
+                                       '#2a2a2a'
+                     }}
                      onClick={() => setExpandedEvent(expandedEvent === index ? null : index)}>
                   
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900">
+                      <h3 className="font-bold text-white" style={{fontFamily: 'vcr_osd_monoregular, monospace'}}>
                         {event.type === 'purchase' && `Purchased for ${formatEthPrice(event.data.price)}`}
                         {event.type === 'transfer' && (event.data.transferType || 'Transferred')}
                         {event.type === 'image' && 'Image Updated'}
                         {event.type === 'url' && 'URL Changed'}
                         {event.type === 'price' && 'Price Updated'}
-                        {event.type === 'genesis' && 'Tile Created'}
+                        {event.type === 'genesis' && '⚡ GENESIS - Tile Created'}
                       </h3>
                       
-                      <p className="text-sm text-gray-600 mt-1">
+                      <p className="text-sm text-gray-400 mt-1">
                         {formatDistanceToNow(event.timestamp, { addSuffix: true })}
                         {' • '}
                         Block #{event.blockNumber.toLocaleString()}
                       </p>
 
                       {expandedEvent === index && (
-                        <div className="mt-4 space-y-2 text-sm">
+                        <div className="mt-4 space-y-2 text-sm text-gray-300">
                           {event.type === 'purchase' && (
                             <>
-                              <p><strong>From:</strong> {event.data.soldByEns || shortenIfHex(event.data.soldBy, 12)}</p>
-                              <p><strong>To:</strong> {event.data.purchasedByEns || shortenIfHex(event.data.purchasedBy, 12)}</p>
-                              <p><strong>Price:</strong> {formatEthPrice(event.data.price)}</p>
+                              <p className="text-green-400"><strong>From:</strong> <span className="font-mono text-xs text-gray-300">{event.data.soldByEns || event.data.soldBy}</span></p>
+                              <p className="text-green-400"><strong>To:</strong> <span className="font-mono text-xs text-gray-300">{event.data.purchasedByEns || event.data.purchasedBy}</span></p>
+                              <p className="text-green-400"><strong>Price:</strong> <span className="text-yellow-400">{formatEthPrice(event.data.price)}</span></p>
                             </>
                           )}
                           
                           {event.type === 'transfer' && (
                             <>
-                              <p><strong>From:</strong> {event.data.fromEns || shortenIfHex(event.data.from, 12)}</p>
-                              <p><strong>To:</strong> {event.data.toEns || shortenIfHex(event.data.to, 12)}</p>
+                              <p className="text-cyan-400"><strong>From:</strong> <span className="font-mono text-xs text-gray-300">{event.data.fromEns || event.data.from}</span></p>
+                              <p className="text-cyan-400"><strong>To:</strong> <span className="font-mono text-xs text-gray-300">{event.data.toEns || event.data.to}</span></p>
                             </>
                           )}
                           
                           {event.type === 'image' && event.data.image && (
-                            <div className="flex space-x-4">
-                              <div>
-                                <p className="mb-2"><strong>New Image:</strong></p>
-                                <TileImage image={event.data.image} className="w-32 h-32 border-2 border-gray-300" />
+                            <>
+                              <p className="text-purple-400"><strong>Updated by:</strong> <span className="font-mono text-xs text-gray-300">{event.data.updatedByEns || event.data.updatedBy}</span></p>
+                              <div className="flex space-x-4 mt-3">
+                                <div>
+                                  <p className="mb-2 text-purple-400"><strong>New Image:</strong></p>
+                                  <TileImage image={event.data.image} className="w-32 h-32 border-2 border-white img-pixel" />
+                                </div>
                               </div>
-                            </div>
+                            </>
                           )}
                           
                           {event.type === 'url' && (
-                            <p><strong>New URL:</strong> <a href={event.data.url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">{event.data.url}</a></p>
+                            <>
+                              <p className="text-yellow-400"><strong>Updated by:</strong> <span className="font-mono text-xs text-gray-300">{event.data.updatedByEns || event.data.updatedBy}</span></p>
+                              <p className="text-yellow-400"><strong>New URL:</strong> <a href={event.data.url} target="_blank" rel="noreferrer" className="text-cyan-400 hover:text-cyan-300">{event.data.url}</a></p>
+                            </>
                           )}
                           
                           {event.type === 'price' && (
-                            <p><strong>New Price:</strong> {formatEthPrice(event.data.price)}</p>
+                            <>
+                              <p className="text-orange-400"><strong>Updated by:</strong> <span className="font-mono text-xs text-gray-300">{event.data.updatedByEns || event.data.updatedBy}</span></p>
+                              <p className="text-orange-400"><strong>New Price:</strong> <span className="text-yellow-400">{formatEthPrice(event.data.price)}</span></p>
+                            </>
                           )}
                           
-                          <p className="mt-2">
+                          <p className="mt-3 pt-2 border-t border-gray-700">
                             <a 
                               href={`https://etherscan.io/tx/${event.tx}`} 
                               target="_blank" 
                               rel="noreferrer"
-                              className="text-blue-600 hover:underline text-xs"
+                              className="text-cyan-400 hover:text-cyan-300 text-xs font-mono"
                             >
-                              View Transaction →
+                              → View on Etherscan
                             </a>
                           </p>
                         </div>
@@ -426,7 +466,7 @@ export default function TileHistory({
                     
                     {event.type === 'image' && (
                       <div className="ml-4">
-                        <TileImage image={event.data.image} className="w-16 h-16 border border-gray-300" />
+                        <TileImage image={event.data.image} className="w-16 h-16 border-2 border-white img-pixel" />
                       </div>
                     )}
                   </div>
@@ -438,42 +478,79 @@ export default function TileHistory({
       )}
 
       {viewMode === 'gallery' && (
-        <TileImageComparison 
-          images={historicalImages} 
-          currentImage={tile.image}
-        />
+        historicalImages && historicalImages.length > 0 ? (
+          <TileImageComparison 
+            images={historicalImages} 
+            currentImage={tile.image}
+          />
+        ) : (
+          <div className="nes-container is-dark is-rounded text-center py-8">
+            <p className="text-gray-400 mb-4">📷 No historical images available for this tile</p>
+            <p className="text-sm text-gray-500">Image history will appear here once the tile&apos;s image is updated</p>
+          </div>
+        )
       )}
 
       {viewMode === 'stats' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-lg">
-            <h3 className="text-sm font-semibold text-blue-800 uppercase tracking-wide">Total Image Changes</h3>
-            <p className="text-3xl font-bold text-blue-900 mt-2">{stats.totalChanges}</p>
+          <div className="nes-container is-dark is-rounded">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Image Changes</p>
+                <p className="text-3xl font-bold text-cyan-400" style={{fontFamily: 'vcr_osd_monoregular, monospace'}}>{stats.totalChanges}</p>
+              </div>
+              <span className="text-2xl">🎨</span>
+            </div>
           </div>
           
-          <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-lg">
-            <h3 className="text-sm font-semibold text-green-800 uppercase tracking-wide">Total Sales</h3>
-            <p className="text-3xl font-bold text-green-900 mt-2">{stats.totalSales}</p>
+          <div className="nes-container is-dark is-rounded">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Total Sales</p>
+                <p className="text-3xl font-bold text-green-400" style={{fontFamily: 'vcr_osd_monoregular, monospace'}}>{stats.totalSales}</p>
+              </div>
+              <span className="text-2xl">💰</span>
+            </div>
           </div>
           
-          <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-lg">
-            <h3 className="text-sm font-semibold text-purple-800 uppercase tracking-wide">Unique Owners</h3>
-            <p className="text-3xl font-bold text-purple-900 mt-2">{stats.uniqueOwners}</p>
+          <div className="nes-container is-dark is-rounded">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Unique Owners</p>
+                <p className="text-3xl font-bold text-purple-400" style={{fontFamily: 'vcr_osd_monoregular, monospace'}}>{stats.uniqueOwners}</p>
+              </div>
+              <span className="text-2xl">👥</span>
+            </div>
           </div>
           
-          <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 p-6 rounded-lg">
-            <h3 className="text-sm font-semibold text-yellow-800 uppercase tracking-wide">Highest Sale</h3>
-            <p className="text-3xl font-bold text-yellow-900 mt-2">{stats.highestPrice}</p>
+          <div className="nes-container is-dark is-rounded">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Highest Sale</p>
+                <p className="text-2xl font-bold text-yellow-400" style={{fontFamily: 'vcr_osd_monoregular, monospace'}}>{stats.highestPrice}</p>
+              </div>
+              <span className="text-2xl">📈</span>
+            </div>
           </div>
           
-          <div className="bg-gradient-to-br from-red-50 to-red-100 p-6 rounded-lg">
-            <h3 className="text-sm font-semibold text-red-800 uppercase tracking-wide">Total Volume</h3>
-            <p className="text-3xl font-bold text-red-900 mt-2">{stats.totalVolume}</p>
+          <div className="nes-container is-dark is-rounded">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Total Volume</p>
+                <p className="text-2xl font-bold text-red-400" style={{fontFamily: 'vcr_osd_monoregular, monospace'}}>{stats.totalVolume}</p>
+              </div>
+              <span className="text-2xl">💎</span>
+            </div>
           </div>
           
-          <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 p-6 rounded-lg">
-            <h3 className="text-sm font-semibold text-indigo-800 uppercase tracking-wide">Hold Duration</h3>
-            <p className="text-2xl font-bold text-indigo-900 mt-2">{stats.holdDuration}</p>
+          <div className="nes-container is-dark is-rounded">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Hold Duration</p>
+                <p className="text-xl font-bold text-indigo-400" style={{fontFamily: 'vcr_osd_monoregular, monospace'}}>{stats.holdDuration}</p>
+              </div>
+              <span className="text-2xl">⏰</span>
+            </div>
           </div>
         </div>
       )}
