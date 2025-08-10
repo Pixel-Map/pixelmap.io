@@ -7,6 +7,10 @@ import {
   cleanUrl,
 } from "../utils/misc";
 import TileImage from "./TileImage";
+import TileShowcase from "./TileShowcase";
+import ShareCardGenerator from "./ShareCardGenerator";
+import DownloadOptions from "./DownloadOptions";
+import WidgetGenerator from "./WidgetGenerator";
 import { PixelMapTile } from "@pixelmap/common/types/PixelMapTile";
 import { fetchSingleTile } from "../utils/api";
 import { PixelMapImage } from "@pixelmap/common/types/PixelMapImage";
@@ -14,15 +18,24 @@ import { PixelMapImage } from "@pixelmap/common/types/PixelMapImage";
 interface TileCardProps {
   tile: PixelMapTile;
   large?: boolean;
+  onShareOpen?: () => void;
+  onShareClose?: () => void;
+  isPopover?: boolean;
 }
 
-export default function TileCard({ tile, large }: TileCardProps) {
+export default function TileCard({ tile, large, onShareOpen, onShareClose, isPopover }: TileCardProps) {
   const ownerName = tile.ens ? tile.ens : (tile.owner ? shortenIfHex(tile.owner, 12) : "Unknown");
   const [tileExtended, setTile] = useState<PixelMapTile>();
   const [fetching, setFetching] = useState(false);
   const [tileImage, setTileImage] = useState(tile.image);
   const [sortedHistoricalImages, setSortedHistoricalImages] =
     useState<PixelMapTile[]>();
+  
+  // New state for modals
+  const [showShowcase, setShowShowcase] = useState(false);
+  const [showShareCard, setShowShareCard] = useState(false);
+  const [showDownloadOptions, setShowDownloadOptions] = useState(false);
+  const [showWidgetGenerator, setShowWidgetGenerator] = useState(false);
   useEffect(() => {
     if (tile.id !== undefined) {
       setFetching(true);
@@ -127,19 +140,49 @@ export default function TileCard({ tile, large }: TileCardProps) {
             </div>
           )}
       </div>
+      {/* Share Button - only show on dedicated tile page, not in popover */}
+      {large && !isPopover && (
+        <div className="px-4 py-2 border-t border-gray-200">
+          <button 
+            type="button"
+            className="nes-btn is-primary w-full"
+            onClick={() => {
+              setShowShareCard(true);
+              if (onShareOpen) onShareOpen();
+            }}
+          >
+            📸 Share This Tile
+          </button>
+        </div>
+      )}
+
       <div className={`px-4 py-3 bg-gray-50 ${large ? "md:px-8 md:py-4" : ""}`}>
         <div className="flex justify-between items-center">
-          <Link href={`https://homestead-adventure.com/`}>
-            <div className="nes-btn is-primary flex items-center justify-between md:px-5.5 py-1 md:py-1">
-              <img
-                width="30px"
-                height="30px"
-                src="/assets/images/portal.gif"
-                alt="Portal"
-              />
-              <div className="font-bold md:px-3">{"Enter Tile"}</div>
-            </div>
-          </Link>
+          {/* Show Share button in popover, Enter Tile on dedicated page */}
+          {isPopover ? (
+            <button
+              type="button"
+              className="nes-btn is-primary font-bold"
+              onClick={() => {
+                setShowShareCard(true);
+                if (onShareOpen) onShareOpen();
+              }}
+            >
+              📸 Share This Tile
+            </button>
+          ) : (
+            <Link href={`https://homestead-adventure.com/`}>
+              <div className="nes-btn is-primary flex items-center justify-between md:px-5.5 py-1 md:py-1">
+                <img
+                  width="30px"
+                  height="30px"
+                  src="/assets/images/portal.gif"
+                  alt="Portal"
+                />
+                <div className="font-bold md:px-3">{"Enter Tile"}</div>
+              </div>
+            </Link>
+          )}
           <div>
             {tile.wrapped && (
               <a
@@ -165,6 +208,38 @@ export default function TileCard({ tile, large }: TileCardProps) {
           </div>
         </div>
       </div>
+      
+      {/* Modals */}
+      {showShowcase && (
+        <TileShowcase 
+          tile={tile}
+          onClose={() => setShowShowcase(false)}
+        />
+      )}
+      
+      {showShareCard && !onShareOpen && ( // Only render if not in popover mode
+        <ShareCardGenerator 
+          tile={tile}
+          onClose={() => {
+            setShowShareCard(false);
+            if (onShareClose) onShareClose();
+          }}
+        />
+      )}
+      
+      {showDownloadOptions && (
+        <DownloadOptions 
+          tile={tile}
+          onClose={() => setShowDownloadOptions(false)}
+        />
+      )}
+      
+      {showWidgetGenerator && (
+        <WidgetGenerator 
+          tile={tile}
+          onClose={() => setShowWidgetGenerator(false)}
+        />
+      )}
     </>
   );
 }

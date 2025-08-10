@@ -3,6 +3,7 @@ import { usePopperTooltip } from 'react-popper-tooltip';
 import { shortenIfHex, formatPrice, openseaLink, cleanUrl } from "../utils/misc";
 import TileCard from './TileCard';
 import TileHistoryModal from './TileHistoryModal';
+import ShareCardGenerator from './ShareCardGenerator';
 
 import { XIcon } from '@heroicons/react/outline'
 import { ClockIcon } from '@heroicons/react/outline'
@@ -10,6 +11,7 @@ import { ClockIcon } from '@heroicons/react/outline'
 export default function TilePopover({tile, referenceElement}) {
   const [controlledVisible, setControlledVisible] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
 
   const {
     getTooltipProps,
@@ -18,7 +20,7 @@ export default function TilePopover({tile, referenceElement}) {
     visible,
   } = usePopperTooltip({
     trigger: 'click',
-    closeOnOutsideClick: true,
+    closeOnOutsideClick: !showShareModal && !showHistoryModal, // Don't close on outside click when modals are open
     visible: controlledVisible,
     onVisibleChange: setControlledVisible,
   });
@@ -43,7 +45,16 @@ export default function TilePopover({tile, referenceElement}) {
               <XIcon className="w-5 h-5 text-gray-400" />
             </button>
             
-            <TileCard tile={tile} />
+            <TileCard 
+              tile={tile} 
+              large 
+              isPopover={true}
+              onShareOpen={() => {
+                setShowShareModal(true);
+                setControlledVisible(false); // Close the popover when opening share modal
+              }}
+              onShareClose={() => setShowShareModal(false)}
+            />
             
             <div className="px-4 py-3 border-t border-gray-200 bg-gray-50">
               <button
@@ -67,6 +78,13 @@ export default function TilePopover({tile, referenceElement}) {
         tileId={tile?.id || null}
         initialTile={tile}
       />
+      
+      {showShareModal && tile && (
+        <ShareCardGenerator 
+          tile={tile}
+          onClose={() => setShowShareModal(false)}
+        />
+      )}
     </>
   );
 }

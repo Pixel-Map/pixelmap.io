@@ -59,9 +59,30 @@ const Account = ({ triedToEagerConnect }: Props) => {
             onClick={() => {
               setConnecting(true);
 
-              activate(injected, undefined, true).catch((error) => {
-                // ignore the error if it's a user rejected request
-                if (error instanceof UserRejectedRequestError) {
+              activate(injected, undefined, true).catch(async (error) => {
+                // If the error is due to unsupported chain, try to switch to mainnet
+                if (error?.name === 'UnsupportedChainIdError' || error?.message?.includes('Unsupported chain')) {
+                  try {
+                    // Request to switch to Ethereum mainnet
+                    await (window as any).ethereum.request({
+                      method: 'wallet_switchEthereumChain',
+                      params: [{ chainId: '0x1' }], // chainId must be in hex
+                    });
+                    // Try to activate again after switching
+                    activate(injected, undefined, true).catch((retryError) => {
+                      console.error('Failed to connect after switching network:', retryError);
+                      setConnecting(false);
+                    });
+                  } catch (switchError: any) {
+                    // This error code indicates that the chain has not been added to MetaMask
+                    if (switchError.code === 4902) {
+                      console.error('Ethereum mainnet not configured in wallet');
+                    } else {
+                      console.error('Failed to switch network:', switchError);
+                    }
+                    setConnecting(false);
+                  }
+                } else if (error instanceof UserRejectedRequestError) {
                   setConnecting(false);
                 } else {
                   console.error(error);
