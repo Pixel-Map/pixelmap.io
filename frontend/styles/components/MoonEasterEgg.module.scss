@@ -1,0 +1,696 @@
+.moonEasterEgg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 9999;
+  pointer-events: none;
+  animation: fadeIn 1s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.starfield {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  z-index: 10001;
+}
+
+.moonContainer {
+  position: fixed;
+  top: 50px;
+  right: 50px;
+  width: 150px;
+  height: 150px;
+  animation: float 6s ease-in-out infinite;
+  z-index: 10003;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-20px) rotate(5deg);
+  }
+}
+
+.moon {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 35%, #d3d3d3 100%);
+  box-shadow: 
+    0 0 50px rgba(255, 255, 255, 0.5),
+    inset -10px -10px 20px rgba(0, 0, 0, 0.3),
+    0 0 100px rgba(255, 255, 255, 0.2);
+  position: relative;
+  animation: glow 4s ease-in-out infinite;
+}
+
+@keyframes glow {
+  0%, 100% {
+    box-shadow: 
+      0 0 50px rgba(255, 255, 255, 0.5),
+      inset -10px -10px 20px rgba(0, 0, 0, 0.3),
+      0 0 100px rgba(255, 255, 255, 0.2);
+  }
+  50% {
+    box-shadow: 
+      0 0 80px rgba(255, 255, 255, 0.8),
+      inset -10px -10px 20px rgba(0, 0, 0, 0.3),
+      0 0 150px rgba(255, 255, 255, 0.4);
+  }
+}
+
+.crater1, .crater2, .crater3 {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.crater1 {
+  width: 30px;
+  height: 30px;
+  top: 30px;
+  left: 40px;
+}
+
+.crater2 {
+  width: 20px;
+  height: 20px;
+  top: 60px;
+  left: 70px;
+}
+
+.crater3 {
+  width: 15px;
+  height: 15px;
+  top: 45px;
+  left: 90px;
+}
+
+.fullOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to bottom, #000000 0%, #0a0a0a 50%, #000000 100%);
+  z-index: 10000;
+  animation: fadeToSpace 1.5s ease-in-out;
+}
+
+@keyframes fadeToSpace {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.floatingTilesContainer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  z-index: 10002;
+}
+
+.floatingTile {
+  width: 150px;
+  height: 150px;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+  transition: transform 0.1s linear, opacity 0.5s ease, filter 0.3s ease;
+  filter: drop-shadow(0 0 30px rgba(255, 255, 255, 0.4));
+  animation: pulse 3s ease-in-out infinite;
+  will-change: transform, filter, opacity;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 30px rgba(255, 255, 255, 0.4));
+  }
+  50% {
+    filter: drop-shadow(0 0 50px rgba(255, 255, 255, 0.6));
+  }
+}
+
+// Nebula clouds
+.nebulaContainer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10000;
+  opacity: 0.3;
+  mix-blend-mode: screen;
+}
+
+.nebula1, .nebula2, .nebula3 {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  animation: nebulaFloat 30s ease-in-out infinite;
+}
+
+.nebula1 {
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(138, 43, 226, 0.4) 0%, transparent 70%);
+  top: 10%;
+  left: -10%;
+  animation-duration: 35s;
+}
+
+.nebula2 {
+  width: 800px;
+  height: 800px;
+  background: radial-gradient(circle, rgba(30, 144, 255, 0.3) 0%, transparent 70%);
+  top: 40%;
+  right: -15%;
+  animation-duration: 40s;
+  animation-delay: -10s;
+}
+
+.nebula3 {
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(255, 20, 147, 0.3) 0%, transparent 70%);
+  bottom: 10%;
+  left: 30%;
+  animation-duration: 45s;
+  animation-delay: -20s;
+}
+
+@keyframes nebulaFloat {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(30px, -20px) scale(1.1);
+  }
+  66% {
+    transform: translate(-20px, 30px) scale(0.95);
+  }
+}
+
+// Cosmic dust
+.cosmicDust {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10001;
+  pointer-events: none;
+}
+
+.dustParticle {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: white;
+  border-radius: 50%;
+  opacity: 0;
+  animation: dustFloat linear infinite;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.8);
+}
+
+@keyframes dustFloat {
+  0% {
+    opacity: 0;
+    transform: translateY(100vh) translateX(0) scale(0);
+  }
+  10% {
+    opacity: 1;
+    transform: translateY(90vh) translateX(10px) scale(1);
+  }
+  90% {
+    opacity: 1;
+    transform: translateY(10vh) translateX(-10px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(0vh) translateX(0) scale(0);
+  }
+}
+
+// Aurora effect
+.aurora {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 200px;
+  background: linear-gradient(
+    to top,
+    transparent 0%,
+    rgba(0, 255, 170, 0.1) 40%,
+    rgba(0, 170, 255, 0.05) 60%,
+    transparent 100%
+  );
+  z-index: 10001;
+  animation: auroraWave 8s ease-in-out infinite;
+  filter: blur(40px);
+}
+
+@keyframes auroraWave {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scaleY(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scaleY(1.2);
+  }
+}
+
+// Pixelated grid at bottom
+.pixelGrid {
+  position: fixed;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  max-width: 1200px;
+  height: 120px;
+  z-index: 10001;
+  perspective: 1000px;
+  pointer-events: none;
+}
+
+.gridContainer {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  grid-template-rows: repeat(9, 1fr);
+  gap: 3px;
+  transform: rotateX(65deg) translateZ(-50px);
+  transform-style: preserve-3d;
+}
+
+.pixelSquare {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    135deg,
+    hsla(var(--hue), 100%, 70%, 0.6),
+    hsla(calc(var(--hue) + 60deg), 100%, 60%, 0.4)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 
+    0 0 15px hsla(var(--hue), 100%, 70%, 0.5),
+    inset 0 0 8px rgba(255, 255, 255, 0.2);
+  animation: pixelWave 4s ease-in-out infinite;
+  transform-origin: center center;
+  will-change: transform, opacity;
+}
+
+@keyframes pixelWave {
+  0%, 100% {
+    transform: translateZ(0) scale(0.9);
+    opacity: 0.4;
+    box-shadow: 
+      0 0 20px hsla(var(--hue), 100%, 70%, 0.6),
+      inset 0 0 10px rgba(255, 255, 255, 0.3),
+      0 2px 4px rgba(0, 0, 0, 0.3);
+  }
+  50% {
+    transform: translateZ(30px) scale(1.1);
+    opacity: 1;
+    box-shadow: 
+      0 0 40px hsla(var(--hue), 100%, 70%, 1),
+      inset 0 0 20px rgba(255, 255, 255, 0.6),
+      0 10px 20px rgba(0, 0, 0, 0.5);
+  }
+}
+
+// Make some pixels extra bright randomly
+.pixelSquare:nth-child(3n) {
+  animation-duration: 2.5s;
+}
+
+.pixelSquare:nth-child(5n) {
+  animation-duration: 3.5s;
+  animation-delay: calc(var(--delay) + 0.5s);
+}
+
+.pixelSquare:nth-child(7n) {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.9),
+    hsla(var(--hue), 100%, 80%, 0.8)
+  );
+  box-shadow: 
+    0 0 30px rgba(255, 255, 255, 0.8),
+    inset 0 0 15px rgba(255, 255, 255, 0.5),
+    0 4px 8px rgba(0, 0, 0, 0.4);
+}
+
+// Galaxy spiral
+.galaxySpiral {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 800px;
+  height: 800px;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(ellipse at center, 
+    transparent 0%,
+    rgba(138, 43, 226, 0.05) 20%,
+    rgba(30, 144, 255, 0.05) 40%,
+    transparent 70%);
+  border-radius: 50%;
+  animation: galaxyRotate 120s linear infinite;
+  z-index: 9999;
+  opacity: 0.5;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: conic-gradient(
+      from 0deg,
+      transparent 0deg,
+      rgba(255, 255, 255, 0.02) 30deg,
+      transparent 60deg,
+      rgba(255, 255, 255, 0.02) 90deg,
+      transparent 120deg,
+      rgba(255, 255, 255, 0.02) 150deg,
+      transparent 180deg,
+      rgba(255, 255, 255, 0.02) 210deg,
+      transparent 240deg,
+      rgba(255, 255, 255, 0.02) 270deg,
+      transparent 300deg,
+      rgba(255, 255, 255, 0.02) 330deg,
+      transparent 360deg
+    );
+    border-radius: 50%;
+  }
+}
+
+@keyframes galaxyRotate {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+// Warp mode effect
+.warpMode {
+  .starfield {
+    animation: warpSpeed 3s ease-in-out;
+  }
+  
+  .floatingTile {
+    animation: warpStretch 3s ease-in-out;
+  }
+}
+
+@keyframes warpSpeed {
+  0%, 100% { filter: blur(0); }
+  50% { filter: blur(20px) brightness(2); }
+}
+
+@keyframes warpStretch {
+  0%, 100% { transform: scaleX(1); }
+  50% { transform: scaleX(3) scaleY(0.3); }
+}
+
+// Saturn rings
+.saturnRings {
+  position: absolute;
+  width: 300px;
+  height: 100px;
+  border: 20px solid rgba(255, 215, 0, 0.3);
+  border-radius: 50%;
+  transform: rotateX(75deg);
+  top: 50%;
+  left: 50%;
+  margin-top: -50px;
+  margin-left: -150px;
+  box-shadow: 
+    0 0 50px rgba(255, 215, 0, 0.4),
+    inset 0 0 50px rgba(255, 215, 0, 0.2);
+  animation: ringFloat 6s ease-in-out infinite;
+}
+
+@keyframes ringFloat {
+  0%, 100% { transform: rotateX(75deg) rotateZ(0deg); }
+  50% { transform: rotateX(75deg) rotateZ(10deg); }
+}
+
+// Lens flare
+.lensFlare {
+  position: absolute;
+  width: 200%;
+  height: 200%;
+  top: -50%;
+  left: -50%;
+  background: radial-gradient(circle, 
+    rgba(255, 255, 255, 0.3) 0%,
+    rgba(255, 255, 200, 0.1) 20%,
+    transparent 40%);
+  animation: flareGlow 4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes flareGlow {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.8; }
+}
+
+// Nyan cat rainbow
+.nyanCat {
+  filter: saturate(2) !important;
+}
+
+.nyanRainbow {
+  position: absolute;
+  width: 200px;
+  height: 20px;
+  background: linear-gradient(
+    to right,
+    red, orange, yellow, green, blue, indigo, violet
+  );
+  animation: rainbowFlow 0.5s linear infinite;
+  opacity: 0.8;
+}
+
+@keyframes rainbowFlow {
+  from { background-position: 0 0; }
+  to { background-position: 200px 0; }
+}
+
+// Sparkle trail
+.tileWrapper {
+  position: absolute;
+}
+
+.sparkleTrail {
+  position: absolute;
+  pointer-events: none;
+}
+
+.sparkle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: white;
+  border-radius: 50%;
+  animation: sparkleFloat 2s ease-out infinite;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.8);
+}
+
+@keyframes sparkleFloat {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(50px) scale(0);
+  }
+}
+
+// Star Wars credits
+.creditsContainer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  perspective: 400px;
+  z-index: 10004;
+  pointer-events: none;
+}
+
+.credits {
+  text-align: center;
+  color: #feda4a;
+  font-family: 'Arial', sans-serif;
+  font-size: 2rem;
+  line-height: 1.5;
+  transform: rotateX(25deg) translateY(100%);
+  animation: crawl 300s linear;
+  
+  h1 { font-size: 3rem; margin: 2rem 0; }
+  h2 { font-size: 2.5rem; margin: 1.5rem 0; }
+  h3 { font-size: 2rem; margin: 1rem 0; }
+  p { margin: 0.5rem 0; }
+}
+
+@keyframes crawl {
+  from { transform: rotateX(25deg) translateY(100%); }
+  to { transform: rotateX(25deg) translateY(-2000%); }
+}
+
+// Meteor shower alert
+.meteorShowerAlert {
+  position: fixed;
+  top: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: white;
+  font-size: 2rem;
+  font-weight: bold;
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.8);
+  animation: meteorAlert 5s ease-in-out;
+  z-index: 10005;
+  pointer-events: none;
+}
+
+@keyframes meteorAlert {
+  0%, 100% { opacity: 0; transform: translateX(-50%) scale(0.5); }
+  20%, 80% { opacity: 1; transform: translateX(-50%) scale(1); }
+}
+
+// Help system
+.helpPrompt {
+  position: fixed;
+  bottom: 10px;
+  right: 20px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
+  font-family: monospace;
+  z-index: 10003;
+  text-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
+  animation: helpPulse 2s ease-in-out infinite;
+}
+
+@keyframes helpPulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.helpMenu {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.95);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  padding: 30px;
+  color: white;
+  z-index: 10006;
+  min-width: 400px;
+  max-width: 600px;
+  box-shadow: 
+    0 0 50px rgba(138, 43, 226, 0.3),
+    inset 0 0 30px rgba(255, 255, 255, 0.05);
+  animation: helpSlideIn 0.3s ease-out;
+  
+  h2 {
+    text-align: center;
+    margin-bottom: 20px;
+    color: #feda4a;
+    text-shadow: 0 0 20px rgba(254, 218, 74, 0.5);
+  }
+  
+  h3 {
+    text-align: center;
+    margin: 20px 0 15px;
+    color: #87ceeb;
+    font-size: 1.2rem;
+  }
+}
+
+@keyframes helpSlideIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+.commandList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.command {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 15px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateX(5px);
+  }
+}
+
+.commandKey {
+  color: #ff6b6b;
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  background: rgba(255, 107, 107, 0.1);
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 107, 107, 0.3);
+}
+
+.commandDesc {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.9rem;
+  text-align: right;
+}
+
+.helpClose {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.85rem;
+  margin-top: 20px;
+  font-style: italic;
+}
