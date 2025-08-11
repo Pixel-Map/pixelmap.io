@@ -298,12 +298,13 @@ export default function MoonEasterEgg({ isActive, tiles }: MoonEasterEggProps) {
             }
             
             // Draw shooting star with trail
-            if (star.trail) {
-              star.trail.forEach((point, i) => {
-                const opacity = (i / star.trail.length) * star.opacity * 0.5;
+            if (star.trail && star.trail.length > 0) {
+              const trail = star.trail; // Capture trail in const for TypeScript
+              trail.forEach((point, i) => {
+                const opacity = (i / trail.length) * star.opacity * 0.5;
                 ctx.fillStyle = `rgba(255, 255, 200, ${opacity})`;
                 ctx.beginPath();
-                ctx.arc(point.x, point.y, star.size * (i / star.trail.length), 0, Math.PI * 2);
+                ctx.arc(point.x, point.y, star.size * (i / trail.length), 0, Math.PI * 2);
                 ctx.fill();
               });
             }
