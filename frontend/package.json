@@ -8,7 +8,7 @@
 		"export": "next export",
 		"start": "next start",
 		"lint": "next lint",
-		"test": "npx jest",
+		"test": "npx jest --no-watch",
 		"test:coverage": "npx jest --coverage"
 	},
 	"dependencies": {

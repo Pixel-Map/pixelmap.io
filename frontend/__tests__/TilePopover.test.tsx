@@ -23,9 +23,10 @@ jest.mock('react-popper-tooltip', () => {
   };
 });
 
-// Mock the XIcon from heroicons
+// Mock the icons from heroicons
 jest.mock('@heroicons/react/outline', () => ({
-  XIcon: () => <div data-testid="x-icon" />
+  XIcon: () => <div data-testid="x-icon" />,
+  ClockIcon: () => <div data-testid="clock-icon" />
 }));
 
 describe('TilePopover', () => {
