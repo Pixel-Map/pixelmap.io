@@ -12,7 +12,7 @@
 		"test:coverage": "npx jest --coverage"
 	},
 	"dependencies": {
-		"@babel/core": "^7.24.0",
+		"@babel/core": "^7.29.6",
 		"@ethersproject/bignumber": "^5.7.0",
 		"@ethersproject/contracts": "^5.7.0",
 		"@ethersproject/providers": "^5.7.2",
@@ -29,7 +29,7 @@
 		"@web3-react/network-connector": "^6.1.9",
 		"date-fns": "^4.1.0",
 		"detect-collisions": "^6.0.2",
-		"next": "^13.5.6",
+		"next": "^13.5.11",
 		"node-base91": "^0.3.4",
 		"paco": "^0.4.0",
 		"react": "^18.2.0",
@@ -57,7 +57,7 @@
 		"jest-environment-jsdom": "^29.7.0",
 		"node-base91": "^0.3.4",
 		"pako": "^2.1.0",
-		"postcss": "^8.4.35",
+		"postcss": "^8.5.10",
 		"react-test-renderer": "^18.2.0",
 		"sass": "^1.71.1",
 		"styled-components": "^6.1.8",
@@ -65,7 +65,17 @@
 	},
 	"pnpm": {
 		"overrides": {
-			"@types/react-dom": "18.2.19"
+			"@types/react-dom": "18.2.19",
+			"form-data": "^4.0.6",
+			"elliptic": "^6.6.1",
+			"deep-extend": "^0.5.1",
+			"flatted": "^3.4.2",
+			"immutable": "^5.1.5",
+			"ws@7": "^7.5.11",
+			"picomatch@2": "^2.3.2",
+			"minimatch@9": "^9.0.7",
+			"glob@10": "^10.5.0",
+			"postcss@8": "^8.5.10"
 		}
 	}
 }
