@@ -76,14 +76,25 @@ func NewEtherscanClient(apiKey string, chainId int, logger *zap.Logger) *Ethersc
 		chainId: chainId,
 		logger:  logger,
 		client:  &http.Client{Timeout: 10 * time.Second},
-		limiter: rate.NewLimiter(rate.Every(300*time.Millisecond), 1),
+		// Etherscan's free tier allows 3 req/sec. 300ms (~3.3/sec) sat just over
+		// the cap and periodically tripped "NOTOK / Max calls per sec"; 500ms
+		// (2/sec) stays comfortably under even with burst alignment. The indexer
+		// makes only a handful of calls per 30s cycle, so the extra spacing is
+		// immaterial.
+		limiter: rate.NewLimiter(rate.Every(500*time.Millisecond), 1),
 	}
 }
 
 func (c *EtherscanClient) GetLatestBlockNumber() (uint64, error) {
+	// Count this call against the shared Etherscan rate budget too; otherwise it
+	// bursts alongside the txlist/getLogs calls and trips the free tier's 3
+	// req/sec cap (surfaced as "NOTOK / Max calls per sec rate limit reached").
+	if err := c.limiter.Wait(context.Background()); err != nil {
+		return 0, fmt.Errorf("rate limiter wait: %w", err)
+	}
 	url := fmt.Sprintf("%s?chainid=%d&module=proxy&action=eth_blockNumber&apikey=%s", c.baseURL, c.chainId, c.apiKey)
 
-	resp, err := http.Get(url)
+	resp, err := c.client.Get(url)
 	if err != nil {
 		return 0, fmt.Errorf("HTTP request failed: %w", err)
 	}
@@ -309,7 +320,11 @@ func (c *EtherscanClient) makeRequest(ctx context.Context, params map[string]str
 	}
 
 	if ethResp.Status != "1" {
-		return fmt.Errorf("API error: %s", ethResp.Message)
+		// Include Result: Etherscan puts the real reason there (e.g. "Max calls
+		// per sec rate limit reached") while Message is just "NOTOK". Keeps the
+		// "API error: NOTOK" / "No transactions found" substrings the retry
+		// logic matches on.
+		return fmt.Errorf("API error: %s (%v)", ethResp.Message, ethResp.Result)
 	}
 
 	resultJSON, err := json.Marshal(ethResp.Result)

@@ -1,0 +1,10 @@
+# Keep the indexer build context lean — the Go build only needs source.
+cache/
+node_modules/
+localstack/
+.vscode/
+*.test
+db.test
+coverage.*
+.env
+.env.*

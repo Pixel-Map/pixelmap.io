@@ -1,0 +1,56 @@
+# PixelMap on raccoon (Intel Mac / OrbStack) — replaces the EC2 t3a.small.
+#
+# Scope: the INDEXER only (see docs decision "Path A"). pixelmap.art keeps being
+# served by its existing S3 + CloudFront; the indexer just keeps publishing to
+# that bucket from here instead of from EC2. Nothing inbound is exposed, so
+# there is no cloudflared/tunnel and no frontend service (frontend stays on
+# Netlify, reading https://pixelmap.art as before).
+#
+# raccoon ALSO runs paralocker's stack, so every name/port/volume here is
+# namespaced to avoid clashing with it (paralocker's Postgres owns :5432).
+#
+# Bring up with (so ${POSTGRES_PASSWORD} interpolation reads the same file the
+# indexer gets as its .env):
+#   docker compose --env-file .env.raccoon -f docker-compose.raccoon.yml up -d
+name: pixelmap-raccoon
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: pixelmap-raccoon-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: pixelmap
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.raccoon}
+    ports:
+      # 5433 on the host: paralocker's Postgres already owns 127.0.0.1:5432.
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - pixelmap_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  indexer:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.raccoon
+    container_name: pixelmap-raccoon-indexer
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      # All indexer config lives in .env.raccoon (godotenv.Load reads ./.env).
+      - ./.env.raccoon:/app/.env:ro
+      # Rendered tiles/metadata. Seed this from the EC2 box BEFORE first start
+      # with scripts/raccoon-cache-sync.sh, else the indexer would re-upload an
+      # empty cache and tilemap.png would stitch from missing tiles.
+      - pixelmap_cache:/app/cache
+
+volumes:
+  pixelmap_postgres_data:
+  pixelmap_cache:

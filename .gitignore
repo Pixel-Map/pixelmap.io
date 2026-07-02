@@ -44,3 +44,6 @@ backend/.env
 .netlify
 
 backend/temp/
+
+# raccoon self-host secrets
+.env.raccoon

@@ -1,0 +1,29 @@
+# PixelMap indexer image for the raccoon (self-hosted OrbStack) deployment.
+#
+# This builds the same program the EC2 box runs by hand as `./backend`:
+#   main.go -> internal/ingestor.StartContinuousIngestion
+# It is an INDEXER, not an HTTP server. It reads chain events over WEB3_URL,
+# writes rendered tiles/metadata into ./cache, and (when SYNC_TO_AWS=true)
+# pushes ./cache to s3://pixelmap.art — exactly as it does on EC2.
+FROM golang:1.23-alpine AS build
+WORKDIR /src
+RUN apk add --no-cache git ca-certificates
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+# lib/pq (Postgres) and go-ethereum's RPC client are pure Go, so a static,
+# CGO-free build works and keeps the runtime image tiny. If a future dependency
+# pulls CGO into the import graph (e.g. mattn/go-sqlite3), switch this to a
+# debian builder with CGO_ENABLED=1 + a matching runtime base.
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -o /out/indexer .
+
+FROM alpine:3.20
+# ca-certificates: TLS to Infura + S3. tzdata: the ingestor timestamps renders.
+RUN apk add --no-cache ca-certificates tzdata
+WORKDIR /app
+COPY --from=build /out/indexer /app/indexer
+# /app/.env  -> mounted read-only from .env.raccoon (main.go's godotenv.Load
+#               hard-fails if the file is absent).
+# /app/cache -> named volume, pre-seeded from the EC2 box so historical tiles
+#               are not re-rendered and tilemap.png stitches correctly.
+ENTRYPOINT ["/app/indexer"]
