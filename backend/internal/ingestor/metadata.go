@@ -95,6 +95,22 @@ func GenerateTiledataJSON(tiles []db.Tile, queries *db.Queries, ctx context.Cont
 			}
 		}
 
+		wrappingHistory, err := queries.GetWrappingHistoryByTileId(ctx, tile.ID)
+		if err != nil {
+			return fmt.Errorf("error fetching wrapping history for tile %d: %w", tile.ID, err)
+		}
+		wrappingItems := make([]WrappingHistoryItem, len(wrappingHistory))
+		for j, history := range wrappingHistory {
+			wrappingItems[j] = WrappingHistoryItem{
+				ID:          history.ID,
+				Timestamp:   history.TimeStamp,
+				BlockNumber: history.BlockNumber,
+				Tx:          history.Tx,
+				Wrapped:     history.Wrapped,
+				UpdatedBy:   history.UpdatedBy,
+			}
+		}
+
 		tiledataJSON[i] = map[string]interface{}{
 			"id":                tile.ID,
 			"url":               tile.Url,
@@ -106,6 +122,7 @@ func GenerateTiledataJSON(tiles []db.Tile, queries *db.Queries, ctx context.Cont
 			"lastUpdated":       time.Date(2021, time.December, 13, 1, 1, 0, 0, time.UTC),
 			"ens":               tile.Ens,
 			"historical_images": historicalImages, // Add historical images here
+			"wrapping_history":  wrappingItems,
 		}
 	}
 
@@ -192,13 +209,13 @@ func UpdateTileMetadata(tile db.Tile, dataHistory []db.DataHistory, queries *db.
 	}
 
 	historicalImages := GetHistoricalImages(tile, dataHistory)
-	
+
 	// Initialize empty slices
 	purchaseItems := []PurchaseHistoryItem{}
 	transferItems := []TransferHistoryItem{}
 	wrappingItems := []WrappingHistoryItem{}
 	dataItems := []DataHistoryItem{}
-	
+
 	// Only fetch history if queries is not nil (for testing)
 	if queries != nil {
 		// Fetch purchase history
@@ -207,7 +224,7 @@ func UpdateTileMetadata(tile db.Tile, dataHistory []db.DataHistory, queries *db.
 			logger.Printf("Error fetching purchase history for tile %d: %v", tile.ID, err)
 			purchaseHistory = []db.PurchaseHistory{}
 		}
-		
+
 		// Convert purchase history to API format
 		purchaseItems = make([]PurchaseHistoryItem, len(purchaseHistory))
 		for i, p := range purchaseHistory {
@@ -221,12 +238,42 @@ func UpdateTileMetadata(tile db.Tile, dataHistory []db.DataHistory, queries *db.
 				Price:       p.Price,
 			}
 		}
-		
-		// Note: Transfer and Wrapping history queries don't exist yet in the database
-		// We'll leave them empty for now until the queries are added
-		// TODO: Add GetTransferHistoryByTileId and GetWrappingHistoryByTileId queries
+
+		transferHistory, err := queries.GetTransferHistoryByTileId(ctx, tile.ID)
+		if err != nil {
+			logger.Printf("Error fetching transfer history for tile %d: %v", tile.ID, err)
+		} else {
+			transferItems = make([]TransferHistoryItem, len(transferHistory))
+			for i, transfer := range transferHistory {
+				transferItems[i] = TransferHistoryItem{
+					ID:              transfer.ID,
+					Timestamp:       transfer.TimeStamp,
+					BlockNumber:     transfer.BlockNumber,
+					Tx:              transfer.Tx,
+					TransferredFrom: transfer.TransferredFrom,
+					TransferredTo:   transfer.TransferredTo,
+				}
+			}
+		}
+
+		wrappingHistory, err := queries.GetWrappingHistoryByTileId(ctx, tile.ID)
+		if err != nil {
+			logger.Printf("Error fetching wrapping history for tile %d: %v", tile.ID, err)
+		} else {
+			wrappingItems = make([]WrappingHistoryItem, len(wrappingHistory))
+			for i, wrapping := range wrappingHistory {
+				wrappingItems[i] = WrappingHistoryItem{
+					ID:          wrapping.ID,
+					Timestamp:   wrapping.TimeStamp,
+					BlockNumber: wrapping.BlockNumber,
+					Tx:          wrapping.Tx,
+					Wrapped:     wrapping.Wrapped,
+					UpdatedBy:   wrapping.UpdatedBy,
+				}
+			}
+		}
 	}
-	
+
 	// Convert data history to API format
 	dataItems = make([]DataHistoryItem, len(dataHistory))
 	for i, d := range dataHistory {
@@ -245,7 +292,7 @@ func UpdateTileMetadata(tile db.Tile, dataHistory []db.DataHistory, queries *db.
 			UpdatedBy:   d.UpdatedBy,
 		}
 	}
-	
+
 	// Create PixelMapTile API data
 	pixelMapTile := MetadataPixelMapTile{
 		ID:               int(tile.ID),

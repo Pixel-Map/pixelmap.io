@@ -35,6 +35,15 @@ describe("PixelMap timelapse reconstruction", () => {
     const timeline = buildTimeline(source, [
       {
         id: 0,
+        wrapping_history: [
+          {
+            timestamp: "2021-10-01T00:00:00Z",
+            block_number: 6,
+            tx: "0xwrap",
+            wrapped: true,
+            updated_by: "0xowner",
+          },
+        ],
         historical_images: [
           { blockNumber: 1, date: "2020-01-01T00:00:00Z", image: red },
           { blockNumber: 2, date: "2021-09-01T00:00:00Z", image: red },
@@ -44,15 +53,30 @@ describe("PixelMap timelapse reconstruction", () => {
       },
       {
         id: 1,
+        wrapping_history: [
+          {
+            timestamp: "2023-01-01T00:00:00Z",
+            block_number: 7,
+            tx: "0xunwrap",
+            wrapped: false,
+            updated_by: "0xowner",
+          },
+        ],
         historical_images: [
           { blockNumber: 5, date: "2021-08-22T23:31:48Z", image: green },
         ],
       },
     ]);
 
-    expect(timeline.events).toHaveLength(2);
-    expect(timeline.events.map((event) => event.blockNumber)).toEqual([5, 3]);
-    expect(timeline.yearlyCounts).toEqual({ 2021: 1, 2022: 1 });
+    expect(timeline.events).toHaveLength(4);
+    expect(timeline.events.map((event) => event.blockNumber)).toEqual([5, 6, 3, 7]);
+    expect(timeline.events.map((event) => event.kind)).toEqual([
+      "image",
+      "wrap",
+      "image",
+      "unwrap",
+    ]);
+    expect(timeline.yearlyCounts).toEqual({ 2021: 2, 2022: 1, 2023: 1 });
     expect(timeline.changedTileCount).toBe(2);
     expect(Array.from(timeline.baseFrame.data.slice(0, 4))).toEqual([255, 0, 0, 255]);
   });

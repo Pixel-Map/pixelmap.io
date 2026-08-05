@@ -23,16 +23,29 @@ type HistoricalImage = {
   updatedBy?: string;
 };
 
+type WrappingHistory = {
+  timestamp: string;
+  block_number: number;
+  tx?: string;
+  wrapped: boolean;
+  updated_by?: string;
+};
+
 type TimelapseTile = {
   id?: number;
   image?: string;
   historical_images?: HistoricalImage[];
+  wrapping_history?: WrappingHistory[];
 };
 
-export type TimelapseEvent = HistoricalImage & {
+export type TimelapseEvent = {
+  kind: "image" | "wrap" | "unwrap";
   tileId: number;
   timestamp: number;
-  pixels: string;
+  blockNumber: number;
+  updatedBy?: string;
+  pixels?: string;
+  tx?: string;
 };
 
 type PreparedTimeline = {
@@ -118,9 +131,34 @@ function visibleEventsForTile(tile: TimelapseTile): TimelapseEvent[] {
       timestamp >= START_TIME &&
       timestamp <= END_TIME
     ) {
-      events.push({ ...entry, tileId, timestamp, pixels });
+      events.push({
+        kind: "image",
+        tileId,
+        timestamp,
+        blockNumber: entry.blockNumber,
+        updatedBy: entry.updatedBy,
+        pixels,
+      });
     }
     previousPixels = pixels;
+  });
+
+  (tile.wrapping_history || []).forEach((entry) => {
+    const timestamp = Date.parse(entry.timestamp);
+    if (
+      Number.isFinite(timestamp) &&
+      timestamp >= START_TIME &&
+      timestamp <= END_TIME
+    ) {
+      events.push({
+        kind: entry.wrapped ? "wrap" : "unwrap",
+        tileId,
+        timestamp,
+        blockNumber: entry.block_number,
+        updatedBy: entry.updated_by,
+        tx: entry.tx,
+      });
+    }
   });
 
   return events;
@@ -183,23 +221,70 @@ function drawFrame(
   );
   for (let index = 0; index < frame; index += 1) {
     const event = timeline.events[index];
-    drawTile(pixels, event.tileId, event.pixels);
+    if (event.kind === "image") {
+      drawTile(pixels, event.tileId, event.pixels);
+    }
   }
   context.putImageData(pixels, 0, 0);
 }
 
+function playTone(
+  context: AudioContext,
+  frequency: number,
+  start: number,
+  duration: number,
+  volume: number,
+  type: OscillatorType,
+) {
+  const oscillator = context.createOscillator();
+  const gain = context.createGain();
+  oscillator.type = type;
+  oscillator.frequency.setValueAtTime(frequency, start);
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.exponentialRampToValueAtTime(volume, start + 0.012);
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+  oscillator.connect(gain);
+  gain.connect(context.destination);
+  oscillator.start(start);
+  oscillator.stop(start + duration + 0.02);
+}
+
+function playEventSound(context: AudioContext, event: TimelapseEvent) {
+  const now = context.currentTime;
+  if (event.kind === "image") {
+    playTone(context, 220 + (event.tileId % 12) * 18, now, 0.045, 0.012, "square");
+    return;
+  }
+
+  const notes = event.kind === "wrap" ? [196, 329.63, 523.25] : [440, 293.66, 174.61];
+  notes.forEach((frequency, index) => {
+    playTone(
+      context,
+      frequency,
+      now + index * 0.055,
+      0.24,
+      0.045 - index * 0.006,
+      event.kind === "wrap" ? "triangle" : "sawtooth",
+    );
+  });
+}
+
 export default function TimelapsePlayer() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const lastSoundFrameRef = useRef(0);
   const [timeline, setTimeline] = useState<PreparedTimeline | null>(null);
   const [frame, setFrame] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [speedIndex, setSpeedIndex] = useState(1);
+  const [soundEnabled, setSoundEnabled] = useState(false);
   const [error, setError] = useState("");
 
   const prepareTimeline = useCallback(async () => {
     setError("");
     setTimeline(null);
     setFrame(0);
+    lastSoundFrameRef.current = 0;
     setPlaying(false);
 
     try {
@@ -238,6 +323,26 @@ export default function TimelapsePlayer() {
     const animation = requestAnimationFrame(() => drawFrame(context, timeline, frame));
     return () => cancelAnimationFrame(animation);
   }, [frame, timeline]);
+
+  useEffect(() => {
+    if (!soundEnabled || !timeline || frame === 0 || frame === lastSoundFrameRef.current) {
+      return;
+    }
+    const context = audioContextRef.current;
+    const event = timeline.events[frame - 1];
+    if (context && event) {
+      if (context.state === "suspended") void context.resume();
+      playEventSound(context, event);
+    }
+    lastSoundFrameRef.current = frame;
+  }, [frame, soundEnabled, timeline]);
+
+  useEffect(
+    () => () => {
+      if (audioContextRef.current) void audioContextRef.current.close();
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!playing || !timeline) return;
@@ -293,6 +398,16 @@ export default function TimelapsePlayer() {
     setPlaying((value) => !value);
   };
 
+  const toggleSound = () => {
+    if (!soundEnabled && !audioContextRef.current) {
+      audioContextRef.current = new AudioContext();
+    }
+    if (!soundEnabled && audioContextRef.current?.state === "suspended") {
+      void audioContextRef.current.resume();
+    }
+    setSoundEnabled((value) => !value);
+  };
+
   const saveFrame = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -326,12 +441,32 @@ export default function TimelapsePlayer() {
         <div className={styles.scanlines} aria-hidden="true" />
         {currentEvent && (
           <div
-            className={styles.focusMarker}
+            key={`${currentEvent.kind}-${currentEvent.tileId}-${currentEvent.blockNumber}`}
+            className={`${styles.focusMarker} ${
+              currentEvent.kind === "wrap"
+                ? styles.wrappedMarker
+                : currentEvent.kind === "unwrap"
+                  ? styles.unwrappedMarker
+                  : ""
+            }`}
             style={{
               left: `${((currentEvent.tileId % 81) / 81) * 100}%`,
               top: `${(Math.floor(currentEvent.tileId / 81) / 49) * 100}%`,
               width: `${100 / 81}%`,
               height: `${100 / 49}%`,
+            }}
+            aria-hidden="true"
+          />
+        )}
+        {currentEvent && currentEvent.kind !== "image" && (
+          <div
+            key={`burst-${currentEvent.kind}-${currentEvent.tileId}-${currentEvent.blockNumber}`}
+            className={`${styles.wrapBurst} ${
+              currentEvent.kind === "unwrap" ? styles.unwrapBurst : ""
+            }`}
+            style={{
+              left: `${(((currentEvent.tileId % 81) + 0.5) / 81) * 100}%`,
+              top: `${((Math.floor(currentEvent.tileId / 81) + 0.5) / 49) * 100}%`,
             }}
             aria-hidden="true"
           />
@@ -422,15 +557,27 @@ export default function TimelapsePlayer() {
           </div>
         </div>
 
-        <button
-          type="button"
-          className={styles.speedButton}
-          onClick={() => setSpeedIndex((value) => (value + 1) % SPEEDS.length)}
-          disabled={!timeline}
-          aria-label={`Playback speed ${SPEEDS[speedIndex].label}`}
-        >
-          {SPEEDS[speedIndex].label}
-        </button>
+        <div className={styles.controlActions}>
+          <button
+            type="button"
+            className={`${styles.soundButton} ${soundEnabled ? styles.soundActive : ""}`}
+            onClick={toggleSound}
+            disabled={!timeline}
+            aria-label={soundEnabled ? "Mute sound effects" : "Enable sound effects"}
+            aria-pressed={soundEnabled}
+          >
+            SFX
+          </button>
+          <button
+            type="button"
+            className={styles.speedButton}
+            onClick={() => setSpeedIndex((value) => (value + 1) % SPEEDS.length)}
+            disabled={!timeline}
+            aria-label={`Playback speed ${SPEEDS[speedIndex].label}`}
+          >
+            {SPEEDS[speedIndex].label}
+          </button>
+        </div>
       </div>
 
       <div className={styles.metadataBar}>
@@ -438,7 +585,13 @@ export default function TimelapsePlayer() {
           <span>CHANGE</span>
           {currentEvent ? (
             <strong>
-              Tile #{currentEvent.tileId} by {shortAddress(currentEvent.updatedBy)}
+              Tile #{currentEvent.tileId}
+              {currentEvent.kind === "wrap"
+                ? " wrapped"
+                : currentEvent.kind === "unwrap"
+                  ? " unwrapped"
+                  : ""}{" "}
+              by {shortAddress(currentEvent.updatedBy)}
             </strong>
           ) : (
             <strong>Start</strong>
@@ -497,15 +650,28 @@ export default function TimelapsePlayer() {
                 return (
                   <button
                     type="button"
-                    key={`${event.tileId}-${event.blockNumber}`}
+                    key={`${event.kind}-${event.tileId}-${event.blockNumber}`}
                     onClick={() => {
                       setPlaying(false);
                       setFrame(eventIndex);
                     }}
                   >
-                    <span className={styles.tileBadge}>#{event.tileId}</span>
+                    <span
+                      className={`${styles.tileBadge} ${
+                        event.kind === "wrap"
+                          ? styles.wrappedBadge
+                          : event.kind === "unwrap"
+                            ? styles.unwrappedBadge
+                            : ""
+                      }`}
+                    >
+                      {event.kind === "wrap" ? "WRAP" : event.kind === "unwrap" ? "OPEN" : `#${event.tileId}`}
+                    </span>
                     <span>
-                      <strong>{shortAddress(event.updatedBy)}</strong>
+                      <strong>
+                        {event.kind === "image" ? "" : `#${event.tileId} · `}
+                        {shortAddress(event.updatedBy)}
+                      </strong>
                       <small>{formatDate(event.timestamp, true)}</small>
                     </span>
                     <span className={styles.logBlock}>{event.blockNumber.toLocaleString()}</span>

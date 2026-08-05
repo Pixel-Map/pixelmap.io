@@ -195,10 +195,98 @@ $orange: #ff7347;
   animation: tilePulse 1s ease-out;
 }
 
+.wrappedMarker {
+  border-color: $acid;
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 2px #fff,
+    0 0 24px 10px rgba(185, 255, 57, 0.95);
+  animation: wrapSeal 900ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.unwrappedMarker {
+  border-color: $orange;
+  border-style: dashed;
+  box-shadow: 0 0 24px 10px rgba(255, 115, 71, 0.85);
+  animation: unwrapSeal 900ms ease-out;
+}
+
+.wrapBurst {
+  position: absolute;
+  z-index: 4;
+  width: clamp(54px, 11vw, 150px);
+  aspect-ratio: 1;
+  border: 3px solid rgba(185, 255, 57, 0.9);
+  border-radius: 50%;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  box-shadow:
+    inset 0 0 32px rgba(185, 255, 57, 0.38),
+    0 0 42px rgba(185, 255, 57, 0.75);
+  animation: wrapBurst 900ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.wrapBurst::before,
+.wrapBurst::after {
+  content: "";
+  position: absolute;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+}
+
+.wrapBurst::before {
+  inset: 14%;
+  border-color: $violet;
+}
+
+.wrapBurst::after {
+  inset: 31%;
+  border-width: 2px;
+  border-color: $acid;
+  box-shadow: 0 0 22px $acid;
+}
+
+.unwrapBurst {
+  border-color: $orange;
+  box-shadow:
+    inset 0 0 32px rgba(255, 115, 71, 0.35),
+    0 0 42px rgba(255, 115, 71, 0.72);
+  animation-name: unwrapBurst;
+}
+
+.unwrapBurst::before,
+.unwrapBurst::after {
+  border-color: $orange;
+}
+
 @keyframes tilePulse {
   0% { opacity: 0; transform: scale(5); }
   35% { opacity: 1; }
   100% { opacity: 1; transform: scale(1.8); }
+}
+
+@keyframes wrapSeal {
+  0% { opacity: 0; transform: scale(8) rotate(-90deg); }
+  55% { opacity: 1; transform: scale(2.8) rotate(12deg); }
+  100% { opacity: 1; transform: scale(1.8) rotate(0); }
+}
+
+@keyframes unwrapSeal {
+  0% { opacity: 1; transform: scale(1.8); }
+  70% { opacity: 1; transform: scale(4.5) rotate(35deg); }
+  100% { opacity: 0.9; transform: scale(1.8); }
+}
+
+@keyframes wrapBurst {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(3.8) rotate(-35deg); }
+  35% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(0.12) rotate(90deg); }
+}
+
+@keyframes unwrapBurst {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.1) rotate(90deg); }
+  30% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(4) rotate(-30deg); }
 }
 
 .loadingState {
@@ -254,7 +342,8 @@ $orange: #ff7347;
 
 .playButton,
 .skipButton,
-.speedButton {
+.speedButton,
+.soundButton {
   display: inline-grid;
   place-items: center;
   width: 48px;
@@ -281,9 +370,30 @@ $orange: #ff7347;
   font-weight: bold;
 }
 
+.controlActions {
+  display: flex;
+  gap: 8px;
+}
+
+.soundButton {
+  width: 52px;
+  color: rgba(243, 239, 223, 0.58);
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 0.1em;
+}
+
+.soundActive {
+  border-color: $acid;
+  background: rgba(185, 255, 57, 0.12);
+  color: $acid;
+  box-shadow: inset 0 -2px 0 $acid;
+}
+
 .playButton:hover:not(:disabled),
 .skipButton:hover:not(:disabled),
-.speedButton:hover:not(:disabled) {
+.speedButton:hover:not(:disabled),
+.soundButton:hover:not(:disabled) {
   border-color: #fff;
   background: #fff;
   color: $ink;
@@ -292,7 +402,8 @@ $orange: #ff7347;
 
 .playButton:disabled,
 .skipButton:disabled,
-.speedButton:disabled {
+.speedButton:disabled,
+.soundButton:disabled {
   cursor: not-allowed;
   opacity: 0.3;
 }
@@ -530,6 +641,16 @@ $orange: #ff7347;
   font-size: 10px;
 }
 
+.wrappedBadge {
+  background: $acid;
+  color: $ink;
+}
+
+.unwrappedBadge {
+  background: $orange;
+  color: $ink;
+}
+
 .emptyLog {
   display: grid;
   min-height: 160px;
@@ -590,7 +711,7 @@ $orange: #ff7347;
   .controls { grid-template-columns: 1fr auto; padding: 14px; }
   .transport { grid-column: 1; }
   .scrubberWrap { grid-column: 1 / -1; grid-row: 2; }
-  .speedButton { grid-column: 2; grid-row: 1; }
+  .controlActions { grid-column: 2; grid-row: 1; }
   .metadataBar { grid-template-columns: 1fr 1fr; padding: 12px 14px 16px; gap: 16px 10px; }
   .metadataBar > div:nth-child(2) { display: none; }
   .metadataActions { grid-column: 1 / -1; justify-content: space-between; }
@@ -604,9 +725,11 @@ $orange: #ff7347;
 
 @media (prefers-reduced-motion: reduce) {
   .focusMarker,
+  .wrapBurst,
   .loader { animation: none; }
   .playButton,
   .skipButton,
   .speedButton,
+  .soundButton,
   .yearCards button { transition: none; }
 }
