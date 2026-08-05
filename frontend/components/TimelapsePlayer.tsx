@@ -252,7 +252,7 @@ function playTone(
 function playEventSound(context: AudioContext, event: TimelapseEvent) {
   const now = context.currentTime;
   if (event.kind === "image") {
-    playTone(context, 220 + (event.tileId % 12) * 18, now, 0.045, 0.012, "square");
+    playTone(context, 220 + (event.tileId % 12) * 18, now, 0.065, 0.028, "square");
     return;
   }
 
@@ -263,7 +263,7 @@ function playEventSound(context: AudioContext, event: TimelapseEvent) {
       frequency,
       now + index * 0.055,
       0.24,
-      0.045 - index * 0.006,
+      0.06 - index * 0.008,
       event.kind === "wrap" ? "triangle" : "sawtooth",
     );
   });
@@ -277,8 +277,24 @@ export default function TimelapsePlayer() {
   const [frame, setFrame] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [speedIndex, setSpeedIndex] = useState(1);
-  const [soundEnabled, setSoundEnabled] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
   const [error, setError] = useState("");
+
+  const unlockAudio = useCallback(async () => {
+    let context = audioContextRef.current;
+    if (!context || context.state === "closed") {
+      context = new AudioContext();
+      audioContextRef.current = context;
+    }
+    if (context.state === "suspended") {
+      try {
+        await context.resume();
+      } catch {
+        // The next direct control interaction will retry the browser audio unlock.
+      }
+    }
+    return context;
+  }, []);
 
   const prepareTimeline = useCallback(async () => {
     setError("");
@@ -331,8 +347,14 @@ export default function TimelapsePlayer() {
     const context = audioContextRef.current;
     const event = timeline.events[frame - 1];
     if (context && event) {
-      if (context.state === "suspended") void context.resume();
-      playEventSound(context, event);
+      if (context.state === "running") {
+        playEventSound(context, event);
+      } else {
+        void context
+          .resume()
+          .then(() => playEventSound(context, event))
+          .catch(() => undefined);
+      }
     }
     lastSoundFrameRef.current = frame;
   }, [frame, soundEnabled, timeline]);
@@ -362,18 +384,21 @@ export default function TimelapsePlayer() {
       if (!timeline || event.target instanceof HTMLInputElement) return;
       if (event.code === "Space") {
         event.preventDefault();
+        if (soundEnabled) void unlockAudio();
         setPlaying((value) => !value);
       } else if (event.key === "ArrowRight") {
+        if (soundEnabled) void unlockAudio();
         setPlaying(false);
         setFrame((value) => Math.min(value + 1, timeline.events.length));
       } else if (event.key === "ArrowLeft") {
+        if (soundEnabled) void unlockAudio();
         setPlaying(false);
         setFrame((value) => Math.max(value - 1, 0));
       }
     };
     window.addEventListener("keydown", handleKeys);
     return () => window.removeEventListener("keydown", handleKeys);
-  }, [timeline]);
+  }, [soundEnabled, timeline, unlockAudio]);
 
   const currentEvent = frame > 0 ? timeline?.events[frame - 1] : undefined;
   const displayTime = currentEvent?.timestamp || START_TIME;
@@ -385,6 +410,7 @@ export default function TimelapsePlayer() {
 
   const jumpToYear = (year: number) => {
     if (!timeline) return;
+    if (soundEnabled) void unlockAudio();
     const firstEvent = timeline.events.findIndex(
       (event) => event.timestamp >= Date.UTC(year, 0, 1),
     );
@@ -394,18 +420,18 @@ export default function TimelapsePlayer() {
 
   const togglePlayback = () => {
     if (!timeline) return;
+    if (soundEnabled) void unlockAudio();
     if (!playing && frame >= timeline.events.length) setFrame(0);
     setPlaying((value) => !value);
   };
 
   const toggleSound = () => {
-    if (!soundEnabled && !audioContextRef.current) {
-      audioContextRef.current = new AudioContext();
+    if (soundEnabled) {
+      setSoundEnabled(false);
+    } else {
+      setSoundEnabled(true);
+      void unlockAudio();
     }
-    if (!soundEnabled && audioContextRef.current?.state === "suspended") {
-      void audioContextRef.current.resume();
-    }
-    setSoundEnabled((value) => !value);
   };
 
   const saveFrame = () => {
@@ -490,7 +516,12 @@ export default function TimelapsePlayer() {
         )}
       </div>
 
-      <div className={styles.controls}>
+      <div
+        className={styles.controls}
+        onPointerDown={() => {
+          if (soundEnabled) void unlockAudio();
+        }}
+      >
         <div className={styles.transport}>
           <button
             type="button"
