@@ -6,9 +6,13 @@ import styles from "../styles/pages/Timelapse.module.scss";
 
 const MAP_WIDTH = 81 * 16;
 const MAP_HEIGHT = 49 * 16;
-const FIRST_YEAR = 2023;
+const FIRST_YEAR = 2021;
 const LAST_YEAR = 2026;
-const START_TIME = Date.UTC(FIRST_YEAR, 0, 1);
+const YEARS = Array.from(
+  { length: LAST_YEAR - FIRST_YEAR + 1 },
+  (_, index) => FIRST_YEAR + index,
+);
+const START_TIME = Date.parse("2021-08-22T23:31:48Z");
 const END_TIME = Date.UTC(LAST_YEAR + 1, 0, 1) - 1;
 
 type HistoricalImage = {
@@ -302,7 +306,7 @@ export default function TimelapsePlayer() {
     <section className={styles.player} aria-label="PixelMap timelapse player">
       <div className={styles.playerTopline}>
         <div>
-          <span className={styles.eyebrow}>ON-CHAIN MAP ARCHIVE</span>
+          <span className={styles.eyebrow}>PIXELMAP HISTORY</span>
           <h2>{formatDate(displayTime)}</h2>
         </div>
         <div className={styles.liveReadout} aria-live="polite">
@@ -336,16 +340,16 @@ export default function TimelapsePlayer() {
         {!timeline && !error && (
           <div className={styles.loadingState}>
             <span className={styles.loader} />
-            <strong>Rewinding the chain…</strong>
-            <small>Rebuilding the map at midnight, January 1, 2023</small>
+            <strong>Loading…</strong>
+            <small>Starting August 22, 2021</small>
           </div>
         )}
         {error && (
           <div className={styles.loadingState}>
-            <strong>Archive signal lost</strong>
+            <strong>Couldn&apos;t load history</strong>
             <small>{error}</small>
             <button type="button" onClick={prepareTimeline} className={styles.textButton}>
-              Try again
+              Retry
             </button>
           </div>
         )}
@@ -404,7 +408,7 @@ export default function TimelapsePlayer() {
             aria-label="Timelapse position"
           />
           <div className={styles.yearLabels}>
-            {[2023, 2024, 2025, 2026].map((year) => (
+            {YEARS.map((year) => (
               <button
                 type="button"
                 key={year}
@@ -431,19 +435,19 @@ export default function TimelapsePlayer() {
 
       <div className={styles.metadataBar}>
         <div>
-          <span>CURRENT CHANGE</span>
+          <span>CHANGE</span>
           {currentEvent ? (
             <strong>
               Tile #{currentEvent.tileId} by {shortAddress(currentEvent.updatedBy)}
             </strong>
           ) : (
-            <strong>Opening frame</strong>
+            <strong>Start</strong>
           )}
         </div>
         <div>
-          <span>CHAIN POSITION</span>
+          <span>BLOCK</span>
           <strong>
-            {currentEvent ? `Block ${currentEvent.blockNumber.toLocaleString()}` : "Jan 1, 2023"}
+            {currentEvent ? currentEvent.blockNumber.toLocaleString() : "13,078,126"}
           </strong>
         </div>
         <div>
@@ -465,33 +469,27 @@ export default function TimelapsePlayer() {
       {timeline && (
         <div className={styles.archiveGrid}>
           <div className={styles.archiveIntro}>
-            <span className={styles.eyebrow}>THE FILM IS THE DATA</span>
-            <h3>{timeline.events.length.toLocaleString()} visible changes</h3>
-            <p>
-              Reconstructed from timestamped tile images stored in PixelMap&apos;s
-              live archive. Transactions that only changed a URL or price are
-              left out, so every frame moves the picture forward.
-            </p>
+            <h3>{timeline.events.length.toLocaleString()} changes</h3>
             <div className={styles.bigStat}>
               <strong>{timeline.changedTileCount.toLocaleString()}</strong>
-              <span>tiles redrawn</span>
+              <span>tiles</span>
             </div>
           </div>
 
           <div className={styles.yearCards}>
-            {[2023, 2024, 2025, 2026].map((year) => (
+            {YEARS.map((year) => (
               <button type="button" key={year} onClick={() => jumpToYear(year)}>
                 <span>{year}</span>
                 <strong>{timeline.yearlyCounts[year] || 0}</strong>
-                <small>pixel changes</small>
+                <small>changes</small>
               </button>
             ))}
           </div>
 
           <div className={styles.eventLog}>
             <div className={styles.eventLogTitle}>
-              <span>RECENT FRAMES</span>
-              <small>UTC / ETHEREUM MAINNET</small>
+              <span>RECENT</span>
+              <small>UTC</small>
             </div>
             {recentEvents.length ? (
               recentEvents.map((event) => {
@@ -515,14 +513,14 @@ export default function TimelapsePlayer() {
                 );
               })
             ) : (
-              <div className={styles.emptyLog}>Press play to enter the archive.</div>
+              <div className={styles.emptyLog}>Press play.</div>
             )}
           </div>
         </div>
       )}
 
       <p className={styles.keyboardHint}>
-        Space to play or pause · Arrow keys to step one visible change
+        Space: play/pause · ← →: step
       </p>
     </section>
   );

@@ -36,23 +36,23 @@ describe("PixelMap timelapse reconstruction", () => {
       {
         id: 0,
         historical_images: [
-          { blockNumber: 1, date: "2022-01-01T00:00:00Z", image: red },
-          { blockNumber: 2, date: "2023-02-01T00:00:00Z", image: red },
-          { blockNumber: 3, date: "2024-03-01T00:00:00Z", image: blue },
+          { blockNumber: 1, date: "2020-01-01T00:00:00Z", image: red },
+          { blockNumber: 2, date: "2021-09-01T00:00:00Z", image: red },
+          { blockNumber: 3, date: "2022-03-01T00:00:00Z", image: blue },
           { blockNumber: 4, date: "2025-04-01T00:00:00Z", image: blue },
         ],
       },
       {
         id: 1,
         historical_images: [
-          { blockNumber: 5, date: "2023-06-01T00:00:00Z", image: green },
+          { blockNumber: 5, date: "2021-08-22T23:31:48Z", image: green },
         ],
       },
     ]);
 
     expect(timeline.events).toHaveLength(2);
     expect(timeline.events.map((event) => event.blockNumber)).toEqual([5, 3]);
-    expect(timeline.yearlyCounts).toEqual({ 2023: 1, 2024: 1 });
+    expect(timeline.yearlyCounts).toEqual({ 2021: 1, 2022: 1 });
     expect(timeline.changedTileCount).toBe(2);
     expect(Array.from(timeline.baseFrame.data.slice(0, 4))).toEqual([255, 0, 0, 255]);
   });
