@@ -7,6 +7,7 @@ import Account from "./Account";
 import SearchBar from "./SearchBar";
 
 const navigation = [
+  { name: "Timelapse", link: "/timelapse" },
   { name: "Wrapper", link: "/wrap" },
   { name: "Discord", href: "https://discord.pixelmap.io/", target: "_blank" },
   { name: "About", link: "/about" },
