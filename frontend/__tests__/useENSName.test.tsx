@@ -1,4 +1,4 @@
-import { renderHook, act } from '@testing-library/react-hooks';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import useENSName from '../hooks/useENSName';
 import { useWeb3React } from '@web3-react/core';
 
@@ -47,13 +47,13 @@ describe('useENSName', () => {
       chainId: 1
     });
 
-    const { result, waitForNextUpdate } = renderHook(() => useENSName(mockAddress));
+    const { result } = renderHook(() => useENSName(mockAddress));
     
     // Initial state should be empty string
     expect(result.current).toBe('');
     
     // Wait for the effect to complete
-    await waitForNextUpdate();
+    await waitFor(() => expect(result.current).toBe(mockENSName));
     
     // After effect, should have the ENS name
     expect(result.current).toBe(mockENSName);
@@ -93,17 +93,13 @@ describe('useENSName', () => {
       chainId: 1
     });
 
-    const { result, waitForNextUpdate } = renderHook(() => useENSName(mockAddress));
+    const { result } = renderHook(() => useENSName(mockAddress));
     
     // Initial state should be empty string
     expect(result.current).toBe('');
     
     // Wait for the effect to complete
-    try {
-      await waitForNextUpdate({ timeout: 100 });
-    } catch (e) {
-      // Timeout is expected as there's no state update
-    }
+    await act(async () => Promise.resolve());
     
     // State should remain empty string
     expect(result.current).toBe('');
@@ -122,10 +118,10 @@ describe('useENSName', () => {
     
     (useWeb3React as jest.Mock).mockImplementation(() => mockValues);
 
-    const { result, waitForNextUpdate, rerender } = renderHook(() => useENSName(mockAddress));
+    const { result, rerender } = renderHook(() => useENSName(mockAddress));
     
     // Wait for the initial effect to complete
-    await waitForNextUpdate();
+    await waitFor(() => expect(result.current).toBe(mockENSName));
     
     // Initial ENS name should be set
     expect(result.current).toBe(mockENSName);
@@ -140,7 +136,7 @@ describe('useENSName', () => {
     rerender();
     
     // Wait for the effect to run again
-    await waitForNextUpdate();
+    await waitFor(() => expect(mockLibrary.lookupAddress).toHaveBeenCalledTimes(2));
     
     // ENS name should still be the same, but lookup should have been called again
     expect(result.current).toBe(mockENSName);
@@ -157,10 +153,10 @@ describe('useENSName', () => {
       chainId: 1
     });
 
-    const { result, waitForNextUpdate, unmount } = renderHook(() => useENSName(mockAddress));
+    const { result, unmount } = renderHook(() => useENSName(mockAddress));
     
     // Wait for the effect to complete
-    await waitForNextUpdate();
+    await waitFor(() => expect(result.current).toBe(mockENSName));
     
     // Verify ENS name was set
     expect(result.current).toBe(mockENSName);

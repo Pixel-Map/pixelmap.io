@@ -4,8 +4,6 @@ import MapToggles from "./MapToggles";
 import MapTiles from "./MapTiles";
 import TileOverlay from "./TileOverlay";
 import styles from "../styles/components/Map.module.scss";
-import getConfig from "next/config";
-import Image from "next/image";
 import { PixelMapTile } from "@pixelmap/common/types/PixelMapTile";
 
 export default function Map(props: any) {

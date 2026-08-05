@@ -1,6 +1,11 @@
+const path = require("path");
+
 /** @type {import('next').NextConfig} */
 module.exports = {
+  output: "export",
+  outputFileTracingRoot: path.join(__dirname, ".."),
   images: {
+    unoptimized: true,
     domains: [
       "api.pixelmap.dev",
       "api.pixelmap.io",
@@ -10,7 +15,6 @@ module.exports = {
     minimumCacheTTL: 60,
   },
   reactStrictMode: true,
-  swcMinify: true,
   eslint: {
     ignoreDuringBuilds: true,
   },

@@ -801,10 +801,10 @@ export default function ShareCardGenerator({ tile, onClose }: ShareCardGenerator
           <div className="nes-container is-rounded is-dark mt-4" style={{ fontSize: '12px' }}>
             <p className="text-gray-400">
               💡 <strong>Tips:</strong><br/>
-              • "Copy Image & Share" copies to clipboard + opens Twitter<br/>
+              • &quot;Copy Image &amp; Share&quot; copies to clipboard + opens Twitter<br/>
               • If clipboard fails, image downloads automatically<br/>
               • Paste with Ctrl+V (Cmd+V on Mac) in your tweet<br/>
-              • Use "Brag" template for diamond hands flex<br/>
+              • Use &quot;Brag&quot; template for diamond hands flex<br/>
               • Custom text limited to 50 characters
             </p>
           </div>

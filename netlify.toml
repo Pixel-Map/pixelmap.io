@@ -1,8 +1,11 @@
 # example netlify.toml
 [build]
-command = "cd frontend && pnpm install && pnpm build && pnpm export"
-#   functions = "netlify/functions"
-#   publish = "frontend/.next"
+command = "pnpm --filter pixelmap-website build"
+publish = "frontend/out"
+
+[build.environment]
+NODE_VERSION = "22"
+PNPM_VERSION = "10.23.0"
 
 ## Uncomment to use this redirect for Single Page Applications like create-react-app.
 ## Not needed for static site generators.

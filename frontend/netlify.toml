@@ -11,5 +11,6 @@
     [headers.values]
     Access-Control-Allow-Origin = "*"
 
-[[plugins]]
-package = "@netlify/plugin-nextjs"
+[build]
+command = "pnpm build"
+publish = "out"

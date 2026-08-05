@@ -5,21 +5,21 @@ jobs:
     name: Run Tests & Coverage
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 2 # Fetch at least 2 commits for Codecov to generate proper diff
 
       # Setup Node.js
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 22
 
       # Setup pnpm
       - name: Setup pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v4
         with:
-          version: 10.4.1
+          version: 10.23.0
           run_install: false
 
       # Get pnpm store directory
@@ -29,7 +29,7 @@ jobs:
           echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
 
       # Setup pnpm cache
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         name: Setup pnpm cache
         with:
           path: ${{ env.STORE_PATH }}
@@ -39,9 +39,9 @@ jobs:
 
       # Setup Go for backend tests
       - name: Setup Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
-          go-version: "1.21"
+          go-version-file: backend/go.mod
 
       # Install dependencies
       - name: Install dependencies
@@ -56,8 +56,7 @@ jobs:
         uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          directory: ./coverage/
-          files: ./frontend-lcov.info,./backend-coverage.txt
+          files: ./coverage/frontend-lcov.info,./coverage/backend-coverage.out
           flags: unittests
           name: pixelmap-coverage
           fail_ci_if_error: false

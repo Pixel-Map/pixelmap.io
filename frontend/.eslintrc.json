@@ -1,10 +1,27 @@
 {
   "extends": "next/core-web-vitals",
-  "ignorePatterns": ["node_modules/", "dist", "**/*spec.ts"],
+  "ignorePatterns": [
+    "node_modules/",
+    ".next/",
+    "coverage/",
+    "dist/",
+    "out/",
+    "remix-migration/build/",
+    "remix-migration/public/build/",
+    "**/*spec.ts"
+  ],
   "rules": {
     "react/jsx-key": "error",
     "react-hooks/exhaustive-deps": "warn",
     "@next/next/no-css-tags": "warn",
     "react/no-unknown-property": "error"
-  }
+  },
+  "overrides": [
+    {
+      "files": ["__tests__/**/*.{js,jsx,ts,tsx}"],
+      "rules": {
+        "react/display-name": "off"
+      }
+    }
+  ]
 }
