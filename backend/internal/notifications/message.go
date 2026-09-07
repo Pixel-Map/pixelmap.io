@@ -8,14 +8,15 @@ import (
 )
 
 type Update struct {
-	ID          int64
-	TileID      int32
-	BlockNumber int64
-	Timestamp   time.Time
-	Image       string
-	URL         string
-	UpdatedBy   string
-	Transaction string
+	ID            int64
+	TileID        int32
+	BlockNumber   int64
+	Timestamp     time.Time
+	Image         string
+	URL           string
+	UpdatedBy     string
+	Transaction   string
+	PreviousImage string
 }
 
 type Embed struct {
@@ -24,7 +25,8 @@ type Embed struct {
 	Description string            `json:"description"`
 	Color       int               `json:"color"`
 	Timestamp   string            `json:"timestamp"`
-	Thumbnail   map[string]string `json:"thumbnail"`
+	Thumbnail   map[string]string `json:"thumbnail,omitempty"`
+	Image       map[string]string `json:"image,omitempty"`
 	Footer      map[string]string `json:"footer"`
 	Fields      []Field           `json:"fields"`
 }
@@ -40,6 +42,13 @@ type Message struct {
 	EnforceNonce    bool                `json:"enforce_nonce"`
 	AllowedMentions map[string][]string `json:"allowed_mentions"`
 	Embeds          []Embed             `json:"embeds"`
+	Attachments     []Attachment        `json:"attachments,omitempty"`
+}
+
+type Attachment struct {
+	ID          int    `json:"id"`
+	Filename    string `json:"filename"`
+	Description string `json:"description"`
 }
 
 // Keep the old bot's personality. Choose by event ID so retries are identical.

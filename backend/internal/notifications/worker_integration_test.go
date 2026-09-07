@@ -19,6 +19,7 @@ import (
 type fakeSender struct {
 	readyErr, sendErr error
 	sent              []int64
+	updates           []Update
 	mu                sync.Mutex
 }
 
@@ -30,6 +31,7 @@ func (s *fakeSender) Send(ctx context.Context, u Update) (string, error) {
 		return "", s.sendErr
 	}
 	s.sent = append(s.sent, u.ID)
+	s.updates = append(s.updates, u)
 	return fmt.Sprint(u.ID), nil
 }
 
@@ -54,7 +56,7 @@ func TestWorkerPostgres(t *testing.T) {
 	defer testDB.Close()
 	_, err = testDB.Exec(`CREATE TABLE current_state (state text PRIMARY KEY, value bigint NOT NULL);
 		CREATE TABLE data_histories (id serial PRIMARY KEY, tile_id integer NOT NULL, block_number bigint NOT NULL,
-		time_stamp timestamp NOT NULL, image text NOT NULL, url text NOT NULL, updated_by text NOT NULL, tx text NOT NULL);`)
+		time_stamp timestamp NOT NULL, image text NOT NULL, url text NOT NULL, updated_by text NOT NULL, tx text NOT NULL, log_index integer NOT NULL DEFAULT 0);`)
 	require.NoError(t, err)
 	add := func(image string) int64 {
 		var id int64
@@ -87,6 +89,7 @@ func TestWorkerPostgres(t *testing.T) {
 	require.NoError(t, w.Step(ctx))
 	require.Equal(t, newID, cursor())
 	require.Equal(t, []int64{newID}, sender.sent)
+	require.Equal(t, "old", sender.updates[0].PreviousImage)
 	require.NoError(t, w.Initialize(ctx))
 	require.NoError(t, w.Step(ctx))
 	require.Len(t, sender.sent, 1, "restart must not replay deliveries")
@@ -111,4 +114,17 @@ func TestWorkerPostgres(t *testing.T) {
 	require.NoError(t, other.Initialize(ctx))
 	require.NoError(t, other.Step(ctx))
 	require.Len(t, sender.sent, 2, "a new channel starts at head")
+	// Insertion IDs are not chain order. The predecessor may even have been
+	// backfilled after this event; a different tile must never be compared.
+	var targetID int64
+	require.NoError(t, testDB.QueryRow(`INSERT INTO data_histories (tile_id,block_number,log_index,time_stamp,image,url,updated_by,tx)
+		VALUES (200,30,2,now(),'target','','owner','tx') RETURNING id`).Scan(&targetID))
+	_, err = testDB.Exec(`INSERT INTO data_histories (tile_id,block_number,log_index,time_stamp,image,url,updated_by,tx) VALUES
+		(200,20,0,now(),'older-block','','owner','tx'),
+		(200,30,1,now(),'same-block-before','','owner','tx'),
+		(201,30,1,now(),'wrong-tile','','owner','tx')`)
+	require.NoError(t, err)
+	require.NoError(t, w.Step(ctx))
+	require.Equal(t, targetID, sender.updates[len(sender.updates)-1].ID)
+	require.Equal(t, "same-block-before", sender.updates[len(sender.updates)-1].PreviousImage)
 }

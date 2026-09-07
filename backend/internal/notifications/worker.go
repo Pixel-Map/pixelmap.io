@@ -57,6 +57,17 @@ func (w *Worker) Step(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("load pending tile update: %w", err)
 	}
+	// Ingestion can insert history out of order, so use chain order rather than
+	// the previous serial ID. Include transaction order for same-block updates.
+	err = tx.QueryRowContext(ctx, `SELECT previous.image FROM data_histories previous
+		JOIN data_histories current ON current.id = $1
+		WHERE previous.tile_id = current.tile_id
+		AND (previous.block_number, previous.log_index, previous.id)
+		  < (current.block_number, current.log_index, current.id)
+		ORDER BY previous.block_number DESC, previous.log_index DESC, previous.id DESC LIMIT 1`, u.ID).Scan(&u.PreviousImage)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return fmt.Errorf("load previous tile image: %w", err)
+	}
 	messageID := ""
 	if u.Image != "" {
 		if err := w.Sender.ImageReady(ctx, u); err != nil {

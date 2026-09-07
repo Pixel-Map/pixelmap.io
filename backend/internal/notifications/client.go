@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"mime/multipart"
 	"net/http"
+	"net/textproto"
 	"strconv"
 	"time"
 )
@@ -54,7 +56,7 @@ func (c *Client) ImageReady(ctx context.Context, u Update) error {
 }
 
 func (c *Client) Send(ctx context.Context, u Update) (string, error) {
-	body, err := json.Marshal(BuildMessage(u))
+	body, contentType, err := EncodeMessage(u)
 	if err != nil {
 		return "", err
 	}
@@ -63,7 +65,7 @@ func (c *Client) Send(ctx context.Context, u Update) (string, error) {
 		return "", err
 	}
 	req.Header.Set("Authorization", "Bot "+c.Token)
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", contentType)
 	req.Header.Set("User-Agent", "DiscordBot (https://pixelmap.io, 1.0)")
 	res, err := c.HTTP.Do(req)
 	if err != nil {
@@ -103,4 +105,45 @@ func (c *Client) Send(ctx context.Context, u Update) (string, error) {
 		return "", fmt.Errorf("Discord response has no message ID")
 	}
 	return message.ID, nil
+}
+
+// EncodeMessage uses a multipart GIF attachment when both states are valid
+// and visually distinct; otherwise it preserves the existing JSON still post.
+func EncodeMessage(u Update) ([]byte, string, error) {
+	message := BuildMessage(u)
+	animation, err := RenderTransition(u)
+	if err != nil {
+		return nil, "", err
+	}
+	if len(animation) == 0 {
+		body, err := json.Marshal(message)
+		return body, "application/json", err
+	}
+	filename := fmt.Sprintf("tile-%d-%d.gif", u.TileID, u.ID)
+	message.Embeds[0].Thumbnail = nil
+	message.Embeds[0].Image = map[string]string{"url": "attachment://" + filename}
+	message.Attachments = []Attachment{{ID: 0, Filename: filename, Description: fmt.Sprintf("Tile %d: animated wipe from its previous artwork to the artwork at block %d, with labeled pauses before and after.", u.TileID, u.BlockNumber)}}
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	part, err := writer.CreateFormField("payload_json")
+	if err != nil {
+		return nil, "", err
+	}
+	if err := json.NewEncoder(part).Encode(message); err != nil {
+		return nil, "", err
+	}
+	header := make(textproto.MIMEHeader)
+	header.Set("Content-Disposition", fmt.Sprintf(`form-data; name="files[0]"; filename="%s"`, filename))
+	header.Set("Content-Type", "image/gif")
+	file, err := writer.CreatePart(header)
+	if err != nil {
+		return nil, "", err
+	}
+	if _, err := file.Write(animation); err != nil {
+		return nil, "", err
+	}
+	if err := writer.Close(); err != nil {
+		return nil, "", err
+	}
+	return body.Bytes(), writer.FormDataContentType(), nil
 }

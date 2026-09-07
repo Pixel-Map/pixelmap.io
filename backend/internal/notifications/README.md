@@ -4,6 +4,11 @@ The standalone Go worker restores the original PixelMap bot's green embeds,
 tile thumbnails and playful compliments. It polls `data_histories` independently
 of the indexer, so Discord failures do not interrupt indexing or S3 publishing.
 
+Artwork changes include a looping before/after GIF attached directly to Discord:
+a 1.6-second BEFORE pause, a pixel-aligned wipe, a 2-second AFTER pause, and
+a reverse wipe (5.4 seconds per loop). Labels and sharp nearest-neighbor pixels
+keep the comparison readable. The GIF appears as the large embed image.
+
 ## Run on raccoon
 
 Set `DISCORD_TOKEN` and `DISCORD_CHANNEL_ID` in the ignored `.env.raccoon`.
@@ -28,6 +33,13 @@ bot token and channel ID. It does not mount the image cache or receive AWS keys.
   succeeds (or an empty image is skipped, matching the old bot).
 - Each notification uses the event's author, URL, timestamp and immutable
   `/tile/block.png` image. It waits for that image to return HTTP 200 publicly.
+- The animation compares the immediately preceding state of the same tile in
+  blockchain/transaction order, even if history was inserted out of order. Both
+  images are decoded directly from the recorded tile data with the indexer's
+  codec, so a missing old PNG does not prevent an animation. First images,
+  invalid historical data and visually unchanged updates retain a still image.
+- GIFs include descriptive attachment text and have no external animation-host
+  dependency. Viewer autoplay/reduced-motion preferences can affect playback.
 - A database row lock prevents concurrent workers from sending the same event.
   A stable Discord nonce deduplicates recent retries after an uncertain send.
   Discord's nonce window is limited; a crash after a successful send but before
@@ -59,7 +71,9 @@ NOTIFICATIONS_TEST_DATABASE_URL='postgres://postgres:test@localhost:55439/postgr
 
 The tests cover public-image gating, failure/retry cursor preservation, restart
 behavior, concurrent workers, empty images, message limits, disabled mentions,
-rate limits, receipts and credential-safe redirect handling.
+rate limits, receipts and credential-safe redirect handling. Animation tests
+check the actual encoded GIF's endpoint pixels, transition direction, timing,
+looping and multipart upload, plus fallback and history-ordering behavior.
 
 API references: [Create Message](https://docs.discord.com/developers/resources/message#create-message)
 and [Rate Limits](https://docs.discord.com/developers/topics/rate-limits).
