@@ -34,6 +34,20 @@ services:
       timeout: 5s
       retries: 5
 
+  discord-bot:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.discord
+    container_name: pixelmap-raccoon-discord-bot
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DISCORD_CHANNEL_ID: ${DISCORD_CHANNEL_ID:-880262613664137270}
+      DISCORD_TOKEN: ${DISCORD_TOKEN:?set DISCORD_TOKEN in .env.raccoon}
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in .env.raccoon}
+
   indexer:
     build:
       context: ./backend
