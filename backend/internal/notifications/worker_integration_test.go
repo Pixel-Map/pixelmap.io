@@ -8,6 +8,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"pixelmap.io/backend/internal/utils"
 	"sync"
 	"testing"
 	"time"
@@ -110,10 +111,25 @@ func TestWorkerPostgres(t *testing.T) {
 		require.NoError(t, err)
 	}
 	require.Equal(t, []int64{newID, concurrentID}, sender.sent, "two workers must serialize delivery")
+	missingID := add("missing")
+	sender.readyErr = errors.New("image not published")
+	require.Error(t, w.Step(ctx))
+	_, err = testDB.Exec(`UPDATE current_state SET value=$2 WHERE state=$1`, fmt.Sprintf("DISCORD_IMAGE_WAIT_%s_%d", w.Channel, missingID), time.Now().Add(-2*time.Hour).Unix())
+	require.NoError(t, err)
+	// A fresh worker retains the timeout and sends a text fallback.
+	restarted := &Worker{DB: testDB, Sender: sender, Channel: w.Channel, Logger: w.Logger}
+	require.NoError(t, restarted.Step(ctx))
+	require.Equal(t, missingID, cursor())
+	require.True(t, sender.updates[len(sender.updates)-1].ImageUnavailable)
+	invalidID := add("0")
+	sender.readyErr = utils.ErrInvalidTileImage
+	require.NoError(t, restarted.Step(ctx))
+	require.Equal(t, invalidID, cursor())
+	sender.readyErr = nil
 	other := &Worker{DB: testDB, Sender: sender, Channel: "456", Logger: w.Logger}
 	require.NoError(t, other.Initialize(ctx))
 	require.NoError(t, other.Step(ctx))
-	require.Len(t, sender.sent, 2, "a new channel starts at head")
+	require.Len(t, sender.sent, 4, "a new channel starts at head")
 	// Insertion IDs are not chain order. The predecessor may even have been
 	// backfilled after this event; a different tile must never be compared.
 	var targetID int64

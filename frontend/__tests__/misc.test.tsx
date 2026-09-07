@@ -1,4 +1,4 @@
-import { BigNumber } from '@ethersproject/bignumber';
+
 import {
   shortenIfHex,
   formatEtherscanLink,
@@ -65,19 +65,19 @@ describe('misc utils', () => {
 
   describe('parseBalance', () => {
     it('formats BigNumber values correctly', () => {
-      const wei = BigNumber.from('1000000000000000000'); // 1 ETH in wei
+      const wei = BigInt('1000000000000000000'); // 1 ETH in wei
       const formatted = parseBalance(wei);
       expect(formatted).toEqual('1');
     });
 
     it('respects custom decimals parameter', () => {
-      const value = BigNumber.from('1000000'); // 1 token with 6 decimals
+      const value = BigInt('1000000'); // 1 token with 6 decimals
       const formatted = parseBalance(value, 6);
       expect(formatted).toEqual('1');
     });
 
     it('handles large numbers correctly', () => {
-      const value = BigNumber.from('123456789000000000000000000'); // 123,456,789 ETH
+      const value = BigInt('123456789000000000000000000'); // 123,456,789 ETH
       const formatted = parseBalance(value);
       expect(formatted).toEqual('123,456,789');
     });
@@ -131,7 +131,7 @@ describe('misc utils', () => {
   });
 
   describe('convertEthToWei', () => {
-    it('converts ETH strings to wei BigNumber', () => {
+    it('converts ETH strings to wei bigint', () => {
       const ethAmount = '1.5';
       const weiAmount = convertEthToWei(ethAmount);
       

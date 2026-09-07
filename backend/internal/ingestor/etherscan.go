@@ -2,9 +2,11 @@ package ingestor
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
+	"sort"
 	"strings"
 
 	"net/http"
@@ -32,6 +34,8 @@ type EtherscanResponse struct {
 }
 
 type EtherscanTransaction struct {
+	TransferLog       bool   `json:"-"`
+	LogIndex          uint64 `json:"-"`
 	BlockNumber       string `json:"blockNumber"`
 	TimeStamp         string `json:"timeStamp"`
 	Hash              string `json:"hash"`
@@ -99,6 +103,9 @@ func (c *EtherscanClient) GetLatestBlockNumber() (uint64, error) {
 		return 0, fmt.Errorf("HTTP request failed: %w", err)
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return 0, fmt.Errorf("Etherscan HTTP %d", resp.StatusCode)
+	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -117,7 +124,7 @@ func (c *EtherscanClient) GetLatestBlockNumber() (uint64, error) {
 		return 0, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
-	if result.Result == "" {
+	if !strings.HasPrefix(result.Result, "0x") || len(result.Result) < 3 {
 		return 0, fmt.Errorf("empty result from Etherscan API")
 	}
 
@@ -129,160 +136,164 @@ func (c *EtherscanClient) GetLatestBlockNumber() (uint64, error) {
 	return blockNumber, nil
 }
 
-func (c *EtherscanClient) GetTransactions(ctx context.Context, startBlock, endBlock int64) ([]EtherscanTransaction, error) {
-	addresses := []string{
-		"0x015a06a433353f8db634df4eddf0c109882a15ab",
-		"0x050dc61dFB867E0fE3Cf2948362b6c0F3fAF790b",
-	}
+// Fetch every page from every source. A partial result must never advance the
+// block checkpoint. Keep the page size below the logs endpoint's 1000-row cap.
+const etherscanPageSize = 1000
 
-	var allTransactions []EtherscanTransaction
-
-	for i, address := range addresses {
-		c.logger.Debug("Processing address",
-			zap.Int("index", i),
-			zap.String("address", address),
-			zap.Int64("startBlock", startBlock),
-			zap.Int64("endBlock", endBlock))
-
-		params := map[string]string{
-			"module":     "account",
-			"action":     "txlist",
-			"address":    address,
-			"startblock": strconv.FormatInt(startBlock, 10),
-			"endblock":   strconv.FormatInt(endBlock, 10),
-			"sort":       "asc",
-			"apikey":     c.apiKey,
+func (c *EtherscanClient) fetchPages(ctx context.Context, params map[string]string) ([]json.RawMessage, error) {
+	var rows []json.RawMessage
+	seenPages := make(map[[32]byte]bool)
+	for page := 1; ; page++ {
+		params["page"] = strconv.Itoa(page)
+		params["offset"] = strconv.Itoa(etherscanPageSize)
+		var raw json.RawMessage
+		if err := c.makeRequestWithRetry(ctx, params, &raw); err != nil {
+			return nil, err
 		}
-
-		var rawResp json.RawMessage
-		if err := c.makeRequestWithRetry(ctx, params, &rawResp); err != nil {
-			if strings.Contains(err.Error(), "No transactions found") {
-				c.logger.Debug("No transactions found for address",
-					zap.String("address", address))
-				continue // Skip this address and continue with the next one
+		var batch []json.RawMessage
+		if err := json.Unmarshal(raw, &batch); err != nil || string(raw) == "null" {
+			return nil, fmt.Errorf("invalid %s page %d", params["action"], page)
+		}
+		if len(batch) > 0 {
+			hash := sha256.Sum256(raw)
+			if seenPages[hash] {
+				return nil, fmt.Errorf("%s pagination did not advance", params["action"])
 			}
-			c.logger.Error("Failed to make request",
-				zap.Error(err),
-				zap.String("address", address))
-			continue // Skip this address and continue with the next one
+			seenPages[hash] = true
 		}
-
-		// Try to unmarshal as an array first
-		var transactions []EtherscanTransaction
-		err := json.Unmarshal(rawResp, &transactions)
-		if err == nil {
-			c.logger.Debug("Successfully unmarshaled response as array",
-				zap.Int("transactionCount", len(transactions)),
-				zap.String("address", address))
-			allTransactions = append(allTransactions, transactions...)
-			continue
+		rows = append(rows, batch...)
+		if len(batch) < etherscanPageSize {
+			return rows, nil
 		}
-
-		// If array unmarshal fails, try as EtherscanResponse
-		var resp EtherscanResponse
-		if err := json.Unmarshal(rawResp, &resp); err != nil {
-			c.logger.Error("Failed to unmarshal response",
-				zap.Error(err),
-				zap.String("rawResponse", string(rawResp)),
-				zap.String("address", address))
-			continue
-		}
-
-		if resp.Status != "1" {
-			c.logger.Warn("API returned non-success status",
-				zap.String("status", resp.Status),
-				zap.String("message", resp.Message),
-				zap.String("address", address))
-			continue
-		}
-
-		transactions, ok := resp.Result.([]EtherscanTransaction)
-		if !ok {
-			c.logger.Warn("Unexpected result type for transactions",
-				zap.String("type", fmt.Sprintf("%T", resp.Result)),
-				zap.String("address", address))
-			continue
-		}
-
-		c.logger.Info("Transactions found for address",
-			zap.String("address", address),
-			zap.Int("count", len(transactions)))
-
-		allTransactions = append(allTransactions, transactions...)
 	}
+}
 
-	// Fetch Transfer events for the NFT contracts
-	transferEvents, err := c.GetTransferEvents(ctx, startBlock, endBlock)
-
+func (c *EtherscanClient) GetTransactions(ctx context.Context, startBlock, endBlock int64) ([]EtherscanTransaction, error) {
+	var transactions []EtherscanTransaction
+	for _, address := range []string{"0x015a06a433353f8db634df4eddf0c109882a15ab", "0x050dc61dFB867E0fE3Cf2948362b6c0F3fAF790b"} {
+		rows, err := c.fetchPages(ctx, map[string]string{
+			"module": "account", "action": "txlist", "address": address,
+			"startblock": strconv.FormatInt(startBlock, 10), "endblock": strconv.FormatInt(endBlock, 10),
+			"sort": "asc", "apikey": c.apiKey,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("fetch transactions for %s: %w", address, err)
+		}
+		for _, row := range rows {
+			var tx EtherscanTransaction
+			if err := json.Unmarshal(row, &tx); err != nil {
+				return nil, err
+			}
+			transactions = append(transactions, tx)
+		}
+	}
+	events, err := c.GetTransferEvents(ctx, startBlock, endBlock)
 	if err != nil {
-		c.logger.Info(err.Error())
-		if strings.Contains(err.Error(), "No records found") {
-			c.logger.Debug("No records found for contract")
-		} else {
-			c.logger.Error("Failed to fetch transfer events", zap.Error(err))
+		return nil, err
+	}
+	for _, event := range events {
+		if err := validateTransferEvent(event); err != nil {
+			return nil, err
 		}
-	} else {
-		c.logger.Debug("Transfer events found", zap.Int("count", len(transferEvents)))
-		c.logger.Debug("Transfer events", zap.Any("events", transferEvents))
-		for _, event := range transferEvents {
-			transaction := ConvertTransferEventToTransaction(event)
-			c.logger.Debug("Transaction", zap.Any("transaction", transaction))
-			allTransactions = append(allTransactions, transaction)
+		transactions = append(transactions, ConvertTransferEventToTransaction(event))
+	}
+	// Validate ordering fields before sorting, rather than treating malformed
+	// upstream data as block zero. Log events follow the call in their transaction.
+	for _, tx := range transactions {
+		if _, err := strconv.ParseUint(tx.BlockNumber, 10, 64); err != nil {
+			return nil, fmt.Errorf("invalid transaction block: %w", err)
+		}
+		if _, err := chainIndex(tx.TransactionIndex); err != nil {
+			return nil, err
 		}
 	}
+	sort.SliceStable(transactions, func(i, j int) bool {
+		a, b := transactions[i], transactions[j]
+		ab, _ := strconv.ParseUint(a.BlockNumber, 10, 64)
+		bb, _ := strconv.ParseUint(b.BlockNumber, 10, 64)
+		if ab != bb {
+			return ab < bb
+		}
+		ai, _ := chainIndex(a.TransactionIndex)
+		bi, _ := chainIndex(b.TransactionIndex)
+		if ai != bi {
+			return ai < bi
+		}
+		if a.TransferLog != b.TransferLog {
+			return !a.TransferLog
+		}
+		return a.LogIndex < b.LogIndex
+	})
+	// Pagination may overlap; preserve different logs from the same transaction.
+	seen := make(map[string]bool)
+	result := make([]EtherscanTransaction, 0, len(transactions))
+	for _, tx := range transactions {
+		key := fmt.Sprintf("%s/%t/%d", strings.ToLower(tx.Hash), tx.TransferLog, tx.LogIndex)
+		if tx.Hash != "" && seen[key] {
+			continue
+		}
+		seen[key] = true
+		result = append(result, tx)
+	}
+	return result, nil
+}
 
-	c.logger.Debug("Finished processing all transactions",
-		zap.Int("totalTransactions", len(allTransactions)))
+func chainIndex(value string) (uint64, error) {
+	if value == "" {
+		return 0, nil
+	}
+	base := 10
+	if strings.HasPrefix(value, "0x") {
+		value = value[2:]
+		base = 16
+	}
+	n, err := strconv.ParseUint(value, base, 64)
+	if err != nil {
+		return 0, fmt.Errorf("invalid chain index: %w", err)
+	}
+	return n, nil
+}
 
-	return allTransactions, nil
+func validateTransferEvent(e EtherscanTransferEvent) error {
+	for _, value := range []string{e.BlockNumber, e.TimeStamp, e.LogIndex, e.GasUsed} {
+		if !strings.HasPrefix(value, "0x") || len(value) < 3 {
+			return fmt.Errorf("invalid transfer event quantity")
+		}
+		if _, err := strconv.ParseUint(value[2:], 16, 64); err != nil {
+			return fmt.Errorf("invalid transfer event quantity: %w", err)
+		}
+	}
+	if len(e.Topics) != 4 {
+		return fmt.Errorf("invalid Transfer topic count")
+	}
+	for _, topic := range e.Topics {
+		if len(topic) != 66 || !strings.HasPrefix(topic, "0x") || strings.Trim(topic[2:], "0123456789abcdefABCDEF") != "" {
+			return fmt.Errorf("invalid Transfer topic")
+		}
+	}
+	return nil
 }
 
 func (c *EtherscanClient) GetTransferEvents(ctx context.Context, startBlock, endBlock int64) ([]EtherscanTransferEvent, error) {
-	contractAddresses := []string{
-		"0x050dc61dFB867E0fE3Cf2948362b6c0F3fAF790b", // OpenSea contract address
-		// Add other relevant contract addresses here
+	rows, err := c.fetchPages(ctx, map[string]string{
+		"module": "logs", "action": "getLogs",
+		"fromBlock": strconv.FormatInt(startBlock, 10), "toBlock": strconv.FormatInt(endBlock, 10),
+		"address": "0x050dc61dFB867E0fE3Cf2948362b6c0F3fAF790b",
+		"topic0":  "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+		"apikey":  c.apiKey,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("fetch transfer logs: %w", err)
 	}
-
-	var allEvents []EtherscanTransferEvent
-
-	for _, contract := range contractAddresses {
-		params := map[string]string{
-			"module":    "logs",
-			"action":    "getLogs",
-			"fromBlock": strconv.FormatInt(startBlock, 10),
-			"toBlock":   strconv.FormatInt(endBlock, 10),
-			"address":   contract,
-			"topic0":    "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef", // Transfer event signature
-			"apikey":    c.apiKey,
+	events := make([]EtherscanTransferEvent, 0, len(rows))
+	for _, row := range rows {
+		var event EtherscanTransferEvent
+		if err := json.Unmarshal(row, &event); err != nil {
+			return nil, err
 		}
-
-		var rawResp json.RawMessage
-		if err := c.makeRequestWithRetry(ctx, params, &rawResp); err != nil {
-			if strings.Contains(err.Error(), "No records found") {
-				c.logger.Debug("No records found for contract", zap.String("contract", contract))
-				continue
-			} else {
-				c.logger.Error("Failed to fetch transfer events",
-					zap.Error(err),
-					zap.String("contract", contract))
-				continue
-			}
-		}
-		c.logger.Debug("Raw response", zap.String("rawResponse", string(rawResp)))
-
-		var events []EtherscanTransferEvent
-		if err := json.Unmarshal(rawResp, &events); err != nil {
-			c.logger.Error("Failed to unmarshal transfer events",
-				zap.Error(err),
-				zap.String("rawResponse", string(rawResp)),
-				zap.String("contract", contract))
-			continue
-		}
-
-		allEvents = append(allEvents, events...)
+		events = append(events, event)
 	}
-
-	return allEvents, nil
+	return events, nil
 }
 
 func (c *EtherscanClient) makeRequest(ctx context.Context, params map[string]string, result interface{}) error {
@@ -308,6 +319,9 @@ func (c *EtherscanClient) makeRequest(ctx context.Context, params map[string]str
 		return fmt.Errorf("making request: %w", err)
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("Etherscan HTTP %d", resp.StatusCode)
+	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -319,6 +333,9 @@ func (c *EtherscanClient) makeRequest(ctx context.Context, params map[string]str
 		return fmt.Errorf("unmarshaling response: %w", err)
 	}
 
+	if ethResp.Status == "0" && (ethResp.Message == "No transactions found" || ethResp.Message == "No records found") {
+		return json.Unmarshal([]byte("[]"), result)
+	}
 	if ethResp.Status != "1" {
 		// Include Result: Etherscan puts the real reason there (e.g. "Max calls
 		// per sec rate limit reached") while Message is just "NOTOK". Keeps the
@@ -347,8 +364,8 @@ func (c *EtherscanClient) makeRequestWithRetry(ctx context.Context, params map[s
 		err := c.makeRequest(ctx, params, result)
 		if err != nil {
 			if strings.Contains(err.Error(), "rate limiter wait:") {
-				// Local rate limiter error, retry immediately
-				return nil
+				// Cancellation or a deadline must propagate to the batch caller.
+				return backoff.Permanent(err)
 			}
 			if strings.Contains(err.Error(), "Max rate limit reached") ||
 				strings.Contains(err.Error(), "API error: NOTOK") {
@@ -360,7 +377,7 @@ func (c *EtherscanClient) makeRequestWithRetry(ctx context.Context, params map[s
 		return nil
 	}
 
-	return backoff.Retry(operation, b)
+	return backoff.Retry(operation, backoff.WithContext(b, ctx))
 }
 
 // ConvertTransferEventToTransaction converts an EtherscanTransferEvent to an EtherscanTransaction
@@ -385,7 +402,9 @@ func ConvertTransferEventToTransaction(event EtherscanTransferEvent) EtherscanTr
 	methodSignature := "0x42842e0e"
 	inputData := methodSignature + paddedFrom + paddedTo + paddedTokenId
 
+	index, _ := chainIndex(event.TransactionIndex)
 	return EtherscanTransaction{
+		TransferLog: true, LogIndex: uint64(nonce),
 		BlockNumber:       strconv.FormatInt(blockNumber, 10),
 		TimeStamp:         strconv.FormatInt(timeStamp, 10), // Convert int64 to string
 		Hash:              event.TransactionHash,
@@ -393,7 +412,7 @@ func ConvertTransferEventToTransaction(event EtherscanTransferEvent) EtherscanTr
 		To:                "0x050dc61dfb867e0fe3cf2948362b6c0f3faf790b",
 		Value:             "0", // safeTransferFrom typically has no value transfer
 		ContractAddress:   event.ContractAddress,
-		TransactionIndex:  event.TransactionIndex,
+		TransactionIndex:  strconv.FormatUint(index, 10),
 		Gas:               strconv.FormatInt(gas, 10),
 		GasUsed:           strconv.FormatInt(gas, 10),
 		GasPrice:          "0",

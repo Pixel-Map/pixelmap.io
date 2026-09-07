@@ -1,0 +1,12 @@
+**/node_modules
+**/.next
+**/out
+**/coverage
+**/cache
+**/.env*
+**/*.test
+**/*.tsbuildinfo
+.git
+coverage-combined
+backend
+docs

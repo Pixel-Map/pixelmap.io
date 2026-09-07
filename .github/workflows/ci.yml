@@ -4,6 +4,21 @@ jobs:
   test:
     name: Run Tests & Coverage
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: pixelmap_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgres://postgres:test@localhost:5432/pixelmap_test?sslmode=disable
+      NOTIFICATIONS_TEST_DATABASE_URL: postgres://postgres:test@localhost:5432/pixelmap_test?sslmode=disable
     steps:
       - uses: actions/checkout@v4
         with:
@@ -48,8 +63,17 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       # Run tests with coverage
+      - name: Typecheck and lint frontend
+        run: pnpm --dir frontend typecheck && pnpm --dir frontend lint
+
       - name: Run tests with coverage
         run: pnpm run test:coverage:combined
+
+      - name: Check Go and concurrent notification delivery
+        run: cd backend && go vet ./... && go test -race ./internal/notifications
+
+      - name: Build static website
+        run: pnpm --dir frontend build
 
       # Upload coverage to Codecov
       - name: Upload coverage to Codecov

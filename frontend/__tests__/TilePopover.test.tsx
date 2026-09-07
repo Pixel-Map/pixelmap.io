@@ -67,7 +67,7 @@ describe('TilePopover', () => {
     // Check that the TileCard is rendered
     const tileCard = screen.getByTestId('mock-tile-card');
     expect(tileCard).toBeInTheDocument();
-    expect(tileCard.getAttribute('data-tile-id')).toBe(mockTile.id.toString());
+    expect(tileCard.getAttribute('data-tile-id')).toBe(mockTile.id!.toString());
   });
 
   it('does not render the TileCard when the tooltip is not visible', () => {

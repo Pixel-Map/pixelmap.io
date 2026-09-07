@@ -66,22 +66,18 @@ RETURNING id;
 -- name: GetDataHistoryByTileId :many
 SELECT * FROM data_histories
 WHERE tile_id = $1
-ORDER BY time_stamp DESC;
+ORDER BY block_number DESC, log_index DESC, id DESC;
 
 -- name: GetLatestDataHistoryByTileId :one
 SELECT * FROM data_histories
 WHERE tile_id = $1
-ORDER BY time_stamp DESC
+ORDER BY block_number DESC, log_index DESC, id DESC
 LIMIT 1;
 
 -- name: GetLatestTileImages :many
-SELECT tile_id, image
+SELECT DISTINCT ON (tile_id) tile_id, image
 FROM data_histories
-WHERE (tile_id, block_number) IN (
-    SELECT tile_id, MAX(block_number)
-    FROM data_histories
-    GROUP BY tile_id
-);
+ORDER BY tile_id, block_number DESC, log_index DESC, id DESC;
 
 -- name: GetDataHistoryByTx :one
 SELECT * FROM data_histories
@@ -95,6 +91,7 @@ WHERE id = $1;
 -- name: InsertTile :one
 INSERT INTO tiles (id, image, price, url, owner, wrapped, ens, opensea_price)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+ON CONFLICT (id) DO UPDATE SET id = EXCLUDED.id
 RETURNING id;
 
 -- name: GetTileById :one

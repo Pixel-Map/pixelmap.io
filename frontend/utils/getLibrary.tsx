@@ -1,7 +1,7 @@
-import { Web3Provider } from '@ethersproject/providers';
+import { BrowserProvider } from 'ethers';
 
 export default function getLibrary(provider: any, connector: any) {
-  const library = new Web3Provider(provider);
+  const library = new BrowserProvider(provider);
   library.pollingInterval = 12000;
   return library;
 }

@@ -56,13 +56,13 @@ describe('TileCard', () => {
         image: 'EEEEEE111111EEEEEE',
         image_url: '/historical1.png',
         blockNumber: 100,
-        timestamp: 1000
+        date: new Date(1000)
       },
       {
         image: '222222333333222222',
         image_url: '/historical2.png',
         blockNumber: 200,
-        timestamp: 2000
+        date: new Date(2000)
       }
     ]
   };
@@ -90,8 +90,8 @@ describe('TileCard', () => {
     expect(screen.getByText(/Owner:/)).toBeInTheDocument();
     
     // URL should be visible
-    expect(screen.getByText(mockTile.url)).toBeInTheDocument();
-    expect(screen.getByText(mockTile.url).getAttribute('href')).toBe(mockTile.url);
+    expect(screen.getByText(mockTile.url!)).toBeInTheDocument();
+    expect(screen.getByText(mockTile.url!).getAttribute('href')).toBe(mockTile.url);
 
     // Not wrapped message should be visible
     expect(screen.getByText('Not Wrapped')).toBeInTheDocument();
@@ -107,7 +107,7 @@ describe('TileCard', () => {
     
     // ENS name should be visible
     expect(screen.getByText(/Owner:/)).toBeInTheDocument();
-    expect(screen.getByText(mockTileWithENS.ens)).toBeInTheDocument();
+    expect(screen.getByText(mockTileWithENS.ens!)).toBeInTheDocument();
   });
 
   it('displays OpenSea button for wrapped tiles', async () => {
@@ -142,13 +142,6 @@ describe('TileCard', () => {
     expect(tileImage.className).toContain('h-20 w-20 md:h-40 md:w-40');
   });
 
-  it.skip('displays historical images when available', async () => {
-    // Skipping: The UI for historical images has been redesigned
-    // and no longer shows "Previous Images:" text
-  });
-
-  it.skip('changes displayed image on hovering historical images', async () => {
-    // Skipping: The UI for historical images has been redesigned
-    // and no longer shows "Previous Images:" text
-  });
+  // History now lives in TileHistory/TileImageComparison; their regression
+  // tests cover history updates and image comparisons directly.
 });

@@ -32,7 +32,6 @@
 			"bn.js@5": "^5.2.3",
 			"brace-expansion@1": "^1.1.18",
 			"brace-expansion@2": "^2.1.4",
-			"elliptic": "^6.6.1",
 			"flatted": "^3.4.2",
 			"form-data": "^4.0.6",
 			"glob@10": "^10.5.0",
@@ -48,7 +47,10 @@
 			"sharp": "^0.35.0",
 			"ws@7": "^7.5.11",
 			"ws@8": "^8.21.0",
-			"yaml": "^2.8.3"
+			"yaml": "^2.8.3",
+			"browserslist": "^4.28.7",
+			"nanoid@3": "^3.3.18",
+			"postcss-selector-parser@6": "^6.1.3"
 		}
 	}
 }

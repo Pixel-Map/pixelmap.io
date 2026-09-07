@@ -2,275 +2,247 @@ package ingestor
 
 import (
 	"context"
-	"database/sql"
+	"errors"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
+	"math/big"
+	"os"
+	"path/filepath"
+	db "pixelmap.io/backend/internal/db"
+	"strings"
 	"testing"
 	"time"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"go.uber.org/zap"
-	db "pixelmap.io/backend/internal/db"
 )
 
-// MockQueries implements the db.Querier interface for testing
-type MockQueries struct {
-	mock.Mock
+type testQueries struct {
+	db.Querier
+	block             int64
+	cursor            int32
+	history           []db.DataHistory
+	stateErr, listErr error
+	updated           db.UpdateTileParams
+	owner             db.UpdateTileOwnerParams
+	inserted          db.InsertDataHistoryParams
 }
 
-func (m *MockQueries) GetLastProcessedBlock(ctx context.Context) (int64, error) {
-	args := m.Called(ctx)
-	return args.Get(0).(int64), args.Error(1)
-}
-
-func (m *MockQueries) UpdateLastProcessedBlock(ctx context.Context, blockNumber int64) error {
-	args := m.Called(ctx, blockNumber)
-	return args.Error(0)
-}
-
-func (m *MockQueries) GetTileById(ctx context.Context, id int32) (db.Tile, error) {
-	args := m.Called(ctx, id)
-	return args.Get(0).(db.Tile), args.Error(1)
-}
-
-func (m *MockQueries) UpdateTile(ctx context.Context, arg db.UpdateTileParams) error {
-	args := m.Called(ctx, arg)
-	return args.Error(0)
-}
-
-func (m *MockQueries) UpdateTileOwner(ctx context.Context, arg db.UpdateTileOwnerParams) error {
-	args := m.Called(ctx, arg)
-	return args.Error(0)
-}
-
-func (m *MockQueries) UpdateWrappedStatus(ctx context.Context, arg db.UpdateWrappedStatusParams) error {
-	args := m.Called(ctx, arg)
-	return args.Error(0)
-}
-
-func (m *MockQueries) InsertTile(ctx context.Context, arg db.InsertTileParams) (db.Tile, error) {
-	args := m.Called(ctx, arg)
-	return args.Get(0).(db.Tile), args.Error(1)
-}
-
-func (m *MockQueries) InsertPixelMapTransaction(ctx context.Context, arg db.InsertPixelMapTransactionParams) (db.PixelMapTransaction, error) {
-	args := m.Called(ctx, arg)
-	return args.Get(0).(db.PixelMapTransaction), args.Error(1)
-}
-
-func (m *MockQueries) InsertPurchaseHistory(ctx context.Context, arg db.InsertPurchaseHistoryParams) (db.PurchaseHistory, error) {
-	args := m.Called(ctx, arg)
-	return args.Get(0).(db.PurchaseHistory), args.Error(1)
-}
-
-func (m *MockQueries) InsertDataHistory(ctx context.Context, arg db.InsertDataHistoryParams) (db.DataHistory, error) {
-	args := m.Called(ctx, arg)
-	return args.Get(0).(db.DataHistory), args.Error(1)
-}
-
-func (m *MockQueries) InsertWrappingHistory(ctx context.Context, arg db.InsertWrappingHistoryParams) (db.WrappingHistory, error) {
-	args := m.Called(ctx, arg)
-	return args.Get(0).(db.WrappingHistory), args.Error(1)
-}
-
-func (m *MockQueries) InsertTransferHistory(ctx context.Context, arg db.InsertTransferHistoryParams) (db.TransferHistory, error) {
-	args := m.Called(ctx, arg)
-	return args.Get(0).(db.TransferHistory), args.Error(1)
-}
-
-func (m *MockQueries) GetLastProcessedDataHistoryID(ctx context.Context) (int64, error) {
-	args := m.Called(ctx)
-	return args.Get(0).(int64), args.Error(1)
-}
-
-func (m *MockQueries) GetUnprocessedDataHistory(ctx context.Context, lastID int64) ([]db.DataHistory, error) {
-	args := m.Called(ctx, lastID)
-	return args.Get(0).([]db.DataHistory), args.Error(1)
-}
-
-func (m *MockQueries) GetDataHistoryByTileId(ctx context.Context, tileID int32) ([]db.DataHistory, error) {
-	args := m.Called(ctx, tileID)
-	return args.Get(0).([]db.DataHistory), args.Error(1)
-}
-
-func (m *MockQueries) UpdateLastProcessedDataHistoryID(ctx context.Context, id int64) error {
-	args := m.Called(ctx, id)
-	return args.Error(0)
-}
-
-func (m *MockQueries) GetLatestTileImages(ctx context.Context) ([]db.GetLatestTileImagesRow, error) {
-	args := m.Called(ctx)
-	return args.Get(0).([]db.GetLatestTileImagesRow), args.Error(1)
-}
-
-func (m *MockQueries) ListTiles(ctx context.Context, arg db.ListTilesParams) ([]db.Tile, error) {
-	args := m.Called(ctx, arg)
-	return args.Get(0).([]db.Tile), args.Error(1)
-}
-
-func (m *MockQueries) WithTx(tx *sql.Tx) *db.Queries {
-	args := m.Called(tx)
-	return args.Get(0).(*db.Queries)
-}
-
-// MockEtherscanClient mocks the Etherscan API client
-type MockEtherscanClient struct {
-	mock.Mock
-}
-
-func (m *MockEtherscanClient) GetLatestBlockNumber() (uint64, error) {
-	args := m.Called()
-	return args.Get(0).(uint64), args.Error(1)
-}
-
-func (m *MockEtherscanClient) GetTransactions(ctx context.Context, fromBlock, toBlock int64) ([]EtherscanTransaction, error) {
-	args := m.Called(ctx, fromBlock, toBlock)
-	return args.Get(0).([]EtherscanTransaction), args.Error(1)
-}
-
-// MockS3Syncer mocks the S3Syncer
-type MockS3Syncer struct {
-	mock.Mock
-}
-
-func (m *MockS3Syncer) SyncWithS3(ctx context.Context) error {
-	args := m.Called(ctx)
-	return args.Error(0)
-}
-
-// TestableIngestor is a wrapper that provides access to the Ingestor methods but uses mocked dependencies
-type TestableIngestor struct {
-	logger          *zap.Logger
-	queries         *MockQueries
-	etherscanClient *MockEtherscanClient
-	s3Syncer        *MockS3Syncer
-	pubSub          *PubSub
-	renderSignal    chan struct{}
-	maxRetries      int
-	baseDelay       time.Duration
-}
-
-// NewTestableIngestor creates a new instance of TestableIngestor with mocked dependencies
-func NewTestableIngestor(t *testing.T) *TestableIngestor {
-	logger, _ := zap.NewDevelopment()
-	mockQueries := new(MockQueries)
-	mockEtherscanClient := new(MockEtherscanClient)
-	mockS3Syncer := new(MockS3Syncer)
-
-	renderSignal := make(chan struct{}, 1)
-
-	return &TestableIngestor{
-		logger:          logger,
-		queries:         mockQueries,
-		etherscanClient: mockEtherscanClient,
-		s3Syncer:        mockS3Syncer,
-		pubSub:          NewPubSub(),
-		renderSignal:    renderSignal,
-		maxRetries:      5,
-		baseDelay:       time.Second,
+func (q *testQueries) GetLastProcessedBlock(context.Context) (int64, error) { return q.block, nil }
+func (q *testQueries) UpdateLastProcessedBlock(_ context.Context, n int64) error {
+	if q.stateErr != nil {
+		return q.stateErr
 	}
+	q.block = n
+	return nil
 }
-
-// Tests for PubSub
-func TestPubSub(t *testing.T) {
-	pubSub := NewPubSub()
-	
-	// Test Subscribe
-	ch := pubSub.Subscribe("test_event")
-	assert.NotNil(t, ch)
-	
-	// Test Publish
-	payload := []byte(`{"test": "data"}`)
-	pubSub.Publish(Event{Type: "test_event", Payload: payload})
-	
-	// Check that the event was received
-	select {
-	case event := <-ch:
-		assert.Equal(t, "test_event", event.Type)
-		// Use string comparison since the types are different
-		assert.Equal(t, string(payload), string(event.Payload))
-	case <-time.After(time.Second):
-		t.Fatal("Timed out waiting for event")
-	}
+func (q *testQueries) GetLastProcessedDataHistoryID(context.Context) (int32, error) {
+	return q.cursor, nil
 }
-
-// Test for getStartBlock functionality
-func TestGetStartBlock(t *testing.T) {
-	t.Skip("Function requires refactoring to make it more testable")
-}
-
-// Test for getEndBlock functionality
-func TestGetEndBlock(t *testing.T) {
-	t.Skip("Function requires refactoring to make it more testable")
-}
-
-// Test for processBlockRange functionality
-func TestProcessBlockRange(t *testing.T) {
-	t.Skip("Function requires refactoring to make it more testable")
-}
-
-// Test for fetchTransactions functionality
-func TestFetchTransactions(t *testing.T) {
-	t.Skip("Function requires refactoring to make it more testable")
-}
-
-// Test for updateLastProcessedBlock functionality
-func TestUpdateLastProcessedBlock(t *testing.T) {
-	t.Skip("Function requires refactoring to make it more testable")
-}
-
-// Test for processDataHistory functionality
-func TestProcessDataHistory(t *testing.T) {
-	t.Skip("Function requires refactoring to make it more testable")
-}
-
-// Test for signalNewData
-func TestSignalNewData(t *testing.T) {
-	// Create a testable ingestor with a signal channel
-	ingestor := &Ingestor{
-		renderSignal: make(chan struct{}, 1),
-	}
-	
-	// Test that signalNewData adds a signal to the channel
-	ingestor.signalNewData()
-	
-	// Verify that the signal was sent
-	select {
-	case <-ingestor.renderSignal:
-		// Signal was received, test passed
-	default:
-		t.Fatal("No signal was sent to the renderSignal channel")
-	}
-	
-	// Test that signalNewData doesn't block when channel already has a signal
-	ingestor.signalNewData() // First signal (already tested above)
-	ingestor.signalNewData() // Second signal (shouldn't block)
-	
-	// Verify that exactly one signal is in the channel
-	select {
-	case <-ingestor.renderSignal:
-		// Signal was received
-		select {
-		case <-ingestor.renderSignal:
-			t.Fatal("Multiple signals were sent to the renderSignal channel")
-		default:
-			// No more signals, which is correct
+func (q *testQueries) GetUnprocessedDataHistory(_ context.Context, id int32) ([]db.DataHistory, error) {
+	var rows []db.DataHistory
+	for _, r := range q.history {
+		if r.ID > id {
+			rows = append(rows, r)
 		}
-	default:
-		t.Fatal("No signal was available in the renderSignal channel")
+	}
+	return rows, nil
+}
+func (q *testQueries) UpdateLastProcessedDataHistoryID(_ context.Context, n int32) error {
+	if q.stateErr != nil {
+		return q.stateErr
+	}
+	q.cursor = n
+	return nil
+}
+func (q *testQueries) GetTileById(_ context.Context, id int32) (db.Tile, error) {
+	return db.Tile{ID: id, Image: strings.Repeat("fff", 256)}, nil
+}
+func (q *testQueries) GetDataHistoryByTileId(_ context.Context, id int32) ([]db.DataHistory, error) {
+	return q.history, nil
+}
+func (q *testQueries) GetPurchaseHistoryByTileId(context.Context, int32) ([]db.PurchaseHistory, error) {
+	return nil, nil
+}
+func (q *testQueries) GetTransferHistoryByTileId(context.Context, int32) ([]db.TransferHistory, error) {
+	return nil, nil
+}
+func (q *testQueries) GetWrappingHistoryByTileId(context.Context, int32) ([]db.WrappingHistory, error) {
+	return nil, nil
+}
+func (q *testQueries) GetLatestTileImages(context.Context) ([]db.GetLatestTileImagesRow, error) {
+	return nil, nil
+}
+func (q *testQueries) ListTiles(context.Context, db.ListTilesParams) ([]db.Tile, error) {
+	return nil, q.listErr
+}
+func (q *testQueries) InsertDataHistory(_ context.Context, p db.InsertDataHistoryParams) (int32, error) {
+	q.inserted = p
+	return 1, nil
+}
+func (q *testQueries) UpdateTile(_ context.Context, p db.UpdateTileParams) error {
+	q.updated = p
+	return nil
+}
+func (q *testQueries) InsertTransferHistory(context.Context, db.InsertTransferHistoryParams) (int32, error) {
+	return 1, nil
+}
+func (q *testQueries) UpdateTileOwner(_ context.Context, p db.UpdateTileOwnerParams) error {
+	q.owner = p
+	return nil
+}
+
+type testChain struct {
+	err   error
+	calls int
+	rows  []EtherscanTransaction
+}
+
+func (c *testChain) GetLatestBlockNumber() (uint64, error) { return 100, c.err }
+func (c *testChain) GetTransactions(context.Context, int64, int64) ([]EtherscanTransaction, error) {
+	c.calls++
+	return c.rows, c.err
+}
+
+type testPublisher struct {
+	err    error
+	calls  int
+	before func()
+}
+
+func (p *testPublisher) SyncWithS3(context.Context) error {
+	p.calls++
+	if p.before != nil {
+		p.before()
+	}
+	return p.err
+}
+func testIngestor(q *testQueries, c *testChain) *Ingestor {
+	return &Ingestor{queries: q, etherscanClient: c, logger: zap.NewNop(), maxRetries: 2, pubSub: NewPubSub(), renderSignal: make(chan struct{}, 1)}
+}
+
+func TestGetStartBlock(t *testing.T) {
+	q := &testQueries{block: startBlockNumber + 10}
+	i := testIngestor(q, nil)
+	n, err := i.getStartBlock(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, q.block+1, n)
+}
+func TestGetEndBlock(t *testing.T) {
+	c := &testChain{}
+	i := testIngestor(nil, c)
+	n, err := i.getEndBlock()
+	require.NoError(t, err)
+	require.EqualValues(t, 100-safetyBlockOffset, n)
+	c.err = errors.New("upstream down")
+	_, err = i.getEndBlock()
+	require.Error(t, err)
+}
+func TestProcessBlockRange(t *testing.T) {
+	q := &testQueries{block: 10}
+	c := &testChain{err: errors.New("partial upstream failure")}
+	i := testIngestor(q, c)
+	require.Error(t, i.processBlockRange(context.Background(), 11, 20))
+	require.EqualValues(t, 10, q.block)
+	c.err = nil
+	require.NoError(t, i.processBlockRange(context.Background(), 11, 20))
+	require.EqualValues(t, 20, q.block)
+}
+func TestFetchTransactions(t *testing.T) {
+	c := &testChain{err: errors.New("upstream down")}
+	i := testIngestor(nil, c)
+	_, err := i.fetchTransactions(context.Background(), 1, 2)
+	require.Error(t, err)
+	require.Equal(t, 2, c.calls)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err = i.fetchTransactions(ctx, 1, 2)
+	require.ErrorIs(t, err, context.Canceled)
+}
+func TestUpdateLastProcessedBlock(t *testing.T) {
+	q := &testQueries{stateErr: errors.New("database down")}
+	i := testIngestor(q, nil)
+	require.Error(t, i.updateLastProcessedBlock(context.Background(), 20))
+	require.Zero(t, q.block)
+	q.stateErr = nil
+	require.NoError(t, i.updateLastProcessedBlock(context.Background(), 20))
+	require.EqualValues(t, 20, q.block)
+}
+func TestProcessDataHistory(t *testing.T) {
+	t.Chdir(t.TempDir())
+	q := &testQueries{history: []db.DataHistory{{ID: 1, TileID: 100, Image: strings.Repeat("fff", 256), BlockNumber: 20}}}
+	i := testIngestor(q, nil)
+	p := &testPublisher{err: errors.New("S3 down"), before: func() { require.Zero(t, q.cursor, "checkpoint must remain pending until publish succeeds") }}
+	i.s3Syncer = p
+	require.Error(t, i.processDataHistory(context.Background()))
+	require.Zero(t, q.cursor)
+	p.err = nil
+	require.NoError(t, i.processDataHistory(context.Background()))
+	require.EqualValues(t, 1, q.cursor)
+	require.FileExists(t, "cache/100/20.png")
+	p.before = nil
+	require.NoError(t, i.processDataHistory(context.Background()))
+	require.Equal(t, 3, p.calls, "no new history must still retry outstanding uploads")
+}
+func TestUpdateTileDataAndSync(t *testing.T) {
+	t.Chdir(t.TempDir())
+	q := &testQueries{listErr: errors.New("database down")}
+	i := testIngestor(q, nil)
+	p := &testPublisher{}
+	i.s3Syncer = p
+	require.Error(t, i.updateTileDataAndSync(context.Background()))
+	require.Zero(t, p.calls)
+	q.listErr = nil
+	p.err = errors.New("S3 down")
+	require.Error(t, i.updateTileDataAndSync(context.Background()))
+	require.Equal(t, 1, p.calls)
+}
+func TestProcessTileUpdate(t *testing.T) {
+	q := &testQueries{}
+	i := testIngestor(q, nil)
+	tx := &EtherscanTransaction{Hash: "tx", From: "owner"}
+	require.NoError(t, i.processTileUpdate(context.Background(), big.NewInt(100), strings.Repeat("fff", 256), "example.com", big.NewInt(0), tx, 123, 20, 2))
+	require.Equal(t, q.updated.Image, q.inserted.Image)
+	require.EqualValues(t, 100, q.updated.ID)
+	require.Equal(t, "owner", q.updated.Owner)
+	require.EqualValues(t, 20, q.inserted.BlockNumber)
+	require.Equal(t, time.Unix(123, 0), q.inserted.TimeStamp)
+}
+func TestProcessTransfer(t *testing.T) {
+	t.Chdir(t.TempDir())
+	q := &testQueries{}
+	i := testIngestor(q, nil)
+	tx := &EtherscanTransaction{Hash: "tx"}
+	require.Error(t, i.processTransfer(context.Background(), nil, tx, 123, 20, 0))
+	from, to := common.HexToAddress("0x1"), common.HexToAddress("0x2")
+	require.NoError(t, i.processTransfer(context.Background(), []interface{}{from, to, big.NewInt(100)}, tx, 123, 20, 0))
+	require.Equal(t, to.Hex(), q.owner.Owner)
+	require.EqualValues(t, 100, q.owner.ID)
+}
+func TestRenderInvalidImageReplacesStaleArtwork(t *testing.T) {
+	t.Chdir(t.TempDir())
+	i := testIngestor(nil, nil)
+	require.NoError(t, i.renderAndSaveImage(big.NewInt(100), strings.Repeat("fff", 256), 20))
+	before, err := os.ReadFile("cache/100/latest.png")
+	require.NoError(t, err)
+	require.NoError(t, i.renderAndSaveImage(big.NewInt(100), "0", 21))
+	after, err := os.ReadFile("cache/100/latest.png")
+	require.NoError(t, err)
+	require.NotEqual(t, before, after)
+	require.FileExists(t, filepath.Join("cache", "100", "21.png"))
+}
+func TestPubSub(t *testing.T) {
+	ps := NewPubSub()
+	ch := ps.Subscribe("event")
+	ps.Publish(Event{Type: "event"})
+	select {
+	case e := <-ch:
+		require.Equal(t, "event", e.Type)
+	case <-time.After(time.Second):
+		t.Fatal("missing event")
 	}
 }
-
-// Test for updateTileDataAndSync functionality
-func TestUpdateTileDataAndSync(t *testing.T) {
-	t.Skip("Function requires refactoring to make it more testable")
-}
-
-// Test for processTileUpdate functionality
-func TestProcessTileUpdate(t *testing.T) {
-	t.Skip("Function requires refactoring to make it more testable")
-}
-
-// Test for processTransfer functionality
-func TestProcessTransfer(t *testing.T) {
-	t.Skip("Function requires refactoring to make it more testable")
+func TestSignalNewData(t *testing.T) {
+	i := testIngestor(nil, nil)
+	i.signalNewData()
+	i.signalNewData()
+	require.Len(t, i.renderSignal, 1)
 }

@@ -3,7 +3,7 @@ import { render, screen, act, fireEvent } from '@testing-library/react';
 import Wrap from '../pages/wrap';
 import { useWeb3React } from '@web3-react/core';
 import { fetchTiles } from '../utils/api';
-import { Contract } from '@ethersproject/contracts';
+import { Contract } from 'ethers';
 
 // Mock dependencies
 jest.mock('@web3-react/core', () => ({
@@ -18,7 +18,8 @@ jest.mock('../utils/api', () => ({
   fetchTiles: jest.fn(),
 }));
 
-jest.mock('@ethersproject/contracts', () => ({
+jest.mock('ethers', () => ({
+  ...jest.requireActual('ethers'),
   Contract: jest.fn().mockImplementation(() => ({
     setTile: jest.fn(),
     tiles: jest.fn().mockImplementation(() => Promise.resolve({
@@ -94,7 +95,7 @@ describe('Wrap page', () => {
     (useWeb3React as jest.Mock).mockReturnValue({
       account: '0x123456789abcdef',
       library: {
-        getSigner: jest.fn().mockReturnValue('signer')
+        getSigner: jest.fn().mockResolvedValue('signer')
       }
     });
     
@@ -171,7 +172,7 @@ describe('Wrap page', () => {
       1, // tile id
       'FFFFFF000000FFFFFF', // image
       'https://example.com', // url
-      expect.any(Object) // price in wei (BigNumber)
+      BigInt('1500000000000000000') // edited price: 1.5 ETH, exact wei
     );
   });
 

@@ -77,7 +77,7 @@ describe('GridSelect', () => {
     fireEvent.mouseEnter(gridCells[2]);
     
     // Then mouse leave the container
-    fireEvent.mouseLeave(gridContainer);
+    fireEvent.mouseLeave(gridContainer!);
     
     // Check if highlight div reset to 0,0
     const highlightDiv = document.querySelector('.bg-indigo-300');

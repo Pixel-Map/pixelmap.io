@@ -1,8 +1,10 @@
 import { PixelMapTile } from "@pixelmap/common/types/PixelMapTile";
 
+const assetBase = (process.env.NEXT_PUBLIC_ASSET_BASE_URL || "https://pixelmap.art").replace(/\/$/, "");
+
 export const fetchTiles = async () => {
   try {
-    const res = await fetch("https://pixelmap.art/tiledata.json");
+    const res = await fetch(`${assetBase}/tiledata.json`);
     const tiles: Array<PixelMapTile> = await res.json();
 
     // By returning { props: { posts } }, the Blog component
@@ -13,13 +15,13 @@ export const fetchTiles = async () => {
   }
 };
 
-export const fetchSingleTile = async (id: string): Promise<PixelMapTile | undefined> => {
+export const fetchSingleTile = async (id: string | undefined): Promise<PixelMapTile | undefined> => {
   if (id == undefined) {
     return undefined;
   }
   
   try {
-    const res = await fetch(`https://pixelmap.art/tile/${id}.json`);
+    const res = await fetch(`${assetBase}/tile/${id}.json`);
     const data = await res.json();
     return { id: parseInt(id), ...data };
   } catch (err) {
@@ -37,7 +39,7 @@ export interface TimeCapsuleTile {
 
 export const fetchTimeCapsuleTiles = async () => {
   try {
-    const res = await fetch("https://pixelmap.art/timecapsuleI.json");
+    const res = await fetch(`${assetBase}/timecapsuleI.json`);
     const tiles: Array<TimeCapsuleTile> = await res.json();
 
     // By returning { props: { posts } }, the Blog component
@@ -50,7 +52,7 @@ export const fetchTimeCapsuleTiles = async () => {
 
 export const fetchAllTilesEver = async () => {
   try {
-    const res = await fetch("https://pixelmap.art/allimages.json");
+    const res = await fetch(`${assetBase}/allimages.json`);
     const tiles: Array<TimeCapsuleTile> = await res.json();
 
     // By returning { props: { posts } }, the Blog component

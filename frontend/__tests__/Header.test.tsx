@@ -28,7 +28,7 @@ jest.mock('../components/SearchBar', () => {
 jest.mock('next/link', () => {
   const NextLink = ({ children, href }) => {
     return (
-      <span data-testid="next-link" href={href}>
+      <span data-testid="next-link" data-href={href}>
         {children}
       </span>
     );
@@ -115,9 +115,9 @@ describe('Header', () => {
     
     // Test for the existence of Next.js links with correct hrefs
     const aboutNextLinks = screen.getAllByTestId('next-link')
-      .filter(link => link.getAttribute('href') === '/about');
+      .filter(link => link.getAttribute('data-href') === '/about');
     
     expect(aboutNextLinks.length).toBeGreaterThan(0);
-    expect(aboutNextLinks[0]).toHaveAttribute('href', '/about');
+    expect(aboutNextLinks[0]).toHaveAttribute('data-href', '/about');
   });
 });

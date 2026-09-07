@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import TileImage from './TileImage';
+import { countPixelDifferences } from '../utils/pixelDifferences';
 import { PixelMapImage } from '@pixelmap/common/types/PixelMapImage';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -12,19 +13,23 @@ export default function TileImageComparison({ images, currentImage }: TileImageC
   // Handle empty or null images array
   const safeImages = images || [];
   
-  const [leftIndex, setLeftIndex] = useState(Math.max(0, safeImages.length - 1));
-  const [rightIndex, setRightIndex] = useState(0);
+  const [selectedLeftIndex, setLeftIndex] = useState(Math.max(0, safeImages.length - 1));
+  const [selectedRightIndex, setRightIndex] = useState(0);
   const [sliderPosition, setSliderPosition] = useState(50);
   const [isDragging, setIsDragging] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(1000);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [currentFrame, setCurrentFrame] = useState(0);
+  const [selectedFrame, setCurrentFrame] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const playbackInterval = useRef<NodeJS.Timeout>();
 
   const allImages = currentImage ? 
     [{ image: currentImage, image_url: '', blockNumber: 0, date: new Date() }, ...safeImages] : 
     safeImages;
+
+  const leftIndex = Math.min(selectedLeftIndex, Math.max(0, allImages.length - 1));
+  const rightIndex = Math.min(selectedRightIndex, Math.max(0, allImages.length - 1));
+  const currentFrame = Math.min(selectedFrame, Math.max(0, allImages.length - 1));
 
   useEffect(() => {
     if (isPlaying && allImages.length > 0) {
@@ -56,28 +61,8 @@ export default function TileImageComparison({ images, currentImage }: TileImageC
   const handleMouseDown = () => setIsDragging(true);
   const handleMouseUp = () => setIsDragging(false);
 
-  const getPixelDifferences = () => {
-    if (leftIndex === rightIndex) return 0;
-    
-    const leftImage = allImages[leftIndex].image;
-    const rightImage = allImages[rightIndex].image;
-    
-    if (!leftImage || !rightImage) return 0;
-    
-    let differences = 0;
-    const minLength = Math.min(leftImage.length, rightImage.length);
-    
-    for (let i = 0; i < minLength; i += 3) {
-      const leftPixel = leftImage.substr(i, 3);
-      const rightPixel = rightImage.substr(i, 3);
-      if (leftPixel !== rightPixel) differences++;
-    }
-    
-    return differences;
-  };
-
-  const pixelDifferences = getPixelDifferences();
-  const percentChanged = ((pixelDifferences / 256) * 100).toFixed(1);
+  const pixelDifferences = countPixelDifferences(allImages[leftIndex]?.image, allImages[rightIndex]?.image);
+  const percentChanged = pixelDifferences === null ? 'Unavailable' : ((pixelDifferences / 256) * 100).toFixed(1) + '%';
 
   // Handle case where there are no images
   if (allImages.length === 0) {
@@ -229,11 +214,11 @@ export default function TileImageComparison({ images, currentImage }: TileImageC
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                   <div>
                     <p className="text-gray-400 text-xs uppercase">Pixels</p>
-                    <p className="text-2xl font-bold text-green-400" style={{fontFamily: 'vcr_osd_monoregular, monospace'}}>{pixelDifferences}</p>
+                    <p className="text-2xl font-bold text-green-400" style={{fontFamily: 'vcr_osd_monoregular, monospace'}}>{pixelDifferences ?? 'Unavailable'}</p>
                   </div>
                   <div>
                     <p className="text-gray-400 text-xs uppercase">Changed</p>
-                    <p className="text-2xl font-bold text-yellow-400" style={{fontFamily: 'vcr_osd_monoregular, monospace'}}>{percentChanged}%</p>
+                    <p className="text-2xl font-bold text-yellow-400" style={{fontFamily: 'vcr_osd_monoregular, monospace'}}>{percentChanged}</p>
                   </div>
                   <div>
                     <p className="text-gray-400 text-xs uppercase">Time Gap</p>

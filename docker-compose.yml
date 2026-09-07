@@ -1,35 +1,51 @@
-version: '3.9'
+# Local development stack. No writes to production S3 or Discord.
+name: pixelmap-local
 services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: pixelmap
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: local-only
+    ports:
+      - "127.0.0.1:${PIXELMAP_DB_PORT:-15433}:5432"
+    volumes:
+      - local_postgres:/var/lib/postgresql/data
+      - ./backend/internal/db/migrations/001_initial_schema.sql:/docker-entrypoint-initdb.d/001.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  indexer:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.raccoon
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:local-only@postgres:5432/pixelmap?sslmode=disable
+      ETHERSCAN_API_KEY: ${ETHERSCAN_API_KEY:-}
+      WEB3_URL: ${WEB3_URL:-}
+      SYNC_TO_AWS: "false"
+    volumes:
+      - local_cache:/app/cache
+  assets:
+    image: nginx:1.28-alpine
+    ports:
+      - "127.0.0.1:${PIXELMAP_ASSET_PORT:-3001}:80"
+    volumes:
+      - local_cache:/usr/share/nginx/html:ro
+      - ./scripts/local-assets.conf:/etc/nginx/conf.d/default.conf:ro
   frontend:
-    build: ./frontend
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        NEXT_PUBLIC_ASSET_BASE_URL: http://localhost:${PIXELMAP_ASSET_PORT:-3001}
     ports:
-      - '3000:3000'
-    depends_on:
-      - backend
-    environment:
-      NEXT_PUBLIC_API_ENDPOINT: "http://localhost:3001"
-  backend:
-    build: ./backend
-    ports:
-      - '3001:3001'
-    depends_on:
-      - localstack
-    environment:
-      AWS_BUCKET_NAME: "pixelmap"
-      AWS_ID: "test"
-      AWS_SECRET: "test"
-      CONTRACT_ADDRESS: "0x015a06a433353f8db634df4eddf0c109882a15ab"
-      WEB3_URL: "wss://mainnet.infura.io/ws/v3/yourkeyhere"
-      CONTRACT_WRAPPER_ADDRESS: "0x050dc61dfb867e0fe3cf2948362b6c0f3faf790b"
-      USE_LOCAL: "true" # Use localstack endpoint instead of real AWS S3
-    volumes:
-      - ./backend/cache:/app/cache
-  localstack:
-    image: localstack/localstack:latest
-    environment:
-      - AWS_DEFAULT_REGION=us-east-1
-      - SERVICES=s3
-    ports:
-      - '4566-4583:4566-4583'
-    volumes:
-      - "./backend/localstack:/docker-entrypoint-initaws.d"
+      - "127.0.0.1:${PIXELMAP_WEB_PORT:-3000}:80"
+volumes:
+  local_postgres:
+  local_cache:

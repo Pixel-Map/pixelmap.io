@@ -10,6 +10,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
+	"pixelmap.io/backend/internal/utils"
 	"strconv"
 	"time"
 )
@@ -40,6 +41,9 @@ func NewClient(token, channel string) *Client {
 // Immutable block-specific filenames prevent stale latest.png thumbnails.
 // Check the public URL first because rendering and publishing are asynchronous.
 func (c *Client) ImageReady(ctx context.Context, u Update) error {
+	if _, err := utils.DecodeTileImage(u.Image); err != nil {
+		return utils.ErrInvalidTileImage
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodHead, c.ImageBase+imagePath(u), nil)
 	if err != nil {
 		return fmt.Errorf("build image request: %w", err)
@@ -111,6 +115,10 @@ func (c *Client) Send(ctx context.Context, u Update) (string, error) {
 // and visually distinct; otherwise it preserves the existing JSON still post.
 func EncodeMessage(u Update) ([]byte, string, error) {
 	message := BuildMessage(u)
+	if u.ImageUnavailable {
+		body, err := json.Marshal(message)
+		return body, "application/json", err
+	}
 	animation, err := RenderTransition(u)
 	if err != nil {
 		return nil, "", err

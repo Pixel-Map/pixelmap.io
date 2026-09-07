@@ -8,15 +8,16 @@ import (
 )
 
 type Update struct {
-	ID            int64
-	TileID        int32
-	BlockNumber   int64
-	Timestamp     time.Time
-	Image         string
-	URL           string
-	UpdatedBy     string
-	Transaction   string
-	PreviousImage string
+	ID               int64
+	TileID           int32
+	BlockNumber      int64
+	Timestamp        time.Time
+	Image            string
+	URL              string
+	UpdatedBy        string
+	Transaction      string
+	PreviousImage    string
+	ImageUnavailable bool
 }
 
 type Embed struct {
@@ -121,7 +122,7 @@ func BuildMessage(u Update) Message {
 	if index < 0 {
 		index = 0
 	}
-	return Message{
+	message := Message{
 		Nonce: fmt.Sprintf("pm-update-%d", u.ID), EnforceNonce: true,
 		AllowedMentions: map[string][]string{"parse": {}},
 		Embeds: []Embed{{
@@ -133,4 +134,9 @@ func BuildMessage(u Update) Message {
 			Fields:    fields,
 		}},
 	}
+	if u.ImageUnavailable {
+		message.Embeds[0].Thumbnail = nil
+		message.Embeds[0].Description = "This tile was updated on chain. Its image preview is unavailable; you can still view the tile and transaction below."
+	}
+	return message
 }

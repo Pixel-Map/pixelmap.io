@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"math/rand"
@@ -43,7 +44,9 @@ func NewPubSub() *PubSub {
 }
 
 func lookupENS(client *ethclient.Client, address string) (string, error) {
-
+	if client == nil {
+		return "", nil
+	}
 	name, err := ens.ReverseResolve(client, common.HexToAddress(address))
 	if err != nil {
 		if err.Error() == "ErrNoName" {
@@ -75,29 +78,37 @@ func (ps *PubSub) Publish(event Event) {
 	}
 }
 
+type chainSource interface {
+	GetLatestBlockNumber() (uint64, error)
+	GetTransactions(context.Context, int64, int64) ([]EtherscanTransaction, error)
+}
+
+type publisher interface{ SyncWithS3(context.Context) error }
+
 type Ingestor struct {
 	logger          *zap.Logger
-	queries         *db.Queries
-	etherscanClient *EtherscanClient
+	queries         db.Querier
+	etherscanClient chainSource
 	pubSub          *PubSub
 	renderSignal    chan struct{}
 	isRendering     atomic.Bool
 	maxRetries      int
 	baseDelay       time.Duration
-	s3Syncer        *S3Syncer
+	s3Syncer        publisher
 	ethClient       *ethclient.Client
+	publicationMu   sync.Mutex
 }
 
 func NewIngestor(logger *zap.Logger, sqlDB *sql.DB, apiKey string) *Ingestor {
 	pubSub := NewPubSub()
-	var s3Syncer *S3Syncer
+	var s3Syncer publisher
 
 	// Check if SYNC_TO_AWS environment variable is set
 	if os.Getenv("SYNC_TO_AWS") == "true" {
 		var err error
 		s3Syncer, err = NewS3Syncer(logger, "cache")
 		if err != nil {
-			logger.Error("Failed to create S3Syncer", zap.Error(err))
+			logger.Fatal("Failed to create S3Syncer", zap.Error(err))
 		}
 	}
 
@@ -402,7 +413,7 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 				if tx.From == "" {
 					i.logger.Warn("Transaction has no Owner address?",
 						zap.String("tx", tx.Hash))
-					os.Exit(1)
+					return fmt.Errorf("transaction has no owner address")
 				}
 				err = i.queries.UpdateTileOwner(ctx, db.UpdateTileOwnerParams{
 					ID:    int32(location.Int64()),
@@ -490,7 +501,7 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 		if tx.From == "" {
 			i.logger.Warn("Transaction has no Owner address?",
 				zap.String("tx", tx.Hash))
-			os.Exit(1)
+			return fmt.Errorf("transaction has no owner address")
 		}
 		err = i.queries.UpdateWrappedStatus(ctx, db.UpdateWrappedStatusParams{
 			ID:      int32(location.Int64()),
@@ -528,7 +539,7 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 		if tx.From == "" {
 			i.logger.Warn("Transaction has no Owner address?",
 				zap.String("tx", tx.Hash))
-			os.Exit(1)
+			return fmt.Errorf("transaction has no owner address")
 		}
 		err = i.queries.UpdateWrappedStatus(ctx, db.UpdateWrappedStatusParams{
 			ID:      int32(location.Int64()),
@@ -552,7 +563,7 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 			zap.String("from", tx.From))
 	default:
 		fmt.Printf("Unknown method called: %s\n", method.Name)
-		os.Exit(2)
+		return fmt.Errorf("unsupported contract method: %s", method.Name)
 	}
 
 	_, err = i.queries.InsertPixelMapTransaction(ctx, transaction)
@@ -567,6 +578,9 @@ func (i *Ingestor) fetchTransactions(ctx context.Context, fromBlock, toBlock int
 	var err error
 
 	for attempt := 0; attempt < i.maxRetries; attempt++ {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		transactions, err = i.etherscanClient.GetTransactions(ctx, fromBlock, toBlock)
 		if err == nil {
 			break
@@ -584,7 +598,10 @@ func (i *Ingestor) fetchTransactions(ctx context.Context, fromBlock, toBlock int
 
 		// Calculate backoff delay
 		delay := i.baseDelay * time.Duration(1<<uint(attempt))
-		jitter := time.Duration(rand.Int63n(int64(delay) / 2))
+		var jitter time.Duration
+		if delay > 1 {
+			jitter = time.Duration(rand.Int63n(int64(delay) / 2))
+		}
 		delay = delay + jitter
 
 		select {
@@ -655,6 +672,8 @@ func (i *Ingestor) continuousRenderProcess() {
 }
 
 func (i *Ingestor) processDataHistory(ctx context.Context) error {
+	i.publicationMu.Lock()
+	defer i.publicationMu.Unlock()
 	lastProcessedID, err := i.queries.GetLastProcessedDataHistoryID(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get last processed data history ID: %w", err)
@@ -667,7 +686,10 @@ func (i *Ingestor) processDataHistory(ctx context.Context) error {
 	}
 
 	if len(history) == 0 {
-		// No more data to process
+		// Retry older publication failures even when no new chain event arrives.
+		if i.s3Syncer != nil {
+			return i.s3Syncer.SyncWithS3(ctx)
+		}
 		return nil
 	}
 
@@ -691,10 +713,6 @@ func (i *Ingestor) processDataHistory(ctx context.Context) error {
 			return fmt.Errorf("failed to update metadata: %w", err)
 		}
 
-		// Update the last processed ID
-		if err := i.queries.UpdateLastProcessedDataHistoryID(ctx, row.ID); err != nil {
-			return fmt.Errorf("failed to update last processed data history ID: %w", err)
-		}
 	}
 
 	// Redraw the full map
@@ -702,13 +720,20 @@ func (i *Ingestor) processDataHistory(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to get latest tile images: %w", err)
 	}
-	utils.RenderFullMap(tiles, "cache/tilemap.png")
-
-	// Call the reusable function
-	if err := i.updateTileDataAndSync(ctx); err != nil {
+	if err := utils.RenderFullMap(tiles, "cache/tilemap.png"); err != nil {
 		return err
 	}
 
+	// Publish the complete batch while holding the artifact writer lock.
+	if err := i.updateTileDataAndSyncUnlocked(ctx); err != nil {
+		return err
+	}
+
+	// A replay after a crash is safe: files are replaced atomically. Never
+	// acknowledge this batch until every artifact has reached the publisher.
+	if err := i.queries.UpdateLastProcessedDataHistoryID(ctx, history[len(history)-1].ID); err != nil {
+		return fmt.Errorf("save published history checkpoint: %w", err)
+	}
 	i.logger.Info("Finished processing data history", zap.Int("count", len(history)))
 
 	return nil
@@ -739,12 +764,19 @@ func (i *Ingestor) renderAndSaveImage(location *big.Int, imageData string, block
 
 	// Render the image using the existing RenderImage function
 	err := utils.RenderImage(imageData, imageSize, imageSize, blockFilePath)
+	if errors.Is(err, utils.ErrInvalidTileImage) {
+		i.logger.Warn("Invalid on-chain image; publishing a blank tile", zap.String("tile", location.String()), zap.Int64("block", blockNumber))
+		if err := utils.RenderBlankImage(imageSize, imageSize, blockFilePath); err != nil {
+			return err
+		}
+		return utils.RenderBlankImage(imageSize, imageSize, latestFilePath)
+	}
 	if err != nil {
 		i.logger.Error("Failed to render block image",
 			zap.Error(err),
 			zap.String("path", blockFilePath),
 			zap.String("imageData", imageData))
-		return nil
+		return fmt.Errorf("failed to render block image: %w", err)
 	}
 
 	// Render the image using the existing RenderImage function
@@ -761,7 +793,7 @@ func (i *Ingestor) renderAndSaveImage(location *big.Int, imageData string, block
 	if _, err := os.Stat(blockFilePath); os.IsNotExist(err) {
 		i.logger.Debug("Block image file not created",
 			zap.String("path", blockFilePath))
-		return nil
+		return fmt.Errorf("block image file not created: %s", blockFilePath)
 	}
 
 	if _, err := os.Stat(latestFilePath); os.IsNotExist(err) {
@@ -860,7 +892,6 @@ func (i *Ingestor) processTileUpdate(ctx context.Context, location *big.Int, ima
 	})
 	if err != nil {
 		i.logger.Error("Failed to update tile", zap.Error(err), zap.String("location", location.String()))
-		os.Exit(1)
 		return fmt.Errorf("failed to update tile: %w", err)
 	}
 
@@ -880,28 +911,24 @@ func (i *Ingestor) processTileUpdate(ctx context.Context, location *big.Int, ima
 func (i *Ingestor) processTransfer(ctx context.Context, args []interface{}, tx *EtherscanTransaction, timestamp, blockNumber int64, transactionIndex int32) error {
 	if len(args) < 3 {
 		i.logger.Error("Insufficient arguments for transfer")
-		os.Exit(1)
 		return fmt.Errorf("insufficient arguments for transfer")
 	}
 
 	from, ok := args[0].(common.Address)
 	if !ok {
 		i.logger.Error("Invalid 'from' address")
-		os.Exit(1)
 		return fmt.Errorf("invalid 'from' address")
 	}
 
 	to, ok := args[1].(common.Address)
 	if !ok {
 		i.logger.Error("Invalid 'to' address")
-		os.Exit(1)
 		return fmt.Errorf("invalid 'to' address")
 	}
 
 	location, ok := args[2].(*big.Int)
 	if !ok {
 		i.logger.Error("Invalid location")
-		os.Exit(1)
 		return fmt.Errorf("invalid location")
 	}
 
@@ -931,7 +958,7 @@ func (i *Ingestor) processTransfer(ctx context.Context, args []interface{}, tx *
 	if to.Hex() == "" {
 		i.logger.Warn("Transaction has no Owner address?",
 			zap.String("tx", tx.Hash))
-		os.Exit(1)
+		return fmt.Errorf("transaction has no owner address")
 	}
 
 	// Lookup ENS
@@ -955,7 +982,6 @@ func (i *Ingestor) processTransfer(ctx context.Context, args []interface{}, tx *
 	})
 	if err != nil {
 		i.logger.Error("Failed to update tile owner", zap.Error(err), zap.String("location", location.String()))
-		os.Exit(1)
 		return fmt.Errorf("failed to update tile owner: %w", err)
 	}
 
@@ -968,6 +994,12 @@ func (i *Ingestor) processTransfer(ctx context.Context, args []interface{}, tx *
 }
 
 func (i *Ingestor) updateTileDataAndSync(ctx context.Context) error {
+	i.publicationMu.Lock()
+	defer i.publicationMu.Unlock()
+	return i.updateTileDataAndSyncUnlocked(ctx)
+}
+
+func (i *Ingestor) updateTileDataAndSyncUnlocked(ctx context.Context) error {
 	i.logger.Info("Updating tiledata.json and syncing with S3")
 	// Fetch all tiles
 	allTiles, err := i.queries.ListTiles(ctx, db.ListTilesParams{
@@ -988,7 +1020,7 @@ func (i *Ingestor) updateTileDataAndSync(ctx context.Context) error {
 		err := i.s3Syncer.SyncWithS3(ctx)
 		if err != nil {
 			i.logger.Error("Failed to sync with S3", zap.Error(err))
-			// Note: We're not returning this error as it shouldn't stop the main process
+			return fmt.Errorf("publish tile assets: %w", err)
 		}
 	}
 

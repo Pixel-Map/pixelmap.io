@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { PixelMapTile } from '@pixelmap/common/types/PixelMapTile';
 import { PixelMapImage } from '@pixelmap/common/types/PixelMapImage';
@@ -58,27 +58,23 @@ type HistoryEvent = {
   data: any;
 };
 
+const EMPTY_HISTORY = [];
+
 export default function TileHistory({ 
   tile, 
-  historicalImages = [], 
-  purchaseHistory = [],
-  transferHistory = [],
-  dataHistory = []
+  historicalImages = EMPTY_HISTORY,
+  purchaseHistory = EMPTY_HISTORY,
+  transferHistory = EMPTY_HISTORY,
+  dataHistory = EMPTY_HISTORY
 }: TileHistoryProps) {
   // Check if tile has the new history data from backend
-  const backendPurchaseHistory = (tile as any).purchase_history || [];
-  const backendTransferHistory = (tile as any).transfer_history || [];
-  const backendWrappingHistory = (tile as any).wrapping_history || [];
-  const backendDataHistory = (tile as any).data_history || [];
-  
-  // Debug logging
-  console.log('Tile data:', tile);
-  console.log('Backend purchase history:', backendPurchaseHistory);
-  console.log('Backend transfer history:', backendTransferHistory);
-  console.log('Backend data history:', backendDataHistory);
+  const backendPurchaseHistory = (tile as any).purchase_history || EMPTY_HISTORY;
+  const backendTransferHistory = (tile as any).transfer_history || EMPTY_HISTORY;
+  const backendWrappingHistory = (tile as any).wrapping_history || EMPTY_HISTORY;
+  const backendDataHistory = (tile as any).data_history || EMPTY_HISTORY;
   
   // Use backend data if available, otherwise use props
-  const actualPurchaseHistory = backendPurchaseHistory.length > 0 ? 
+  const actualPurchaseHistory = useMemo(() => backendPurchaseHistory.length > 0 ?
     backendPurchaseHistory.map((p: any) => ({
       id: p.id,
       timestamp: new Date(p.timestamp),
@@ -87,9 +83,9 @@ export default function TileHistory({
       soldBy: p.sold_by,
       purchasedBy: p.purchased_by,
       price: p.price
-    })) : purchaseHistory;
+    })) : purchaseHistory, [backendPurchaseHistory, purchaseHistory]);
     
-  const actualTransferHistory = backendTransferHistory.length > 0 ?
+  const actualTransferHistory = useMemo(() => backendTransferHistory.length > 0 ?
     backendTransferHistory.map((t: any) => ({
       id: t.id,
       timestamp: new Date(t.timestamp),
@@ -97,11 +93,9 @@ export default function TileHistory({
       tx: t.tx,
       from: t.transferred_from,
       to: t.transferred_to
-    })) : transferHistory;
+    })) : transferHistory, [backendTransferHistory, transferHistory]);
   const [viewMode, setViewMode] = useState<'timeline' | 'gallery' | 'stats'>('timeline');
   const [expandedEvent, setExpandedEvent] = useState<number | null>(null);
-  const [events, setEvents] = useState<HistoryEvent[]>([]);
-  const [isUsingMockData, setIsUsingMockData] = useState(false);
 
   // Memoize mock data so it doesn't regenerate on every render
   const mockData = useMemo(() => {
@@ -111,7 +105,8 @@ export default function TileHistory({
     return null;
   }, [tile.id, tile.owner, actualPurchaseHistory.length, actualTransferHistory.length, dataHistory.length]);
 
-  useEffect(() => {
+  const isUsingMockData = !!mockData && actualPurchaseHistory.length === 0 && backendDataHistory.length === 0;
+  const events = useMemo(() => {
     const allEvents: HistoryEvent[] = [];
     
     // Use real data from backend, mock data, or passed props
@@ -133,9 +128,7 @@ export default function TileHistory({
       finalPurchaseHistory = mockData.purchases;
       finalTransferHistory = mockData.transfers;
       finalDataHistory = mockData.changes;
-      setIsUsingMockData(true);
-    } else {
-      setIsUsingMockData(false);
+
     }
 
     // Add genesis event
@@ -226,7 +219,7 @@ export default function TileHistory({
 
     // Sort by timestamp descending (newest first)
     allEvents.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-    setEvents(allEvents);
+    return allEvents;
   }, [mockData, actualPurchaseHistory, actualTransferHistory, dataHistory, backendWrappingHistory, backendDataHistory]);
 
   const getEventIcon = (type: string) => {

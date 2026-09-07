@@ -1,9 +1,11 @@
 package ingestor
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -17,6 +19,7 @@ import (
 var logger = log.New(os.Stdout, "metadata", log.LstdFlags)
 
 type MetadataPixelMapTile struct {
+	LastUpdated      *time.Time            `json:"lastUpdated"`
 	ID               int                   `json:"id"`
 	Image            string                `json:"image"`
 	URL              string                `json:"url"`
@@ -72,7 +75,7 @@ type DataHistoryItem struct {
 }
 
 // GenerateTiledataJSON generates the tiledata.json file
-func GenerateTiledataJSON(tiles []db.Tile, queries *db.Queries, ctx context.Context) error {
+func GenerateTiledataJSON(tiles []db.Tile, queries db.Querier, ctx context.Context) error {
 	logger.Println("Generating tiledata.json")
 	tiledataJSON := make([]map[string]interface{}, len(tiles))
 
@@ -111,6 +114,10 @@ func GenerateTiledataJSON(tiles []db.Tile, queries *db.Queries, ctx context.Cont
 			}
 		}
 
+		lastUpdated, err := tileLastUpdated(ctx, queries, tile.ID, dataHistory, wrappingHistory)
+		if err != nil {
+			return err
+		}
 		tiledataJSON[i] = map[string]interface{}{
 			"id":                tile.ID,
 			"url":               tile.Url,
@@ -119,7 +126,7 @@ func GenerateTiledataJSON(tiles []db.Tile, queries *db.Queries, ctx context.Cont
 			"price":             tile.Price,
 			"wrapped":           tile.Wrapped,
 			"openseaPrice":      tile.OpenseaPrice,
-			"lastUpdated":       time.Date(2021, time.December, 13, 1, 1, 0, 0, time.UTC),
+			"lastUpdated":       lastUpdated,
 			"ens":               tile.Ens,
 			"historical_images": historicalImages, // Add historical images here
 			"wrapping_history":  wrappingItems,
@@ -135,7 +142,7 @@ func GenerateTiledataJSON(tiles []db.Tile, queries *db.Queries, ctx context.Cont
 		return fmt.Errorf("error creating cache directory: %w", err)
 	}
 
-	if err := os.WriteFile("cache/tiledata.json", jsonData, 0644); err != nil {
+	if err := atomicJSON("cache/tiledata.json", jsonData, 0644); err != nil {
 		return fmt.Errorf("error writing tiledata.json file: %w", err)
 	}
 
@@ -143,7 +150,7 @@ func GenerateTiledataJSON(tiles []db.Tile, queries *db.Queries, ctx context.Cont
 }
 
 // UpdateTileMetadata updates the metadata for a given tile (exported for regeneration scripts)
-func UpdateTileMetadata(tile db.Tile, dataHistory []db.DataHistory, queries *db.Queries, ctx context.Context) error {
+func UpdateTileMetadata(tile db.Tile, dataHistory []db.DataHistory, queries db.Querier, ctx context.Context) error {
 	tileMetaData := map[string]interface{}{
 		"description": "Official PixelMap Wrapped Tile. Created in 2016, PixelMap is considered the second oldest NFT, the " +
 			"oldest verified collection on OpenSea, and provides the ability to create, display, and immortalize artwork " +
@@ -191,7 +198,7 @@ func UpdateTileMetadata(tile db.Tile, dataHistory []db.DataHistory, queries *db.
 		tileMetaData["attributes"] = append(tileMetaData["attributes"].([]map[string]string), map[string]string{"value": "OG"})
 	}
 
-	image, err := utils.DecompressTileCode(tile.Image)
+	image, err := utils.DecodeTileImage(tile.Image)
 	if err != nil {
 		tileMetaData["image"] = "https://pixelmap.art/blank.png"
 	}
@@ -222,7 +229,7 @@ func UpdateTileMetadata(tile db.Tile, dataHistory []db.DataHistory, queries *db.
 		purchaseHistory, err := queries.GetPurchaseHistoryByTileId(ctx, tile.ID)
 		if err != nil {
 			logger.Printf("Error fetching purchase history for tile %d: %v", tile.ID, err)
-			purchaseHistory = []db.PurchaseHistory{}
+			return fmt.Errorf("fetch purchase history: %w", err)
 		}
 
 		// Convert purchase history to API format
@@ -241,7 +248,7 @@ func UpdateTileMetadata(tile db.Tile, dataHistory []db.DataHistory, queries *db.
 
 		transferHistory, err := queries.GetTransferHistoryByTileId(ctx, tile.ID)
 		if err != nil {
-			logger.Printf("Error fetching transfer history for tile %d: %v", tile.ID, err)
+			return fmt.Errorf("fetch transfer history: %w", err)
 		} else {
 			transferItems = make([]TransferHistoryItem, len(transferHistory))
 			for i, transfer := range transferHistory {
@@ -258,7 +265,7 @@ func UpdateTileMetadata(tile db.Tile, dataHistory []db.DataHistory, queries *db.
 
 		wrappingHistory, err := queries.GetWrappingHistoryByTileId(ctx, tile.ID)
 		if err != nil {
-			logger.Printf("Error fetching wrapping history for tile %d: %v", tile.ID, err)
+			return fmt.Errorf("fetch wrapping history: %w", err)
 		} else {
 			wrappingItems = make([]WrappingHistoryItem, len(wrappingHistory))
 			for i, wrapping := range wrappingHistory {
@@ -293,9 +300,23 @@ func UpdateTileMetadata(tile db.Tile, dataHistory []db.DataHistory, queries *db.
 		}
 	}
 
+	var lastUpdated *time.Time
+	for _, item := range dataItems {
+		lastUpdated = laterTime(lastUpdated, item.Timestamp)
+	}
+	for _, item := range purchaseItems {
+		lastUpdated = laterTime(lastUpdated, item.Timestamp)
+	}
+	for _, item := range transferItems {
+		lastUpdated = laterTime(lastUpdated, item.Timestamp)
+	}
+	for _, item := range wrappingItems {
+		lastUpdated = laterTime(lastUpdated, item.Timestamp)
+	}
 	// Create PixelMapTile API data
 	pixelMapTile := MetadataPixelMapTile{
 		ID:               int(tile.ID),
+		LastUpdated:      lastUpdated,
 		Image:            tile.Image,
 		URL:              tile.Url,
 		Price:            tile.Price,
@@ -313,7 +334,7 @@ func UpdateTileMetadata(tile db.Tile, dataHistory []db.DataHistory, queries *db.
 	if err := os.MkdirAll(filepath.Dir("cache/metadata/"), os.ModePerm); err != nil {
 		return fmt.Errorf("error creating metadata directory: %w", err)
 	}
-	if err := os.WriteFile(fmt.Sprintf("cache/metadata/%d.json", tile.ID), jsonMetaData, 0644); err != nil {
+	if err := atomicJSON(fmt.Sprintf("cache/metadata/%d.json", tile.ID), jsonMetaData, 0644); err != nil {
 		return fmt.Errorf("error writing metadata file: %w", err)
 	}
 
@@ -325,7 +346,7 @@ func UpdateTileMetadata(tile db.Tile, dataHistory []db.DataHistory, queries *db.
 	if err := os.MkdirAll(filepath.Dir("cache/tile/"), os.ModePerm); err != nil {
 		return fmt.Errorf("error creating tile directory: %w", err)
 	}
-	if err := os.WriteFile(fmt.Sprintf("cache/tile/%d.json", tile.ID), pixelMapTileJSON, 0644); err != nil {
+	if err := atomicJSON(fmt.Sprintf("cache/tile/%d.json", tile.ID), pixelMapTileJSON, 0644); err != nil {
 		return fmt.Errorf("error writing tile file: %w", err)
 	}
 
@@ -458,4 +479,45 @@ func GetHistoricalImages(tile db.Tile, dataHistory []db.DataHistory) []PixelMapI
 	}
 
 	return historicalImages
+}
+
+func atomicJSON(path string, data []byte, _ os.FileMode) error {
+	return utils.AtomicWrite(path, func(w io.Writer) error { _, err := io.Copy(w, bytes.NewReader(data)); return err })
+}
+
+// Unknown history is null, never a fabricated date.
+func laterTime(current *time.Time, candidate time.Time) *time.Time {
+	if candidate.IsZero() {
+		return current
+	}
+	if current == nil || candidate.After(*current) {
+		value := candidate.UTC()
+		return &value
+	}
+	return current
+}
+
+func tileLastUpdated(ctx context.Context, queries db.Querier, id int32, data []db.DataHistory, wrapping []db.WrappingHistory) (*time.Time, error) {
+	var latest *time.Time
+	for _, row := range data {
+		latest = laterTime(latest, row.TimeStamp)
+	}
+	for _, row := range wrapping {
+		latest = laterTime(latest, row.TimeStamp)
+	}
+	purchases, err := queries.GetPurchaseHistoryByTileId(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	transfers, err := queries.GetTransferHistoryByTileId(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range purchases {
+		latest = laterTime(latest, row.TimeStamp)
+	}
+	for _, row := range transfers {
+		latest = laterTime(latest, row.TimeStamp)
+	}
+	return latest, nil
 }

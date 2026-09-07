@@ -96,7 +96,7 @@ describe('About page', () => {
     
     // Check for important links
     const successLinks = screen.getAllByText((content, element) => {
-      return element.tagName.toLowerCase() === 'a' && 
+      return element !== null && element.tagName.toLowerCase() === 'a' &&
              element.className.includes('nes-text is-success');
     });
     

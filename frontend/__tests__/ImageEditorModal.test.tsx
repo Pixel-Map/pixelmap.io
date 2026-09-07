@@ -60,7 +60,7 @@ jest.mock('../components/ImageDisplay', () => {
 
 // Mock Dialog from @headlessui/react
 jest.mock('@headlessui/react', () => {
-  const Dialog = ({ children, open, onClose, as: Component = 'div', className }) => {
+  const Dialog = ({ children, open, onClose, as: Component = 'div', className }: any) => {
     if (!open) return null;
     return (
       <Component className={className} data-testid="mock-dialog">
@@ -70,7 +70,7 @@ jest.mock('@headlessui/react', () => {
   };
   
   Dialog.Overlay = ({ className }) => <div className={className} data-testid="mock-dialog-overlay" />;
-  Dialog.Title = ({ children, as: Component = 'h3', className }) => (
+  Dialog.Title = ({ children, as: Component = 'h3', className }: any) => (
     <Component className={className} data-testid="mock-dialog-title">{children}</Component>
   );
   

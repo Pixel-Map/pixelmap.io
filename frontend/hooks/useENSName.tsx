@@ -1,4 +1,4 @@
-import type { Web3Provider } from "@ethersproject/providers";
+import type { BrowserProvider } from "ethers";
 import { useWeb3React } from "@web3-react/core";
 import { useEffect, useState } from "react";
 
@@ -10,7 +10,7 @@ export default function useENSName(address: string | undefined | null) {
     if (library && typeof address === "string") {
       let stale = false;
 
-      const web3Provider = library as Web3Provider;
+      const web3Provider = library as BrowserProvider;
       
       web3Provider
         .lookupAddress(address)

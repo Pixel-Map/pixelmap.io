@@ -20,7 +20,9 @@ import (
 func main() {
 	logger := prettyconsole.NewLogger(zap.InfoLevel)
 	if err := godotenv.Load(); err != nil {
-		log.Fatal("Error loading .env file")
+		if !os.IsNotExist(err) {
+			log.Fatal("Error loading .env file")
+		}
 	}
 
 	defer logger.Sync()

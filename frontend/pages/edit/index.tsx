@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 
 import Head from "next/head";
 import { useWeb3React } from "@web3-react/core";
-import { Contract } from "@ethersproject/contracts";
+import { Contract } from "ethers";
 
 import EditTile from "../../components/EditTile";
 import ImageEditorModal from "../../components/ImageEditorModal";
@@ -24,6 +24,7 @@ import { PixelMapTile } from "@pixelmap/common/types/PixelMapTile";
 function Edit() {
   const [tiles, setTiles] = useState<PixelMapTile[]>([]);
   const [ownedTiles, setOwnedTiles] = useState<PixelMapTile[]>([]);
+  const [saveError, setSaveError] = useState('');
   const [isOpenImageEditor, setIsOpenImageEditor] = useState<boolean>(false);
   const [imageEditorTile, setImageEditorTile] = useState<PixelMapTile>({
     id: 0,
@@ -86,33 +87,37 @@ function Edit() {
     setIsOpenImageEditor(true);
   };
 
-  const handleSave = (tile: PixelMapTile) => {
+  const handleSave = async (tile: PixelMapTile) => {
     if (!tile.image) return;
-    
-    let compressedImage = compressTileCode(tile.image);
-    if (tile.wrapped === true) {
-      if (!library || !account) return;
+    setSaveError('');
+    try {
+      let compressedImage = compressTileCode(tile.image);
+      if (tile.wrapped === true) {
+        if (!library || !account) return;
       
-      const contract = new Contract(
-        WRAPPED_PIXELMAP_CONTRACT,
-        WrappedContractABI,
-        library.getSigner(account)
-      );
-      contract.setTileData(tile.id, compressedImage, tile.url);
-    } else {
-      if (!library || !account) return;
+        const contract = new Contract(
+          WRAPPED_PIXELMAP_CONTRACT,
+          WrappedContractABI,
+          await library.getSigner(account)
+        );
+        await contract.setTileData(tile.id, compressedImage, tile.url);
+      } else {
+        if (!library || !account) return;
       
-      const contract = new Contract(
-        PIXELMAP_CONTRACT,
-        ContractABI,
-        library.getSigner(account)
-      );
-      contract.setTile(
-        tile.id,
-        compressedImage,
-        tile.url,
-        convertEthToWei(tile.newPrice)
-      );
+        const contract = new Contract(
+          PIXELMAP_CONTRACT,
+          ContractABI,
+          await library.getSigner(account)
+        );
+        await contract.setTile(
+          tile.id,
+          compressedImage,
+          tile.url,
+          convertEthToWei(tile.newPrice)
+        );
+      }
+    } catch {
+      setSaveError('Could not save the tile. Please check your wallet and try again.');
     }
   };
 
@@ -126,6 +131,7 @@ function Edit() {
           <h1 className="text-3xl font-bold mb-4 text-white ">
             Edit your tiles
           </h1>
+          {saveError && <p role="alert" className="nes-text is-error mb-4">{saveError}</p>}
           <div className="">
             {ownedTiles.map((ownedTile: PixelMapTile, index: number) => (
               <EditTile

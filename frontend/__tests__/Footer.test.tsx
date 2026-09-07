@@ -72,7 +72,7 @@ describe('Footer', () => {
     expect(footer).toHaveClass('py-4', 'px-4', 'sm:px-6');
     
     // Check the inner div for responsive classes
-    const innerDiv = footer.querySelector('div');
+    const innerDiv = footer!.querySelector('div');
     expect(innerDiv).toHaveClass('text-center', 'md:text-left', 'md:flex', 'md:justify-between');
   });
 });

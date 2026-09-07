@@ -47,3 +47,7 @@ backend/temp/
 
 # raccoon self-host secrets
 .env.raccoon
+
+# Generated build artifacts
+*.tsbuildinfo
+*.test

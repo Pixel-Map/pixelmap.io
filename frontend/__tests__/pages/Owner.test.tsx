@@ -47,9 +47,9 @@ import { useRouter } from 'next/router';
 
 describe('Owner page', () => {
   const mockTiles: PixelMapTile[] = [
-    { id: 123, owner: '0xabc123', url: 'https://example.com', image: 'abc123', price: 0, x: 0, y: 0 },
-    { id: 456, owner: '0xabc123', url: 'https://test.com', image: 'def456', price: 0, x: 0, y: 0 },
-    { id: 789, owner: '0xdifferent', url: 'https://other.com', image: 'ghi789', price: 0, x: 0, y: 0 },
+    { id: 123, owner: '0xabc123', url: 'https://example.com', image: 'abc123', price: 0 },
+    { id: 456, owner: '0xabc123', url: 'https://test.com', image: 'def456', price: 0 },
+    { id: 789, owner: '0xdifferent', url: 'https://other.com', image: 'ghi789', price: 0 },
   ];
 
   beforeEach(() => {

@@ -1,5 +1,5 @@
-import type { BigNumberish } from "@ethersproject/bignumber";
-import { formatUnits, parseUnits } from "@ethersproject/units";
+import type { BigNumberish } from "ethers";
+import { formatUnits, parseUnits } from "ethers";
 import type { PixelMapTile } from "@pixelmap/common/types/PixelMapTile";
 
 export function shortenIfHex(hex: string, length = 12) {
@@ -76,6 +76,6 @@ export const openseaLink = (id: number | undefined) => {
   return `https://opensea.io/item/ethereum/${process.env.NEXT_PUBLIC_PIXELMAP_WRAPPER_CONTRACT}/${id}`;
 };
 
-export const convertEthToWei = (price: string | undefined) => {
+export const convertEthToWei = (price: string | null | undefined) => {
   return parseUnits(price || "0", "ether");
 };

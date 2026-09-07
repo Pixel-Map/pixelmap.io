@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"bytes"
+	"compress/zlib"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -43,10 +45,10 @@ func TestRenderFullMap(t *testing.T) {
 		// Set some tiles to invalid data
 		tiles[0] = "invalid"
 		tiles[1] = "390" // Too short
-		
+
 		// Set some valid tiles
 		tiles[2] = "390390390390390390390000000390390390390390390390390390390390390390000FF0FF0000390390"
-		
+
 		err := RenderFullMap(tiles, "cache/test-map.png")
 		require.NoError(t, err)
 	})
@@ -66,13 +68,13 @@ func TestExpandPixelSize(t *testing.T) {
 		for i := 0; i < 8*8; i++ {
 			input += "123"
 		}
-		
+
 		result := ExpandPixelSize(input, 8)
 		assert.Equal(t, 16*16*3, len(result))
-		
+
 		// First pixel should be the same
 		assert.Equal(t, "123", result[0:3])
-		
+
 		// Check some other pixels to ensure proper expansion
 		// Pixel at (8,0) should be the same as pixel at (4,0) in the original
 		assert.Equal(t, input[4*3:4*3+3], result[8*3:8*3+3])
@@ -102,27 +104,22 @@ func TestColorEncoding(t *testing.T) {
 }
 
 func TestCompression(t *testing.T) {
-	// Skip this test since we're using a hardcoded but invalid zlib payload
-	t.Skip("Skipping compression test with invalid zlib payload")
-	
-	// In a real test, we would generate a valid zlib-compressed payload:
-	/*
 	var buf bytes.Buffer
 	w := zlib.NewWriter(&buf)
-	w.Write([]byte("test data"))
-	w.Close()
+	_, err := w.Write([]byte("test data"))
+	require.NoError(t, err)
+	require.NoError(t, w.Close())
 	compressed := buf.Bytes()
-	
+
 	result, err := ZlibInflate(compressed)
 	require.NoError(t, err)
 	assert.Equal(t, []byte("test data"), result)
-	*/
 }
 
 func TestBase91(t *testing.T) {
 	// Test with a known Base91 encoded string
 	encoded := "fxUB~ks"
-	
+
 	result, err := DecodeBase91(encoded)
 	require.NoError(t, err)
 	assert.NotEmpty(t, result)
@@ -130,10 +127,10 @@ func TestBase91(t *testing.T) {
 
 func TestImageProperties(t *testing.T) {
 	testCases := []struct {
-		dataLength   int
-		tileCode     string
-		pixelSize    int
-		colorDepth   int
+		dataLength int
+		tileCode   string
+		pixelSize  int
+		colorDepth int
 	}{
 		{8, "c#test", 4, 4},
 		{16, "c#test", 4, 8},

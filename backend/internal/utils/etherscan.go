@@ -64,8 +64,6 @@ func MakeRateLimitedRequest(url string, params map[string]string, logger *zap.Lo
 			return nil, fmt.Errorf("unexpected result type: %T", ethResp.Result)
 		}
 
-		logger.Error("Invalid response from Etherscan", zap.String("message", ethResp.Message))
-		time.Sleep(5 * time.Second)
 	}
 
 	return nil, fmt.Errorf("max retries reached")

@@ -93,7 +93,7 @@ describe('TileOverlay', () => {
     expect(overlayElement).toHaveAttribute('style');
     
     // Check that the style string contains the correct grid positions
-    const styleAttr = overlayElement.getAttribute('style');
+    const styleAttr = overlayElement!.getAttribute('style');
     expect(styleAttr).toContain('grid-column-start: 1');
     expect(styleAttr).toContain('grid-row-start: 1');
   });

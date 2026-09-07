@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"pixelmap.io/backend/internal/utils"
 	"time"
 )
 
@@ -69,14 +70,37 @@ func (w *Worker) Step(ctx context.Context) error {
 		return fmt.Errorf("load previous tile image: %w", err)
 	}
 	messageID := ""
+	waitKey := fmt.Sprintf("DISCORD_IMAGE_WAIT_%s_%d", w.Channel, u.ID)
 	if u.Image != "" {
 		if err := w.Sender.ImageReady(ctx, u); err != nil {
-			return err
+			// Keep the first failure time durable across process restarts. Allow
+			// publication an hour, then send a text fallback instead of blocking
+			// every subsequent event. Invalid on-chain data falls back immediately.
+			var since int64
+			if dbErr := tx.QueryRowContext(ctx, `INSERT INTO current_state (state,value) VALUES ($1,$2)
+				ON CONFLICT (state) DO UPDATE SET value=current_state.value RETURNING value`, waitKey, time.Now().Unix()).Scan(&since); dbErr != nil {
+				return dbErr
+			}
+			if !errors.Is(err, utils.ErrInvalidTileImage) && time.Since(time.Unix(since, 0)) < time.Hour {
+				if commitErr := tx.Commit(); commitErr != nil {
+					return commitErr
+				}
+				return err
+			}
+			u.ImageUnavailable = true
+			w.Logger.Error("Tile image unavailable; sending Discord text fallback", "history_id", u.ID, "tile_id", u.TileID, "error", err)
+			// Retain a small durable audit record for repair/replay tooling.
+			if _, dbErr := tx.ExecContext(ctx, `INSERT INTO current_state (state,value) VALUES ($1,$2) ON CONFLICT (state) DO NOTHING`, fmt.Sprintf("DISCORD_IMAGE_FALLBACK_%s_%d", w.Channel, u.ID), time.Now().Unix()); dbErr != nil {
+				return dbErr
+			}
 		}
 		messageID, err = w.Sender.Send(ctx, u)
 		if err != nil {
 			return err
 		}
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM current_state WHERE state=$1`, waitKey); err != nil {
+		return err
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE current_state SET value = $2 WHERE state = $1`, w.stateKey(), u.ID); err != nil {
 		return err

@@ -16,7 +16,7 @@ import (
 func exampleUpdate() Update {
 	return Update{ID: 15477, TileID: 100, BlockNumber: 25924135,
 		Timestamp: time.Date(2026, 9, 7, 7, 58, 35, 0, time.UTC),
-		Image:     "abc", URL: "example.com", UpdatedBy: "0x" + strings.Repeat("a", 40),
+		Image:     strings.Repeat("abc", 256), URL: "example.com", UpdatedBy: "0x" + strings.Repeat("a", 40),
 		Transaction: "0x" + strings.Repeat("b", 64)}
 }
 
@@ -116,7 +116,7 @@ func TestMissingImageAndReceipt(t *testing.T) {
 	defer server.Close()
 	client := NewClient("test", "123")
 	client.APIBase, client.ImageBase = server.URL, server.URL
-	require.Error(t, client.ImageReady(context.Background(), exampleUpdate()))
+	require.ErrorContains(t, client.ImageReady(context.Background(), exampleUpdate()), "HTTP 404")
 	_, err := client.Send(context.Background(), exampleUpdate())
 	require.ErrorContains(t, err, "no message ID")
 }

@@ -36,7 +36,7 @@ func (q *Queries) GetCurrentState(ctx context.Context, state string) (CurrentSta
 const getDataHistoryByTileId = `-- name: GetDataHistoryByTileId :many
 SELECT id, time_stamp, block_number, tx, log_index, image, price, url, updated_by, tile_id FROM data_histories
 WHERE tile_id = $1
-ORDER BY time_stamp DESC
+ORDER BY block_number DESC, log_index DESC, id DESC
 `
 
 func (q *Queries) GetDataHistoryByTileId(ctx context.Context, tileID int32) ([]DataHistory, error) {
@@ -143,7 +143,7 @@ func (q *Queries) GetLatestBlockNumber(ctx context.Context) (interface{}, error)
 const getLatestDataHistoryByTileId = `-- name: GetLatestDataHistoryByTileId :one
 SELECT id, time_stamp, block_number, tx, log_index, image, price, url, updated_by, tile_id FROM data_histories
 WHERE tile_id = $1
-ORDER BY time_stamp DESC
+ORDER BY block_number DESC, log_index DESC, id DESC
 LIMIT 1
 `
 
@@ -190,13 +190,9 @@ func (q *Queries) GetLatestPurchaseHistoryByTileId(ctx context.Context, tileID i
 }
 
 const getLatestTileImages = `-- name: GetLatestTileImages :many
-SELECT tile_id, image
+SELECT DISTINCT ON (tile_id) tile_id, image
 FROM data_histories
-WHERE (tile_id, block_number) IN (
-    SELECT tile_id, MAX(block_number)
-    FROM data_histories
-    GROUP BY tile_id
-)
+ORDER BY tile_id, block_number DESC, log_index DESC, id DESC
 `
 
 type GetLatestTileImagesRow struct {
@@ -646,6 +642,7 @@ func (q *Queries) InsertPurchaseHistory(ctx context.Context, arg InsertPurchaseH
 const insertTile = `-- name: InsertTile :one
 INSERT INTO tiles (id, image, price, url, owner, wrapped, ens, opensea_price)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+ON CONFLICT (id) DO UPDATE SET id = EXCLUDED.id
 RETURNING id
 `
 

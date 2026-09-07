@@ -14,7 +14,7 @@ jest.mock('../utils/ImageUtils', () => ({
   rgbToHexTriplet: jest.fn((r, g, b) => `${r}${g}${b}`),
   dimensionToPixels: jest.fn((dim) => dim * 16),
   compressTileCode: jest.fn(code => code),
-  getBytesFromCanvas: jest.fn(() => new Uint8ClampedArray([255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 255])),
+  getBytesFromCanvas: jest.fn(() => new Uint8Array([255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 255])),
   lowerBytesColorCount: jest.fn(bytes => bytes),
   lowerBytesColorDepth: jest.fn(bytes => bytes)
 }));
@@ -34,7 +34,7 @@ describe('ImageDisplay', () => {
     jest.clearAllMocks();
     
     // Set up a default mock implementation for imageFileResizer
-    ImageResizer.imageFileResizer.mockImplementation((image, width, height, format, quality, rotation, callback) => {
+    jest.mocked(ImageResizer.imageFileResizer).mockImplementation((image, width, height, format, quality, rotation, callback) => {
       callback("mock-canvas");
     });
   });
@@ -75,7 +75,7 @@ describe('ImageDisplay', () => {
     expect(gridBackground).toHaveAttribute('style');
     
     // Check that the style contains the background size
-    const styleAttr = gridBackground.getAttribute('style');
+    const styleAttr = gridBackground!.getAttribute('style');
     expect(styleAttr).toContain('background-size: 50% 50%');
   });
 
@@ -92,7 +92,7 @@ describe('ImageDisplay', () => {
     // Check for data size text
     const dataSizeText = document.querySelector('div:not(.grid) > div');
     expect(dataSizeText).toBeInTheDocument();
-    expect(dataSizeText.textContent).toContain('Data Size:');
+    expect(dataSizeText!.textContent).toContain('Data Size:');
   });
 
   it('handles error during image processing', () => {
@@ -101,7 +101,7 @@ describe('ImageDisplay', () => {
     console.error = jest.fn();
     
     // Make imageFileResizer throw an error
-    ImageResizer.imageFileResizer.mockImplementationOnce((image, width, height, format, quality, rotation, callback, outputType, minWidth, minHeight, forceResize) => {
+    jest.mocked(ImageResizer.imageFileResizer).mockImplementationOnce((image, width, height, format, quality, rotation, callback, outputType, minWidth, minHeight, forceResize) => {
       throw new Error('Test error');
     });
     
@@ -115,14 +115,14 @@ describe('ImageDisplay', () => {
 
   it('correctly processes image colors and tile codes', async () => {
     // Create a more complex mock implementation for imageFileResizer
-    const mockRgbBytes = new Uint8ClampedArray([
+    const mockRgbBytes = new Uint8Array([
       255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 255, // 4 pixels with different colors
       255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 255, // repeated pattern
       255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 255,
       255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 255
     ]);
     
-    ImageUtils.getBytesFromCanvas.mockReturnValueOnce(mockRgbBytes);
+    jest.mocked(ImageUtils.getBytesFromCanvas).mockReturnValueOnce(mockRgbBytes);
     
     render(<ImageDisplay {...defaultProps} />);
     
@@ -206,13 +206,13 @@ describe('ImageDisplay', () => {
     );
     
     // The first canvasWidth argument should be different for pixelSize 8 vs 16
-    const call1Args = ImageResizer.imageFileResizer.mock.calls[0];
+    const call1Args = jest.mocked(ImageResizer.imageFileResizer).mock.calls[0];
     
     // Test with different pixelSize
-    ImageResizer.imageFileResizer.mockClear();
+    jest.mocked(ImageResizer.imageFileResizer).mockClear();
     render(<ImageDisplay {...defaultProps} />); // pixelSize 16
     
-    const call2Args = ImageResizer.imageFileResizer.mock.calls[0];
+    const call2Args = jest.mocked(ImageResizer.imageFileResizer).mock.calls[0];
     
     // The canvasWidth should be different between the two calls
     // because pixelSize affects the calculation
@@ -221,7 +221,7 @@ describe('ImageDisplay', () => {
 
   it('calculates data size correctly', () => {
     // Mock compressTileCode to return predictable results for testing
-    ImageUtils.compressTileCode.mockImplementation(code => {
+    jest.mocked(ImageUtils.compressTileCode).mockImplementation(code => {
       return code + '_compressed'; // Just append _compressed to simulate compression
     });
     
@@ -229,7 +229,7 @@ describe('ImageDisplay', () => {
     
     // Check that data size is displayed
     const dataSizeText = document.querySelector('div:not(.grid) > div');
-    expect(dataSizeText.textContent).toContain('Data Size:');
+    expect(dataSizeText!.textContent).toContain('Data Size:');
     
     // The actual values in data size depend on the mock implementation
     // and calculation in processDataSize function

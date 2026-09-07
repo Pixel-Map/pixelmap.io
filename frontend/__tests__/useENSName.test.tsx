@@ -12,7 +12,7 @@ describe('useENSName', () => {
   const mockENSName = 'test.eth';
 
   // Create mock library with lookupAddress function
-  const createMockLibrary = (ensName = null, shouldThrow = false) => ({
+  const createMockLibrary = (ensName: string | null = null, shouldThrow = false) => ({
     lookupAddress: jest.fn().mockImplementation(() => {
       if (shouldThrow) {
         return Promise.reject(new Error('ENS lookup failed'));

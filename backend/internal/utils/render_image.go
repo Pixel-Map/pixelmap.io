@@ -1,30 +1,37 @@
 package utils
 
 import (
+	"errors"
 	"fmt"
 	"image"
 	"image/color"
 	"image/png"
-	"os"
-	"path/filepath"
+	"io"
+	"strings"
 
 	"golang.org/x/image/draw"
 )
 
+var ErrInvalidTileImage = errors.New("invalid tile image")
+
+func DecodeTileImage(code string) (string, error) {
+	decoded, err := DecompressTileCode(code)
+	if err != nil || len(decoded) != 768 || strings.Trim(decoded, "0123456789abcdefABCDEF") != "" {
+		return "", ErrInvalidTileImage
+	}
+	return strings.ToLower(decoded), nil
+}
+
+// Invalid on-chain strings are represented as transparent tiles, never stale art.
+func RenderBlankImage(sizeX, sizeY int, path string) error {
+	return AtomicWrite(path, func(w io.Writer) error { return png.Encode(w, image.NewRGBA(image.Rect(0, 0, sizeX, sizeY))) })
+}
+
 func RenderImage(tileImageData string, sizeX, sizeY int, outputPath string) error {
 	// First try to decompress the tile image data
-	decompressedImage, err := DecompressTileCode(tileImageData)
+	decompressedImage, err := DecodeTileImage(tileImageData)
 	if err != nil {
 		return fmt.Errorf("failed to decompress tile image data: %w", err)
-	}
-
-	if len(decompressedImage) < 768 {
-		fmt.Printf("decompressed tile image data is too short: %d bytes", len(decompressedImage))
-		return nil
-	}
-
-	if err := os.MkdirAll(filepath.Dir(outputPath), os.ModePerm); err != nil {
-		return fmt.Errorf("failed to create directory: %w", err)
 	}
 
 	img := image.NewRGBA(image.Rect(0, 0, 16, 16))
@@ -41,17 +48,7 @@ func RenderImage(tileImageData string, sizeX, sizeY int, outputPath string) erro
 	resizedImg := image.NewRGBA(image.Rect(0, 0, sizeX, sizeY))
 	draw.NearestNeighbor.Scale(resizedImg, resizedImg.Bounds(), img, img.Bounds(), draw.Over, nil)
 
-	outFile, err := os.Create(outputPath)
-	if err != nil {
-		return fmt.Errorf("failed to create output file: %w", err)
-	}
-	defer outFile.Close()
-
-	if err := png.Encode(outFile, resizedImg); err != nil {
-		return fmt.Errorf("failed to encode image: %w", err)
-	}
-
-	return nil
+	return AtomicWrite(outputPath, func(w io.Writer) error { return png.Encode(w, resizedImg) })
 }
 
 func parseHexChar(c byte) uint8 {
@@ -79,9 +76,9 @@ func RenderFullMap(tiles []string, outputPath string) error {
 
 	for i, tile := range tiles {
 		// Decompress the tile if it's compressed
-		decompressedTile, err := DecompressTileCode(tile)
+		decompressedTile, err := DecodeTileImage(tile)
 		if err != nil {
-			return fmt.Errorf("failed to decompress tile: %w", err)
+			continue // Invalid on-chain artwork has the same blank representation.
 		}
 
 		if len(decompressedTile) < 768 {
@@ -103,19 +100,5 @@ func RenderFullMap(tiles []string, outputPath string) error {
 		}
 	}
 
-	if err := os.MkdirAll(filepath.Dir(outputPath), os.ModePerm); err != nil {
-		return fmt.Errorf("failed to create directory: %w", err)
-	}
-
-	outFile, err := os.Create(outputPath)
-	if err != nil {
-		return fmt.Errorf("failed to create output file: %w", err)
-	}
-	defer outFile.Close()
-
-	if err := png.Encode(outFile, img); err != nil {
-		return fmt.Errorf("failed to encode image: %w", err)
-	}
-
-	return nil
+	return AtomicWrite(outputPath, func(w io.Writer) error { return png.Encode(w, img) })
 }

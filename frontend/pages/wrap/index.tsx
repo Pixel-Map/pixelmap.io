@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 
 import Head from "next/head";
 import { useWeb3React } from "@web3-react/core";
-import { Contract } from "@ethersproject/contracts";
+import { Contract } from "ethers";
 
 import WrapTile from "../../components/WrapTile";
 
@@ -68,7 +68,7 @@ function Wrap() {
       const contract = new Contract(
         PIXELMAP_CONTRACT,
         ContractABI,
-        library.getSigner(account)
+        await library.getSigner(account)
       );
       contract.setTile(
         tile.id,
@@ -92,7 +92,7 @@ function Wrap() {
       const contract = new Contract(
         WRAPPED_PIXELMAP_CONTRACT,
         WrappedContractABI,
-        library.getSigner(account)
+        await library.getSigner(account)
       );
       await contract.wrap(tile.id, { value: tile.price });
     } catch (error) {
@@ -112,7 +112,7 @@ function Wrap() {
       const contract = new Contract(
         PIXELMAP_CONTRACT,
         ContractABI,
-        library.getSigner(account)
+        await library.getSigner(account)
       );
       let result = await contract.tiles(tile.id);
 
