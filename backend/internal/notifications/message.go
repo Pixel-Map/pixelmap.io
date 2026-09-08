@@ -3,6 +3,7 @@ package notifications
 import (
 	"fmt"
 	"net/url"
+	"pixelmap.io/backend/internal/utils"
 	"strings"
 	"time"
 )
@@ -79,7 +80,7 @@ var compliments = []string{
 }
 
 func imagePath(u Update) string {
-	return fmt.Sprintf("/%d/%d.png", u.TileID, u.BlockNumber)
+	return utils.HistoryImagePath(u.TileID, u.BlockNumber, u.Transaction)
 }
 
 func tileURL(u Update) string { return fmt.Sprintf("https://pixelmap.io/tile/%d", u.TileID) }

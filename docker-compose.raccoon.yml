@@ -35,6 +35,7 @@ services:
       retries: 5
 
   discord-bot:
+    stop_grace_period: 45s
     build:
       context: ./backend
       dockerfile: Dockerfile.discord
@@ -49,6 +50,7 @@ services:
       DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in .env.raccoon}
 
   indexer:
+    stop_grace_period: 45s
     build:
       context: ./backend
       dockerfile: Dockerfile.raccoon

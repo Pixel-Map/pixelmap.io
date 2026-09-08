@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"pixelmap.io/backend/internal/health"
 	"pixelmap.io/backend/internal/utils"
 	"time"
 )
@@ -129,6 +130,9 @@ func (w *Worker) Run(ctx context.Context) {
 			err = w.Step(stepCtx)
 		}
 		cancel()
+		if err == nil {
+			_ = health.Touch("/tmp/pixelmap-discord")
+		}
 		if err != nil && ctx.Err() == nil {
 			delay = 30 * time.Second
 			var retry *RetryError

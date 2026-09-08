@@ -1,4 +1,6 @@
-import React, { useEffect, useState } from "react";
+import useAssetData from "../hooks/useAssetData";
+import AssetStatus from "./AssetStatus";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   shortenIfHex,
@@ -25,41 +27,21 @@ interface TileCardProps {
 
 export default function TileCard({ tile, large, onShareOpen, onShareClose, isPopover }: TileCardProps) {
   const ownerName = tile.ens ? tile.ens : (tile.owner ? shortenIfHex(tile.owner, 12) : "Unknown");
-  const [tileExtended, setTile] = useState<PixelMapTile>();
-  const [fetching, setFetching] = useState(false);
+  const { data: tileExtended, loading: fetching, error: assetError, retry: retryAssets } = useAssetData(tile.id?.toString(), fetchSingleTile, undefined);
   const [tileImage, setTileImage] = useState(tile.image);
-  const [sortedHistoricalImages, setSortedHistoricalImages] =
-    useState<PixelMapTile[]>();
-  
+  const sortedHistoricalImages = useMemo(() =>
+    [...(tileExtended?.historical_images || [])].sort((a, b) => b.blockNumber - a.blockNumber),
+    [tileExtended?.historical_images]);
+
   // New state for modals
   const [showShowcase, setShowShowcase] = useState(false);
   const [showShareCard, setShowShareCard] = useState(false);
   const [showDownloadOptions, setShowDownloadOptions] = useState(false);
   const [showWidgetGenerator, setShowWidgetGenerator] = useState(false);
-  useEffect(() => {
-    if (tile.id !== undefined) {
-      setFetching(true);
-
-      fetchSingleTile(tile.id.toString()).then((_tile) => {
-        if (_tile) {
-          setTile(_tile);
-
-          if (_tile.historical_images && Array.isArray(_tile.historical_images)) {
-            const unsortedArray = [..._tile.historical_images];
-            setSortedHistoricalImages(
-              unsortedArray.sort(function (a, b) {
-                return b.blockNumber - a.blockNumber;
-            })
-          );
-        }
-        }
-        setFetching(false);
-      });
-    }
-  }, [tile.id]);
 
   return (
     <>
+      <AssetStatus error={assetError} retry={retryAssets} />
       <div
         className={`relative flex p-4 space-x-4 ${
           large ? "md:p-8 md:space-x-8" : ""

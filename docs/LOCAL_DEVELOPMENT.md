@@ -34,3 +34,12 @@ go -C backend test -race ./...
 The tests create and drop isolated schemas. CI supplies its own disposable
 PostgreSQL service and runs these tests, frontend typechecking/lint, and the
 static production build.
+
+### Asset loading failures
+
+All asset fetch helpers reject HTTP, network, timeout, and malformed top-level
+payload failures instead of returning an empty collection. `useAssetData` owns
+loading, error, and retry state and ignores responses from an obsolete route or
+closed modal. `AssetStatus` renders accessible status text and a retry button.
+A successful empty array remains a valid empty collection. Run the API, Home,
+and useAssetData tests when changing this behavior.

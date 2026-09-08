@@ -1,3 +1,5 @@
+import useAssetData from "../../hooks/useAssetData";
+import AssetStatus from "../../components/AssetStatus";
 import React, { useEffect, useState } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
@@ -15,15 +17,13 @@ const TimeCapsule = () => {
   const [fetching, setFetching] = useState(false);
   const router = useRouter();
   const id = router.query.id as string;
-  const [tiles, setTimeCapsuleTile] = useState<TimeCapsuleTile[]>([]);
-  useEffect(() => {
-    fetchTimeCapsuleTiles().then((_tiles) => {
-      setTimeCapsuleTile(_tiles);
-    });
-  }, []);
+  const { data: tiles, setData: setTimeCapsuleTile, loading: assetLoading, error: assetError, retry: retryAssets } = useAssetData<TimeCapsuleTile[]>("capsule", fetchTimeCapsuleTiles, []);
+
+  if (assetError) return <AssetStatus error={assetError} retry={retryAssets} />;
 
   return (
     <>
+      <AssetStatus loading={assetLoading} error={assetError} retry={retryAssets} />
       <div className={styles.tileHouse}>
         <Header />
       </div>

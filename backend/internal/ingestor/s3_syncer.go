@@ -10,6 +10,7 @@ import (
 	"mime"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 
@@ -31,6 +32,8 @@ type S3Syncer struct {
 	logger     *zap.Logger
 	syncMu     sync.Mutex
 	fileHashes map[string]string
+	fileStats  map[string]artifactStamp
+	loaded     bool
 }
 
 func NewS3Syncer(logger *zap.Logger, cacheDir string) (*S3Syncer, error) {
@@ -59,29 +62,47 @@ func NewS3Syncer(logger *zap.Logger, cacheDir string) (*S3Syncer, error) {
 	}, nil
 }
 
-// Modify SyncWithS3 to accept a context
+type artifactStamp struct {
+	Size     int64 `json:"size"`
+	Modified int64 `json:"modified"`
+}
+
+func stamp(info os.FileInfo) artifactStamp {
+	return artifactStamp{info.Size(), info.ModTime().UnixNano()}
+}
+
+type uploadJob struct {
+	path, key, hash string
+	version         artifactStamp
+}
+
+// Discover pending files by stat; only new/changed artifacts need hashing.
+// Successful uploads survive restart. A failed job never enters the manifest.
 func (s *S3Syncer) SyncWithS3(ctx context.Context) error {
 	s.syncMu.Lock()
 	defer s.syncMu.Unlock()
-	if s.fileHashes == nil {
-		s.fileHashes = make(map[string]string)
-	}
-	// The manifest is bucket-specific and never uploaded. Persisting successful
-	// hashes avoids uploading the entire historical cache after every restart.
 	manifest := filepath.Join(s.cacheDir, ".s3-manifest-"+s.bucketName+".json")
-	if len(s.fileHashes) == 0 {
+	statsPath := filepath.Join(s.cacheDir, ".s3-stats-"+s.bucketName+".json")
+	if !s.loaded {
 		if data, err := os.ReadFile(manifest); err == nil {
-			if json.Unmarshal(data, &s.fileHashes) != nil || s.fileHashes == nil {
-				s.fileHashes = make(map[string]string)
-			}
+			_ = json.Unmarshal(data, &s.fileHashes)
 		}
+		if data, err := os.ReadFile(statsPath); err == nil {
+			_ = json.Unmarshal(data, &s.fileStats)
+		}
+		s.loaded = true
 	}
-
+	if s.fileHashes == nil {
+		s.fileHashes = map[string]string{}
+	}
+	if s.fileStats == nil {
+		s.fileStats = map[string]artifactStamp{}
+	}
+	var jobs []uploadJob
 	err := filepath.Walk(s.cacheDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-
 		if info.IsDir() {
 			return nil
 		}
@@ -91,43 +112,106 @@ func (s *S3Syncer) SyncWithS3(ctx context.Context) error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-
-		relPath, err := filepath.Rel(s.cacheDir, path)
+		if !info.Mode().IsRegular() {
+			return fmt.Errorf("non-regular cache artifact: %s", path)
+		}
+		rel, err := filepath.Rel(s.cacheDir, path)
 		if err != nil {
 			return err
 		}
-
-		s3Key := strings.ReplaceAll(relPath, string(os.PathSeparator), "/")
-
-		fileHash, err := s.calculateMD5(path)
+		key := filepath.ToSlash(rel)
+		version := stamp(info)
+		if _, ok := s.fileHashes[key]; ok && s.fileStats[key] == version {
+			return nil
+		}
+		hash, err := s.calculateMD5(path)
 		if err != nil {
-			s.logger.Error("Failed to calculate MD5", zap.Error(err), zap.String("path", path))
-			return fmt.Errorf("hash %s: %w", s3Key, err)
+			return err
 		}
-
-		if storedHash, ok := s.fileHashes[s3Key]; !ok || storedHash != fileHash {
-			if err := s.uploadToS3(ctx, path, s3Key); err != nil {
-				s.logger.Error("Failed to upload file to S3", zap.Error(err), zap.String("path", path))
-				return fmt.Errorf("upload %s: %w", s3Key, err)
-			} else {
-				s.fileHashes[s3Key] = fileHash
-			}
+		if hash == s.fileHashes[key] {
+			s.fileStats[key] = version
+			return nil
 		}
-
+		jobs = append(jobs, uploadJob{path, key, hash, version})
 		return nil
 	})
-
-	if err != nil {
-		s.logger.Error("Error walking through cache directory", zap.Error(err))
+	// Publish images first, then per-tile metadata, then the aggregate index.
+	// Never expose an aggregate snapshot when one of its referenced artifacts failed.
+	priority := func(key string) int {
+		if key == "tiledata.json" {
+			return 2
+		}
+		if strings.HasSuffix(key, ".json") {
+			return 1
+		}
+		return 0
 	}
-
-	// Save successful progress even if a later object failed. The failing object
-	// remains pending, and the caller must not advance its publication cursor.
-	manifestErr := utils.AtomicWrite(manifest, func(w io.Writer) error { return json.NewEncoder(w).Encode(s.fileHashes) })
+	sort.SliceStable(jobs, func(a, b int) bool { return priority(jobs[a].key) < priority(jobs[b].key) })
+	if err == nil {
+		for phase := 0; phase < 3 && err == nil; phase++ {
+			var batch []uploadJob
+			for _, job := range jobs {
+				if priority(job.key) == phase {
+					batch = append(batch, job)
+				}
+			}
+			err = s.uploadBatch(ctx, batch)
+		}
+	}
+	// Save hashes before stats: a crash between these writes causes harmless rechecks.
+	hashErr := utils.AtomicWrite(manifest, func(w io.Writer) error { return json.NewEncoder(w).Encode(s.fileHashes) })
+	if hashErr != nil {
+		return fmt.Errorf("persist publication manifest: %w", hashErr)
+	}
+	statsErr := utils.AtomicWrite(statsPath, func(w io.Writer) error { return json.NewEncoder(w).Encode(s.fileStats) })
 	if err != nil {
 		return err
 	}
-	return manifestErr
+	return statsErr
+}
+
+func (s *S3Syncer) uploadBatch(ctx context.Context, jobs []uploadJob) error {
+	work := make(chan uploadJob)
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	var firstErr error
+	for n := 0; n < 4; n++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for job := range work {
+				err := ctx.Err()
+				if err == nil {
+					err = s.uploadToS3(ctx, job.path, job.key)
+				}
+				// Do not acknowledge an artifact replaced while its upload was in flight.
+				if err == nil {
+					info, statErr := os.Stat(job.path)
+					if statErr != nil {
+						err = statErr
+					} else if stamp(info) != job.version {
+						err = fmt.Errorf("artifact changed during upload: %s", job.key)
+					}
+				}
+				mu.Lock()
+				if err != nil {
+					if firstErr == nil {
+						firstErr = err
+					}
+				} else {
+					s.fileHashes[job.key] = job.hash
+					s.fileStats[job.key] = job.version
+				}
+				mu.Unlock()
+			}
+		}()
+	}
+	for _, job := range jobs {
+		work <- job
+	}
+	close(work)
+	wg.Wait()
+	return firstErr
 }
 
 // Update uploadToS3 to accept a context

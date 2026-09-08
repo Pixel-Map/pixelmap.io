@@ -12,10 +12,18 @@ import (
 
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
+	"pixelmap.io/backend/internal/health"
 	"pixelmap.io/backend/internal/notifications"
 )
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "--healthcheck" {
+		if err := health.Check(10*time.Minute, "/tmp/pixelmap-discord"); err != nil {
+			slog.Error(err.Error())
+			os.Exit(1)
+		}
+		return
+	}
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	// Container environment can override the optional mounted dotenv file.
 	_ = godotenv.Load()

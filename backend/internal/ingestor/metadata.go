@@ -93,7 +93,7 @@ func GenerateTiledataJSON(tiles []db.Tile, queries db.Querier, ctx context.Conte
 				"blockNumber": history.BlockNumber,
 				"date":        history.TimeStamp,
 				"image":       history.Image,
-				"image_url":   fmt.Sprintf("https://pixelmap.art/%d/%d.png", tile.ID, history.BlockNumber),
+				"image_url":   "https://pixelmap.art" + publishedHistoryPath(tile.ID, history.BlockNumber, history.Tx),
 				"updatedBy":   history.UpdatedBy,
 			}
 		}
@@ -472,7 +472,7 @@ func GetHistoricalImages(tile db.Tile, dataHistory []db.DataHistory) []PixelMapI
 					BlockNumber: dh.BlockNumber,
 					Date:        dh.TimeStamp,
 					Image:       dh.Image,
-					ImageURL:    fmt.Sprintf("https://pixelmap.art/%d/%d.png", tile.ID, dh.BlockNumber),
+					ImageURL:    "https://pixelmap.art" + publishedHistoryPath(tile.ID, dh.BlockNumber, dh.Tx),
 				})
 			}
 		}

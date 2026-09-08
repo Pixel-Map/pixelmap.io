@@ -1,3 +1,5 @@
+import useAssetData from "../hooks/useAssetData";
+import AssetStatus from "../components/AssetStatus";
 import Head from 'next/head'
 
 import Map from '../components/Map';
@@ -8,16 +10,11 @@ import {PixelMapTile} from "@pixelmap/common/types/PixelMapTile";
 import MoonEasterEgg from '../components/MoonEasterEgg';
 
 function Home() {
-  const [tiles, setTiles] = useState<PixelMapTile[]>([]);
   const [moonEasterEggActive, setMoonEasterEggActive] = useState(false);
   const typedSequence = useRef('');
   const timeoutRef = useRef<NodeJS.Timeout>();
 
-  useEffect(() => {
-    fetchTiles().then((_tiles) => {
-      setTiles(_tiles);
-    });
-  }, []);
+  const { data: tiles, setData: setTiles, loading: assetLoading, error: assetError, retry: retryAssets } = useAssetData<PixelMapTile[]>("tiles", fetchTiles, []);
 
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
@@ -67,8 +64,11 @@ function Home() {
     };
   }, [moonEasterEggActive]);
 
+  if (assetError) return <Layout><AssetStatus error={assetError} retry={retryAssets} /></Layout>;
+
   return (
     <>
+      <AssetStatus loading={assetLoading} error={assetError} retry={retryAssets} />
       <Layout>
         <Head>
           <title>PixelMap.io: Own a piece of Blockchain History!</title>

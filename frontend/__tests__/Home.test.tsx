@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { act } from 'react-dom/test-utils';
 import Home from '../pages/index';
 import { fetchTiles } from '../utils/api';
@@ -160,36 +160,13 @@ describe('Home page', () => {
     });
   });
 
-  it('handles failed API requests gracefully', async () => {
-    // Save original console.error
-    const originalConsoleError = console.error;
-    // Mock console.error to prevent showing errors in test output
-    console.error = jest.fn();
-    
-    try {
-      // Mock implementation that returns a rejected promise
-      (fetchTiles as jest.Mock).mockImplementation(() => {
-        return Promise.reject().catch(() => {
-          // In the Home component, this should be caught and the component should
-          // handle it by using an empty array for tiles
-          return [];
-        });
-      });
-      
-      render(<Home />);
-      
-      // Wait for the component to handle the error and render
-      await act(async () => {
-        await Promise.resolve();
-      });
-      
-      // The error should be caught and the component should handle it
-      // by using an empty array for tiles
-      expect(screen.getByTestId('map-mock')).toBeInTheDocument();
-      expect(screen.getByText('Map Component with 0 tiles')).toBeInTheDocument();
-    } finally {
-      // Restore original console.error
-      console.error = originalConsoleError;
-    }
+  it('shows a real request failure and recovers on retry', async () => {
+    (fetchTiles as jest.Mock).mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce([{ id: 100 }]);
+    render(<Home />);
+    expect(await screen.findByRole('alert')).toHaveTextContent('Unable to load');
+    expect(screen.queryByTestId('map-mock')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByText('Map Component with 1 tiles')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });

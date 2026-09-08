@@ -1,3 +1,5 @@
+import useAssetData from "../../hooks/useAssetData";
+import AssetStatus from "../../components/AssetStatus";
 import React, { useEffect, useState } from "react";
 
 import Head from "next/head";
@@ -22,7 +24,6 @@ import Layout from "../../components/Layout";
 import { PixelMapTile } from "@pixelmap/common/types/PixelMapTile";
 
 function Edit() {
-  const [tiles, setTiles] = useState<PixelMapTile[]>([]);
   const [ownedTiles, setOwnedTiles] = useState<PixelMapTile[]>([]);
   const [saveError, setSaveError] = useState('');
   const [isOpenImageEditor, setIsOpenImageEditor] = useState<boolean>(false);
@@ -32,11 +33,7 @@ function Edit() {
 
   const { account, library } = useWeb3React();
 
-  useEffect(() => {
-    fetchTiles().then((_tiles) => {
-      setTiles(_tiles);
-    });
-  }, []);
+  const { data: tiles, setData: setTiles, loading: assetLoading, error: assetError, retry: retryAssets } = useAssetData<PixelMapTile[]>("tiles", fetchTiles, []);
 
   useEffect(() => {
     if (account) {
@@ -121,8 +118,11 @@ function Edit() {
     }
   };
 
+  if (assetError) return <Layout><AssetStatus error={assetError} retry={retryAssets} /></Layout>;
+
   return (
     <>
+      <AssetStatus loading={assetLoading} error={assetError} retry={retryAssets} />
       <Head>
         <title>Edit Tiles | PixelMap.io</title>
       </Head>

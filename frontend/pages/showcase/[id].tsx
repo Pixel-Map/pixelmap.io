@@ -1,3 +1,5 @@
+import useAssetData from "../../hooks/useAssetData";
+import AssetStatus from "../../components/AssetStatus";
 import React, { useEffect, useState } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
@@ -6,20 +8,10 @@ import TileShowcase from "../../components/TileShowcase";
 import { PixelMapTile } from "@pixelmap/common/types/PixelMapTile";
 
 const ShowcasePage = () => {
-  const [tile, setTile] = useState<PixelMapTile>();
-  const [loading, setLoading] = useState(true);
   const router = useRouter();
   const { id, mode } = router.query;
 
-  useEffect(() => {
-    if (!id) return;
-    
-    setLoading(true);
-    fetchSingleTile(id as string).then((_tile) => {
-      setTile(_tile);
-      setLoading(false);
-    });
-  }, [id]);
+  const { data: tile, setData: setTile, loading: loading, error: assetError, retry: retryAssets } = useAssetData<PixelMapTile | undefined>(id as string | undefined, fetchSingleTile, undefined);
 
   if (loading) {
     return (
@@ -64,6 +56,8 @@ const ShowcasePage = () => {
       </div>
     );
   }
+
+  if (assetError) return <AssetStatus error={assetError} retry={retryAssets} />;
 
   return (
     <>

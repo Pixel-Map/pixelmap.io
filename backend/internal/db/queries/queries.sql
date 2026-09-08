@@ -177,6 +177,7 @@ INSERT INTO purchase_histories (
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8
 )
+ON CONFLICT (tile_id, tx, log_index) DO UPDATE SET tx = purchase_histories.tx
 RETURNING id;
 
 -- name: GetPurchaseHistoryByTileId :many

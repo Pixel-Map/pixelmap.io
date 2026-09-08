@@ -27,7 +27,7 @@ func TestMessageUsesEventSnapshotAndDisablesMentions(t *testing.T) {
 	require.Equal(t, "pm-update-15477", m.Nonce)
 	require.True(t, m.EnforceNonce)
 	require.Empty(t, m.AllowedMentions["parse"])
-	require.Equal(t, "https://pixelmap.art/100/25924135.png", m.Embeds[0].Thumbnail["url"])
+	require.Equal(t, "https://pixelmap.art/100/25924135-d8200f3407f942daeee8fab0d6e3a334ddd395949fb19d06f8b8b965296ff2b2.png", m.Embeds[0].Thumbnail["url"])
 	require.Equal(t, "2026-09-07T07:58:35Z", m.Embeds[0].Timestamp)
 	require.Contains(t, m.Embeds[0].Title, "0xaaaa…aaaa")
 	require.Contains(t, m.Embeds[0].Footer["text"], "https://example.com")
@@ -54,7 +54,7 @@ func TestHTTPDeliveryAndImageReadiness(t *testing.T) {
 	posted := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodHead {
-			require.Equal(t, "/100/25924135.png", r.URL.Path)
+			require.Equal(t, "/100/25924135-d8200f3407f942daeee8fab0d6e3a334ddd395949fb19d06f8b8b965296ff2b2.png", r.URL.Path)
 			require.Empty(t, r.Header.Get("Authorization"), "never send Discord token to image host")
 			w.WriteHeader(http.StatusOK)
 			return

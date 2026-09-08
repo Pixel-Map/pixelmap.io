@@ -1,3 +1,5 @@
+import useAssetData from "../../hooks/useAssetData";
+import AssetStatus from "../../components/AssetStatus";
 import React, { useEffect, useState } from "react";
 
 import Head from "next/head";
@@ -21,18 +23,13 @@ import Layout from "../../components/Layout";
 import { PixelMapTile } from "@pixelmap/common/types/PixelMapTile";
 
 function Wrap() {
-  const [tiles, setTiles] = useState<PixelMapTile[]>([]);
   const [ownedTiles, setOwnedTiles] = useState<PixelMapTile[]>([]);
 
   const { account, library } = useWeb3React();
 
   const triedToEagerConnect = useEagerConnect();
 
-  useEffect(() => {
-    fetchTiles().then((_tiles) => {
-      setTiles(_tiles);
-    });
-  }, []);
+  const { data: tiles, setData: setTiles, loading: assetLoading, error: assetError, retry: retryAssets } = useAssetData<PixelMapTile[]>("tiles", fetchTiles, []);
 
   useEffect(() => {
     if (account) {
@@ -153,8 +150,11 @@ function Wrap() {
     setOwnedTiles([..._tiles]);
   };
 
+  if (assetError) return <Layout><AssetStatus error={assetError} retry={retryAssets} /></Layout>;
+
   return (
     <>
+      <AssetStatus loading={assetLoading} error={assetError} retry={retryAssets} />
       <Head>
         <title>Wrap Tiles | PixelMap.io</title>
       </Head>

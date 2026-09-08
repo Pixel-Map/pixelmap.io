@@ -93,6 +93,10 @@ func main() {
 			continue
 		}
 
+		if err := ingestor.MaterializeHistory(ctx, dataHistory); err != nil {
+			log.Fatal("Failed to render tile history: ", err)
+		}
+
 		// Update metadata (this creates the JSON file)
 		if err := ingestor.UpdateTileMetadata(tile, dataHistory, queries, ctx); err != nil {
 			log.Printf("Error updating metadata for tile %d: %v", tile.ID, err)

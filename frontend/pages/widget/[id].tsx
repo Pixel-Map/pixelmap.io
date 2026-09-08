@@ -1,3 +1,5 @@
+import useAssetData from "../../hooks/useAssetData";
+import AssetStatus from "../../components/AssetStatus";
 import React, { useEffect, useState } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
@@ -10,29 +12,17 @@ import { getLargeImageUrl } from "../../utils/tileImageUtils";
 type WidgetStyle = 'minimal' | 'card' | 'detailed' | 'banner';
 
 const WidgetPage = () => {
-  const [tile, setTile] = useState<PixelMapTile>();
-  const [loading, setLoading] = useState(true);
+
   const router = useRouter();
   const { id, style = 'card', live = 'false' } = router.query;
 
+  const { data: tile, loading, error: assetError, retry: retryAssets } = useAssetData(id as string | undefined, fetchSingleTile, undefined);
   useEffect(() => {
-    if (!id) return;
-    
-    const fetchTile = () => {
-      fetchSingleTile(id as string).then((_tile) => {
-        setTile(_tile);
-        setLoading(false);
-      });
-    };
-
-    fetchTile();
-
-    // If live updates are enabled, poll for changes every 30 seconds
-    if (live === 'true') {
-      const interval = setInterval(fetchTile, 30000);
-      return () => clearInterval(interval);
-    }
-  }, [id, live]);
+    if (live !== 'true') return;
+    const interval = setInterval(retryAssets, 30000);
+    return () => clearInterval(interval);
+  }, [live, retryAssets]);
+  if (assetError) return <AssetStatus error={assetError} retry={retryAssets} />;
 
   if (loading) {
     return (

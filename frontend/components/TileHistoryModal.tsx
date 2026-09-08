@@ -1,3 +1,5 @@
+import useAssetData from "../hooks/useAssetData";
+import AssetStatus from "./AssetStatus";
 import React, { useEffect, useState } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
@@ -16,20 +18,8 @@ interface TileHistoryModalProps {
 }
 
 export default function TileHistoryModal({ isOpen, onClose, tileId, initialTile }: TileHistoryModalProps) {
-  const [tile, setTile] = useState<PixelMapTile | undefined>(initialTile);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (tileId !== null && isOpen) {
-      setLoading(true);
-      fetchSingleTile(tileId.toString()).then((fetchedTile) => {
-        if (fetchedTile) {
-          setTile(fetchedTile);
-        }
-        setLoading(false);
-      });
-    }
-  }, [tileId, isOpen]);
+  const { data: tile, loading, error: assetError, retry: retryAssets } = useAssetData(
+    isOpen && tileId !== null ? tileId.toString() : undefined, fetchSingleTile, initialTile);
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
@@ -73,7 +63,7 @@ export default function TileHistoryModal({ isOpen, onClose, tileId, initialTile 
                 </div>
 
                 <div className="max-h-[80vh] overflow-y-auto">
-                  {loading ? (
+                  {assetError ? <AssetStatus error={assetError} retry={retryAssets} /> : loading ? (
                     <div className="flex items-center justify-center py-20">
                       <Loader />
                     </div>

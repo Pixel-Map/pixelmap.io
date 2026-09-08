@@ -3,27 +3,28 @@ package ingestor
 import (
 	"context"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
 	"math/rand"
+	"net/http"
 	"os"
-	"strconv"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/lib/pq"
+	"github.com/ethereum/go-ethereum/rpc"
 	ens "github.com/wealdtech/go-ens/v3"
 	"go.uber.org/zap"
 	pixelmap "pixelmap.io/backend/internal/contracts/pixelmap"
 	pixelmapWrapper "pixelmap.io/backend/internal/contracts/pixelmapWrapper"
 	db "pixelmap.io/backend/internal/db"
+	"pixelmap.io/backend/internal/health"
 	utils "pixelmap.io/backend/internal/utils"
 )
 
@@ -91,7 +92,9 @@ type Ingestor struct {
 	etherscanClient chainSource
 	pubSub          *PubSub
 	renderSignal    chan struct{}
-	isRendering     atomic.Bool
+	sqlDB           *sql.DB
+	dirtyTiles      map[int32]bool
+	inTransaction   bool
 	maxRetries      int
 	baseDelay       time.Duration
 	s3Syncer        publisher
@@ -112,18 +115,20 @@ func NewIngestor(logger *zap.Logger, sqlDB *sql.DB, apiKey string) *Ingestor {
 		}
 	}
 
-	ethClient, err := ethclient.Dial(os.Getenv("WEB3_URL"))
-	if err != nil {
-		logger.Error("Failed to connect to Ethereum client", zap.Error(err))
-	}
-
+	connectCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	rpcClient, err := rpc.DialOptions(connectCtx, os.Getenv("WEB3_URL"), rpc.WithHTTPClient(&http.Client{Timeout: 10 * time.Second}))
+	var ethClient *ethclient.Client
 	if err != nil {
 		logger.Error("Failed to create ENS resolver", zap.Error(err))
+	} else {
+		ethClient = ethclient.NewClient(rpcClient)
 	}
 
 	ingestor := &Ingestor{
 		logger:          logger,
 		queries:         db.New(sqlDB),
+		sqlDB:           sqlDB,
 		etherscanClient: NewEtherscanClient(apiKey, 1, logger), // chainId 1 for Ethereum mainnet
 		pubSub:          pubSub,
 		renderSignal:    make(chan struct{}, 1),
@@ -133,24 +138,27 @@ func NewIngestor(logger *zap.Logger, sqlDB *sql.DB, apiKey string) *Ingestor {
 		ethClient:       ethClient,
 	}
 
-	// Start the continuous rendering process
-	go ingestor.continuousRenderProcess()
-
-	// Trigger an initial render
-	ingestor.signalNewData()
-
 	return ingestor
 }
 
 func (i *Ingestor) StartContinuousIngestion(ctx context.Context) error {
-	for {
+	var workers sync.WaitGroup
+	workers.Add(1)
+	go func() { defer workers.Done(); i.continuousRenderProcess(ctx) }()
+	defer workers.Wait()
+	if i.ethClient != nil {
+		defer i.ethClient.Close()
+	}
+	i.signalNewData()
+	for ctx.Err() == nil {
 		err := i.IngestTransactions(ctx)
 		if err != nil {
 			i.logger.Error("Error during transaction ingestion", zap.Error(err))
-			// Optionally, you might want to return the error here if you want to stop the process on errors
-			// return err
 		}
 
+		if err == nil {
+			_ = health.Touch("/tmp/pixelmap-ingestion")
+		}
 		i.logger.Info("Finished ingestion cycle, waiting for 30 seconds before next check")
 		// Start up the render process
 		i.signalNewData()
@@ -163,6 +171,7 @@ func (i *Ingestor) StartContinuousIngestion(ctx context.Context) error {
 			return ctx.Err()
 		}
 	}
+	return ctx.Err()
 }
 
 func (i *Ingestor) IngestTransactions(ctx context.Context) error {
@@ -252,30 +261,52 @@ func (i *Ingestor) processBlockRange(ctx context.Context, currentBlock, endBlock
 		return err
 	}
 
-	skippedCount := 0
-	for _, tx := range transactions {
-		if err := i.processTransaction(ctx, &tx); err != nil {
-			if strings.Contains(err.Error(), "bad jump destination") {
-				skippedCount++
-				continue
-			}
-			i.logger.Error("Failed to process transaction", zap.Error(err), zap.String("hash", tx.Hash))
-			return fmt.Errorf("failed to process transaction %s: %w", tx.Hash, err)
+	// Serialize database publication snapshots with ingestion commits.
+	i.publicationMu.Lock()
+	defer i.publicationMu.Unlock()
+	processor := i
+	var transaction *sql.Tx
+	if i.sqlDB != nil {
+		transaction, err = i.sqlDB.BeginTx(ctx, nil)
+		if err != nil {
+			return err
+		}
+		defer transaction.Rollback()
+		processor = &Ingestor{queries: db.New(transaction), logger: i.logger, ethClient: i.ethClient,
+			inTransaction: true, dirtyTiles: make(map[int32]bool)}
+	}
+	for _, event := range transactions {
+		if err := processor.processTransaction(ctx, &event); err != nil {
+			return fmt.Errorf("process transaction %s: %w", event.Hash, err)
 		}
 	}
-
-	if err := i.updateLastProcessedBlock(ctx, blockEnd); err != nil {
+	if err := processor.updateLastProcessedBlock(ctx, blockEnd); err != nil {
 		return err
 	}
+	if transaction != nil {
+		for tileID := range processor.dirtyTiles {
+			if _, err := transaction.ExecContext(ctx, `INSERT INTO current_state(state,value) VALUES($1,$2)
+    ON CONFLICT(state) DO UPDATE SET value=EXCLUDED.value`, fmt.Sprintf("PUBLICATION_TILE_%d", tileID), blockEnd); err != nil {
+				return err
+			}
+		}
+		if err := transaction.Commit(); err != nil {
+			return err
+		}
+	}
+	i.signalNewData()
 
 	i.logger.Info("Processed blocks",
 		zap.Int64("from", currentBlock),
 		zap.Int64("to", blockEnd),
-		zap.Int("skippedTransactions", skippedCount))
+		zap.Int("transactions", len(transactions)))
 	return nil
 }
 
 func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransaction) error {
+	if tx == nil {
+		return fmt.Errorf("missing transaction")
+	}
 	// Check if this is a "bad jump destination" transaction
 	if tx.IsError == "1" {
 		i.logger.Debug("Skipping bad transaction",
@@ -283,6 +314,9 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 		return nil
 	}
 
+	if err := validateTransactionNumbers(tx); err != nil {
+		return err
+	}
 	// Convert types and insert into database
 	blockNumber, _ := new(big.Int).SetString(tx.BlockNumber, 10)
 	timeStamp, _ := new(big.Int).SetString(tx.TimeStamp, 10)
@@ -294,13 +328,9 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 	gasUsed, _ := new(big.Int).SetString(tx.GasUsed, 10)
 	confirmations, _ := new(big.Int).SetString(tx.Confirmations, 10)
 
-	transactionIndex, _ := strconv.Atoi(tx.TransactionIndex)
-	// Make sure nonce is valid
-	if tx.Nonce == "" {
-		i.logger.Warn("Skipping transaction with invalid nonce", zap.String("hash", tx.Hash))
-		i.logger.Info("Transaction", zap.Any("transaction", tx))
-		return nil
-	}
+	index, _ := chainIndex(tx.TransactionIndex)
+	transactionIndex := int(index)
+
 	transaction := db.InsertPixelMapTransactionParams{
 		BlockNumber:       blockNumber.Int64(),
 		TimeStamp:         time.Unix(timeStamp.Int64(), 0),
@@ -353,14 +383,35 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 		fmt.Println("Constructor called")
 		return nil
 	}
-	method, err := abi.MethodById(common.FromHex(methodID))
+	input, err := hex.DecodeString(strings.TrimPrefix(tx.Input, "0x"))
+	if err != nil || len(input) < 4 {
+		return fmt.Errorf("invalid transaction input")
+	}
+	method, err := abi.MethodById(input[:4])
 	if err != nil {
 		return fmt.Errorf("failed to get method: %w", err)
 	}
 	// Decode the parameters
-	args, err := method.Inputs.Unpack(common.FromHex(tx.Input)[4:])
+	args, err := method.Inputs.Unpack(input[4:])
 	if err != nil {
 		return fmt.Errorf("failed to unpack inputs: %w", err)
+	}
+
+	locationArg := -1
+	switch method.Name {
+	case "buyTile", "setTile", "setTileData", "getTile", "wrap", "unwrap":
+		locationArg = 0
+	case "transferFrom", "safeTransferFrom", "safeTransferFrom0":
+		locationArg = 2
+	}
+	if locationArg >= 0 {
+		if len(args) <= locationArg {
+			return fmt.Errorf("missing tile argument")
+		}
+		location, ok := args[locationArg].(*big.Int)
+		if !ok || location == nil || !location.IsInt64() || location.Sign() < 0 || location.Int64() >= 3970 {
+			return fmt.Errorf("invalid tile number")
+		}
 	}
 
 	switch method.Name {
@@ -373,6 +424,7 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 					zap.String("tx", tx.Hash),
 					zap.String("from", tx.From))
 
+				i.markTile(int32(location.Int64()))
 				// Fetch the current tile data
 				tile, err := i.queries.GetTileById(ctx, int32(location.Int64()))
 				if err != nil {
@@ -396,17 +448,7 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 
 				_, err = i.queries.InsertPurchaseHistory(ctx, purchaseHistory)
 				if err != nil {
-					// Check if it's a duplicate key error
-					if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {
-						// This is a duplicate entry, log it and continue
-						i.logger.Warn("Duplicate purchase history entry",
-							zap.String("tx", tx.Hash),
-							zap.Int32("tileID", purchaseHistory.TileID),
-							zap.Int32("logIndex", purchaseHistory.LogIndex))
-					} else {
-						// If it's not a duplicate key error, return the error
-						return fmt.Errorf("failed to insert purchase history: %w", err)
-					}
+					return fmt.Errorf("failed to insert purchase history: %w", err)
 				}
 
 				// Update tile owner
@@ -480,6 +522,7 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 			zap.String("from", tx.From))
 
 		location, _ := args[0].(*big.Int)
+		i.markTile(int32(location.Int64()))
 		i.logger.Info("wrap called",
 			zap.String("location", location.String()),
 			zap.String("wrapped", "true"),
@@ -517,7 +560,11 @@ func (i *Ingestor) processTransaction(ctx context.Context, tx *EtherscanTransact
 			zap.String("from", tx.From))
 
 		location, _ := args[0].(*big.Int)
-		wrapped, _ := args[1].(string)
+		i.markTile(int32(location.Int64()))
+		wrapped := ""
+		if len(args) > 1 {
+			wrapped, _ = args[1].(string)
+		}
 		i.logger.Info("unwrap called",
 			zap.String("location", location.String()),
 			zap.String("unwrapped", wrapped),
@@ -636,38 +683,18 @@ func (i *Ingestor) signalNewData() {
 	}
 }
 
-func (i *Ingestor) continuousRenderProcess() {
+func (i *Ingestor) continuousRenderProcess(ctx context.Context) {
 	for {
-		// Wait for a signal that new data is available
-		<-i.renderSignal
-
-		// Set the rendering flag
-		if !i.isRendering.CompareAndSwap(false, true) {
-			// If already rendering, continue waiting
-			continue
+		select {
+		case <-ctx.Done():
+			return
+		case <-i.renderSignal:
 		}
-
-		// Start rendering in a separate goroutine
-		go func() {
-			defer i.isRendering.Store(false)
-
-			for {
-				if err := i.processDataHistory(context.Background()); err != nil {
-					i.logger.Error("Failed to process data history", zap.Error(err))
-					return
-				}
-
-				// Check if there's more data to process
-				select {
-				case <-i.renderSignal:
-					// More data available, continue processing
-					continue
-				default:
-					// No more data, exit the rendering loop
-					return
-				}
-			}
-		}()
+		if err := i.processDataHistory(ctx); err != nil {
+			i.logger.Error("Failed to process data history", zap.Error(err))
+		} else {
+			_ = health.Touch("/tmp/pixelmap-publication")
+		}
 	}
 }
 
@@ -685,7 +712,11 @@ func (i *Ingestor) processDataHistory(ctx context.Context) error {
 		return fmt.Errorf("failed to get unprocessed data history: %w", err)
 	}
 
-	if len(history) == 0 {
+	dirty, err := i.pendingTiles(ctx)
+	if err != nil {
+		return err
+	}
+	if len(history) == 0 && len(dirty) == 0 {
 		// Retry older publication failures even when no new chain event arrives.
 		if i.s3Syncer != nil {
 			return i.s3Syncer.SyncWithS3(ctx)
@@ -694,25 +725,26 @@ func (i *Ingestor) processDataHistory(ctx context.Context) error {
 	}
 
 	for _, row := range history {
-		location := big.NewInt(int64(row.TileID))
-		if err := i.renderAndSaveImage(location, row.Image, row.BlockNumber); err != nil {
-			return fmt.Errorf("failed to render and save image: %w", err)
+		dirty[row.TileID] = true
+	}
+
+	// Include non-image events (purchase, transfer, wrapping) in the same durable publication.
+	for tileID := range dirty {
+		tile, err := i.queries.GetTileById(ctx, tileID)
+		if err != nil {
+			return err
+		}
+		dataHistory, err := i.queries.GetDataHistoryByTileId(ctx, tileID)
+		if err != nil {
+			return err
+		}
+		if err := MaterializeHistory(ctx, dataHistory); err != nil {
+			return err
 		}
 
-		// Update metadata
-		tile, err := i.queries.GetTileById(ctx, int32(location.Int64()))
-		if err != nil {
-			return fmt.Errorf("failed to get tile data: %w", err)
-		}
-		// Get all data history for the tile
-		dataHistory, err := i.queries.GetDataHistoryByTileId(ctx, int32(location.Int64()))
-		if err != nil {
-			return fmt.Errorf("failed to get data history: %w", err)
-		}
 		if err := UpdateTileMetadata(tile, dataHistory, i.queries, ctx); err != nil {
-			return fmt.Errorf("failed to update metadata: %w", err)
+			return err
 		}
-
 	}
 
 	// Redraw the full map
@@ -731,8 +763,15 @@ func (i *Ingestor) processDataHistory(ctx context.Context) error {
 
 	// A replay after a crash is safe: files are replaced atomically. Never
 	// acknowledge this batch until every artifact has reached the publisher.
-	if err := i.queries.UpdateLastProcessedDataHistoryID(ctx, history[len(history)-1].ID); err != nil {
-		return fmt.Errorf("save published history checkpoint: %w", err)
+	if len(history) > 0 {
+		if err := i.queries.UpdateLastProcessedDataHistoryID(ctx, history[len(history)-1].ID); err != nil {
+			return fmt.Errorf("save published history checkpoint: %w", err)
+		}
+	}
+	if i.sqlDB != nil {
+		if _, err := i.sqlDB.ExecContext(ctx, `DELETE FROM current_state WHERE state LIKE 'PUBLICATION_TILE_%'`); err != nil {
+			return err
+		}
 	}
 	i.logger.Info("Finished processing data history", zap.Int("count", len(history)))
 
@@ -809,6 +848,7 @@ func (i *Ingestor) renderAndSaveImage(location *big.Int, imageData string, block
 }
 
 func (i *Ingestor) processTileUpdate(ctx context.Context, location *big.Int, image, url string, priceWei *big.Int, tx *EtherscanTransaction, timestamp, blockNumber int64, transactionIndex int32) error {
+	i.markTile(int32(location.Int64()))
 	var priceEthStr string
 	if priceWei == nil {
 		// Fetch the current price from the database
@@ -895,15 +935,9 @@ func (i *Ingestor) processTileUpdate(ctx context.Context, location *big.Int, ima
 		return fmt.Errorf("failed to update tile: %w", err)
 	}
 
-	// Signal that new data is available to render
-	i.signalNewData()
-
-	// Keep the Discord notification
-	discordPayload, _ := json.Marshal(map[string]interface{}{
-		"message": fmt.Sprintf("Tile %s updated by %s", location.String(), tx.From),
-		"url":     url,
-	})
-	i.pubSub.Publish(Event{Type: EventTypeDiscordNotification, Payload: discordPayload})
+	if !i.inTransaction {
+		i.signalNewData()
+	}
 
 	return nil
 }
@@ -985,7 +1019,10 @@ func (i *Ingestor) processTransfer(ctx context.Context, args []interface{}, tx *
 		return fmt.Errorf("failed to update tile owner: %w", err)
 	}
 
-	// Call the reusable function
+	i.markTile(int32(location.Int64()))
+	if i.inTransaction {
+		return nil
+	}
 	if err := i.updateTileDataAndSync(ctx); err != nil {
 		return err
 	}

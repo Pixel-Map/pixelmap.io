@@ -1,3 +1,5 @@
+import useAssetData from "../../hooks/useAssetData";
+import AssetStatus from "../../components/AssetStatus";
 import React, { useEffect, useState } from "react";
 
 import Head from "next/head";
@@ -14,18 +16,16 @@ function TileUpdatesLog() {
   }
 
   const router = useRouter();
-  const [tiles, setTimeCapsuleTile] = useState<TimeCapsuleTile[]>([]);
-  useEffect(() => {
-    fetchAllTilesEver().then((_tiles) => {
-      setTimeCapsuleTile(_tiles);
-    });
-  }, []);
+  const { data: tiles, setData: setTimeCapsuleTile, loading: assetLoading, error: assetError, retry: retryAssets } = useAssetData<TimeCapsuleTile[]>("history", fetchAllTilesEver, []);
   const [hovered, setHovered] = useState(false);
   const toggleHover = () => setHovered(!hovered);
 
   // @ts-ignore
+  if (assetError) return <Layout><AssetStatus error={assetError} retry={retryAssets} /></Layout>;
+
   return (
     <>
+      <AssetStatus loading={assetLoading} error={assetError} retry={retryAssets} />
       <style>{`
         body {
           background: #ddd;

@@ -26,4 +26,5 @@ COPY --from=build /out/indexer /app/indexer
 #               passes configuration directly through environment variables.
 # /app/cache -> named volume, pre-seeded from the EC2 box so historical tiles
 #               are not re-rendered and tilemap.png stitches correctly.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=2m --retries=3 CMD ["/app/indexer", "--healthcheck"]
 ENTRYPOINT ["/app/indexer"]

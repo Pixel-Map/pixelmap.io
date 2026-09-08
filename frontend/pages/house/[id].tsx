@@ -1,3 +1,5 @@
+import useAssetData from "../../hooks/useAssetData";
+import AssetStatus from "../../components/AssetStatus";
 import React, { useEffect, useRef, useState } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
@@ -12,21 +14,13 @@ import { PixelMapTile } from "@pixelmap/common/types/PixelMapTile";
 const House = () => {
   const canvasRef = useRef(null);
 
-  const [tile, setTile] = useState<PixelMapTile>();
-  const [fetching, setFetching] = useState(false);
   const router = useRouter();
   const id = router.query.id as string;
 
-  useEffect(() => {
-    document.body.style.overflow = "hidden";
+  const { data: tile, setData: setTile, loading: fetching, error: assetError, retry: retryAssets } = useAssetData<PixelMapTile | undefined>(id, fetchSingleTile, undefined);
+  useEffect(() => { const previous = document.body.style.overflow; document.body.style.overflow = "hidden"; return () => { document.body.style.overflow = previous; }; }, []);
 
-    setFetching(true);
-
-    fetchSingleTile(id).then((_tile) => {
-      setTile(_tile);
-      setFetching(false);
-    });
-  }, [, id]);
+  if (assetError) return <AssetStatus error={assetError} retry={retryAssets} />;
 
   return (
     <>

@@ -1,3 +1,5 @@
+import useAssetData from "../../hooks/useAssetData";
+import AssetStatus from "../../components/AssetStatus";
 import React, { useEffect, useState } from "react";
 import Head from "next/head";
 import Link from "next/link";
@@ -15,20 +17,11 @@ import { PixelMapTile } from "@pixelmap/common/types/PixelMapTile";
 const Owner = () => {
   const router = useRouter();
 
-  const [tiles, setTiles] = useState<PixelMapTile[]>([]);
   const [ownedTiles, setOwnedTiles] = useState<PixelMapTile[]>([]);
-  const [fetching, setFetching] = useState(false);
 
   const address = router.query.address as string;
 
-  useEffect(() => {
-    setFetching(true);
-
-    fetchTiles().then((_tiles) => {
-      setTiles(_tiles);
-      setFetching(false);
-    });
-  }, []);
+  const { data: tiles, setData: setTiles, loading: fetching, error: assetError, retry: retryAssets } = useAssetData<PixelMapTile[]>("tiles", fetchTiles, []);
 
   useEffect(() => {
     if (address) {
@@ -39,6 +32,8 @@ const Owner = () => {
       setOwnedTiles(owned);
     }
   }, [address, tiles]);
+
+  if (assetError) return <Layout><AssetStatus error={assetError} retry={retryAssets} /></Layout>;
 
   return (
     <>

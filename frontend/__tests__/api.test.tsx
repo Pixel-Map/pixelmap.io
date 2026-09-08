@@ -32,31 +32,22 @@ describe('API utility functions', () => {
 
       // Set up the fetch mock to return the mock data
       (global.fetch as jest.Mock).mockResolvedValueOnce({
-        json: jest.fn().mockResolvedValueOnce(mockTiles)
+        ok: true, json: jest.fn().mockResolvedValueOnce(mockTiles)
       });
 
       // Call the function
       const result = await fetchTiles();
 
       // Check that fetch was called with the correct URL
-      expect(global.fetch).toHaveBeenCalledWith('https://pixelmap.art/tiledata.json');
+      expect(global.fetch).toHaveBeenCalledWith('https://pixelmap.art/tiledata.json', expect.objectContaining({ signal: expect.any(AbortSignal) }));
       
       // Check that the function returns the expected data
       expect(result).toEqual(mockTiles);
     });
 
-    it('returns an empty array when fetch fails', async () => {
-      // Set up the fetch mock to throw an error
+    it('propagates network failures', async () => {
       (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
-
-      // Call the function
-      const result = await fetchTiles();
-
-      // Check that fetch was called with the correct URL
-      expect(global.fetch).toHaveBeenCalledWith('https://pixelmap.art/tiledata.json');
-      
-      // Check that the function returns an empty array
-      expect(result).toEqual([]);
+      await expect(fetchTiles()).rejects.toThrow('Network error');
     });
   });
 
@@ -73,31 +64,22 @@ describe('API utility functions', () => {
 
       // Set up the fetch mock to return the mock data
       (global.fetch as jest.Mock).mockResolvedValueOnce({
-        json: jest.fn().mockResolvedValueOnce(mockTile)
+        ok: true, json: jest.fn().mockResolvedValueOnce(mockTile)
       });
 
       // Call the function
       const result = await fetchSingleTile('123');
 
       // Check that fetch was called with the correct URL
-      expect(global.fetch).toHaveBeenCalledWith('https://pixelmap.art/tile/123.json');
+      expect(global.fetch).toHaveBeenCalledWith('https://pixelmap.art/tile/123.json', expect.objectContaining({ signal: expect.any(AbortSignal) }));
       
       // Check that the function returns the expected data
       expect(result).toEqual(mockTile);
     });
 
-    it('handles failures gracefully', async () => {
-      // Set up the fetch mock to throw an error
+    it('propagates tile failures', async () => {
       (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
-
-      // Call the function
-      const result = await fetchSingleTile('123');
-
-      // Check that fetch was called with the correct URL
-      expect(global.fetch).toHaveBeenCalledWith('https://pixelmap.art/tile/123.json');
-      
-      // Check that the function returns undefined
-      expect(result).toBeUndefined();
+      await expect(fetchSingleTile('123')).rejects.toThrow('Network error');
     });
 
     it('handles undefined id', async () => {
@@ -132,31 +114,22 @@ describe('API utility functions', () => {
 
       // Set up the fetch mock to return the mock data
       (global.fetch as jest.Mock).mockResolvedValueOnce({
-        json: jest.fn().mockResolvedValueOnce(mockTimeCapsuleTiles)
+        ok: true, json: jest.fn().mockResolvedValueOnce(mockTimeCapsuleTiles)
       });
 
       // Call the function
       const result = await fetchTimeCapsuleTiles();
 
       // Check that fetch was called with the correct URL
-      expect(global.fetch).toHaveBeenCalledWith('https://pixelmap.art/timecapsuleI.json');
+      expect(global.fetch).toHaveBeenCalledWith('https://pixelmap.art/timecapsuleI.json', expect.objectContaining({ signal: expect.any(AbortSignal) }));
       
       // Check that the function returns the expected data
       expect(result).toEqual(mockTimeCapsuleTiles);
     });
 
-    it('returns an empty array when fetch fails', async () => {
-      // Set up the fetch mock to throw an error
+    it('propagates network failures', async () => {
       (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
-
-      // Call the function
-      const result = await fetchTimeCapsuleTiles();
-
-      // Check that fetch was called with the correct URL
-      expect(global.fetch).toHaveBeenCalledWith('https://pixelmap.art/timecapsuleI.json');
-      
-      // Check that the function returns an empty array
-      expect(result).toEqual([]);
+      await expect(fetchTimeCapsuleTiles()).rejects.toThrow('Network error');
     });
   });
 
@@ -178,31 +151,36 @@ describe('API utility functions', () => {
 
       // Set up the fetch mock to return the mock data
       (global.fetch as jest.Mock).mockResolvedValueOnce({
-        json: jest.fn().mockResolvedValueOnce(mockAllTiles)
+        ok: true, json: jest.fn().mockResolvedValueOnce(mockAllTiles)
       });
 
       // Call the function
       const result = await fetchAllTilesEver();
 
       // Check that fetch was called with the correct URL
-      expect(global.fetch).toHaveBeenCalledWith('https://pixelmap.art/allimages.json');
+      expect(global.fetch).toHaveBeenCalledWith('https://pixelmap.art/allimages.json', expect.objectContaining({ signal: expect.any(AbortSignal) }));
       
       // Check that the function returns the expected data
       expect(result).toEqual(mockAllTiles);
     });
 
-    it('returns an empty array when fetch fails', async () => {
-      // Set up the fetch mock to throw an error
+    it('propagates network failures', async () => {
       (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
-
-      // Call the function
-      const result = await fetchAllTilesEver();
-
-      // Check that fetch was called with the correct URL
-      expect(global.fetch).toHaveBeenCalledWith('https://pixelmap.art/allimages.json');
-      
-      // Check that the function returns an empty array
-      expect(result).toEqual([]);
+      await expect(fetchAllTilesEver()).rejects.toThrow('Network error');
     });
+  });
+});
+describe('HTTP and payload failures', () => {
+  it('rejects error status even when the response contains valid JSON', async () => {
+    jest.mocked(fetch).mockResolvedValueOnce({ ok: false, status: 503, json: async () => [] } as Response);
+    await expect(fetchTiles()).rejects.toThrow('HTTP 503');
+  });
+  it('rejects malformed collection data', async () => {
+    jest.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ error: 'unavailable' }) } as Response);
+    await expect(fetchTiles()).rejects.toThrow('unexpected format');
+  });
+  it('distinguishes a successful empty collection', async () => {
+    jest.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => [] } as Response);
+    await expect(fetchTiles()).resolves.toEqual([]);
   });
 });
