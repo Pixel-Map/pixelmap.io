@@ -149,7 +149,7 @@ function PaintTile({ id }: { id: string }) {
         <p className={styles.hint}>After painting, click inside the game to play. Use its Save State button to keep your session. Restart drawing begins a fresh game.</p>
       </section>}
     </>}
-    <footer className={styles.footer}>Powered by <a href="https://emulatorjs.org/">EmulatorJS</a> and <a href="https://github.com/snes9xgit/snes9x">Snes9x</a>. Mario Paint belongs to Nintendo. No game ROM is included.</footer>
+    <footer className={styles.footer}>Powered by <a href="https://emulatorjs.org/">EmulatorJS</a> and <a href="https://github.com/snes9xgit/snes9x">Snes9x</a>. Mario Paint belongs to Nintendo.</footer>
   </main>;
 }
 
