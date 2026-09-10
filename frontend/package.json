@@ -3,7 +3,8 @@
 	"version": "0.1.0",
 	"private": true,
 	"scripts": {
-		"dev": "next dev",
+		"dev": "node ../scripts/serve-paint-local.mjs --dev",
+		"paint:local": "node ../scripts/serve-paint-local.mjs",
 		"build": "next build",
 		"start": "next start",
 		"lint": "eslint . --ext .js,.jsx,.ts,.tsx",
@@ -41,6 +42,7 @@
 		"@testing-library/react": "^14.2.1",
 		"@tippyjs/react": "^4.2.6",
 		"@types/jest": "^29.5.14",
+		"@types/node": "24.2.1",
 		"@types/react": "^18.2.57",
 		"@types/react-dom": "^18.2.19",
 		"@typescript-eslint/parser": "^8.66.0",

@@ -127,6 +127,9 @@ importers:
       '@types/jest':
         specifier: ^29.5.14
         version: 29.5.14
+      '@types/node':
+        specifier: 24.2.1
+        version: 24.2.1
       '@types/react':
         specifier: ^18.2.57
         version: 18.3.23

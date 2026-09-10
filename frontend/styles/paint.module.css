@@ -1,0 +1,32 @@
+.page { min-height:100vh; background:#151723; color:#f5f0df; padding:36px max(20px, calc((100vw - 1080px) / 2)) 24px; font-family:system-ui,sans-serif; }
+.header { max-width:760px; }
+.back { display:block; margin-bottom:32px; color:#c6cadb; font-size:14px; }
+.tag { color:#f5c85b; font-size:12px; letter-spacing:.16em; font-weight:700; }
+.header h1 { font-size:clamp(30px,5vw,52px); font-weight:750; line-height:1.12; margin:14px 0 18px; letter-spacing:-.035em; }
+.header h1 span { color:#aeb5cb; }
+.header p { color:#c6cadb; font-size:17px; line-height:1.6; max-width:600px; }
+.artwork { display:flex; align-items:center; gap:24px; margin:32px 0; }
+.artwork figure { margin:0; text-align:center; }
+.preview { width:80px; height:80px; image-rendering:pixelated; border-radius:3px; background:#fff; display:block; margin:0 auto 8px; }
+.artwork figcaption { font-size:12px; color:#aeb5cb; }
+.artwork p { color:#aeb5cb; font-size:14px; line-height:1.6; }
+.setup { background:#212536; border:1px solid #393f56; border-radius:14px; padding:28px; }
+.setup h2 { font-size:21px; font-weight:650; margin:0 0 12px; }
+.setup p { max-width:650px; color:#c6cadb; line-height:1.7; }
+.fileLabel { display:block; font-size:14px; font-weight:600; margin:22px 0 10px; }
+.setup input { max-width:100%; }
+.setup input::file-selector-button,.controls button { border:0; border-radius:6px; background:#f5c85b; color:#151723; padding:10px 14px; font-weight:650; cursor:pointer; margin-right:12px; }
+.setup small { display:block; margin-top:20px; color:#aeb5cb; }
+.setup .error { color:#ffb0ac; }
+.player { background:#0b0c12; border:1px solid #393f56; border-radius:12px; overflow:hidden; }
+.status { padding:16px 20px; display:flex; justify-content:space-between; align-items:center; gap:12px; min-height:72px; }
+.status p { margin:0; font-size:14px; }
+.controls { display:flex; gap:8px; flex-shrink:0; }
+.controls button { margin:0; font-size:12px; }
+.emulator { width:100%; aspect-ratio:8 / 7; border:0; display:block; max-height:80vh; background:#111; }
+.player progress { width:100%; height:4px; display:block; accent-color:#f5c85b; }
+.hint { color:#aeb5cb; font-size:12px; line-height:1.6; padding:16px 20px; margin:0; }
+.footer { color:#949cb7; font-size:12px; margin-top:32px; line-height:1.8; }
+.footer a { text-decoration:underline; }
+.page button:focus-visible,.page a:focus-visible,.page input:focus-visible { outline:3px solid #9fd9ff; outline-offset:4px; }
+@media(max-width:600px) { .page { padding-top:22px; } .artwork { gap:18px; flex-wrap:wrap; } .artwork p { flex-basis:100%; margin:0; } .status { align-items:flex-start; flex-direction:column; } .setup { padding:20px; } }

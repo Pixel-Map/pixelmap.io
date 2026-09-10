@@ -51,3 +51,6 @@ backend/temp/
 # Generated build artifacts
 *.tsbuildinfo
 *.test
+
+
+*.state

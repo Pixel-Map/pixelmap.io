@@ -6,6 +6,7 @@ module.exports = {
 		"!**/.next/**",
 		"!**/coverage/**",
 		"!**/out/**",
+		"!**/public/paint/vendor/**",
 		"!**/*.config.js",
 		"!**/.eslintrc.js",
 	],

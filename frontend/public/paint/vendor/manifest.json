@@ -1,0 +1,125 @@
+{
+  "captured": "2026-09-10",
+  "files": [
+    {
+      "file": "loader.js",
+      "source": "https://cdn.emulatorjs.org/nightly/data/loader.js",
+      "sha256": "f1650e3dd703c4e83c30a198365db4f85e6d8eb1e08d730f355c297f66a90572",
+      "bytes": 8832
+    },
+    {
+      "file": "emulator.css",
+      "source": "https://cdn.emulatorjs.org/nightly/data/emulator.css",
+      "sha256": "3b4b81e15cfbfa2c2dbdc7ec8d9254fdf7639d48534a4aac23f74af8df9a81d5",
+      "bytes": 37832
+    },
+    {
+      "file": "version.json",
+      "source": "https://cdn.emulatorjs.org/nightly/data/version.json",
+      "sha256": "d8991427000a96fb97daefdb62178071e9bbff911760706148e584ae8d69f9e7",
+      "bytes": 126
+    },
+    {
+      "file": "cores/reports/snes9x.json",
+      "source": "https://cdn.emulatorjs.org/nightly/data/cores/reports/snes9x.json",
+      "sha256": "2349a68fdf6e0301b7eed3a242746e99f59e5dcf3618701bc8374c9a2067b67b",
+      "bytes": 120
+    },
+    {
+      "file": "cores/snes9x-legacy-wasm.data",
+      "source": "https://cdn.emulatorjs.org/nightly/data/cores/snes9x-legacy-wasm.data",
+      "sha256": "f9a6788c09af782f44f9302355b416e61feb7675a237c37302c9b5e1a7827f22",
+      "bytes": 908173
+    },
+    {
+      "file": "compression/extract7z.js",
+      "source": "https://cdn.emulatorjs.org/nightly/data/compression/extract7z.js",
+      "sha256": "4ac9933b995a516cb6b3ca4027db860278372a20c21c405d93ceb1998498853a",
+      "bytes": 280155
+    },
+    {
+      "file": "src/emulator.js",
+      "source": "https://cdn.emulatorjs.org/nightly/data/src/emulator.js",
+      "sha256": "28b3c98f8aae0b9648693258c80d5ab9b7e843c04095eeb55c3542b37d5a9c43",
+      "bytes": 318579
+    },
+    {
+      "file": "src/gamepad.js",
+      "source": "https://cdn.emulatorjs.org/nightly/data/src/gamepad.js",
+      "sha256": "85fd777a46e9aa10a09a24f8c6455dc5ca0c5e2f1b2fbf66cf87e297b101b1ae",
+      "bytes": 6042
+    },
+    {
+      "file": "src/compression.js",
+      "source": "https://cdn.emulatorjs.org/nightly/data/src/compression.js",
+      "sha256": "353b470a726dfec26a89baa2d2989f70703a3e5aaf656b2dfd5543835fd0e2ea",
+      "bytes": 9762
+    },
+    {
+      "file": "src/storage.js",
+      "source": "https://cdn.emulatorjs.org/nightly/data/src/storage.js",
+      "sha256": "e4feb992cd005838b4350a9727edbd04429438e7ebf85edd3148c489b31c1c26",
+      "bytes": 8251
+    },
+    {
+      "file": "src/GameManager.js",
+      "source": "https://cdn.emulatorjs.org/nightly/data/src/GameManager.js",
+      "sha256": "8416f38f53933dae88ebdc30b3f5cdbd2f7ba98e3a04db39f1290a06b5cff3b1",
+      "bytes": 21269
+    },
+    {
+      "file": "src/cache.js",
+      "source": "https://cdn.emulatorjs.org/nightly/data/src/cache.js",
+      "sha256": "188523b25848281930b4c668aff72571466a8d25087866306047752642975c5c",
+      "bytes": 37147
+    },
+    {
+      "file": "src/consts.js",
+      "source": "https://cdn.emulatorjs.org/nightly/data/src/consts.js",
+      "sha256": "e60f7d1c8af6e240c496a96648e6daf7633caa4c760b5da1d1fb9a30418cf03d",
+      "bytes": 1633
+    },
+    {
+      "file": "src/netplay.js",
+      "source": "https://cdn.emulatorjs.org/nightly/data/src/netplay.js",
+      "sha256": "4cf13de04948a289f34c6000d3ecec3fb0785d2240945c2a19d35c75fbe8d2d5",
+      "bytes": 87177
+    },
+    {
+      "file": "src/vendor/socket.io.min.js",
+      "source": "https://cdn.emulatorjs.org/nightly/data/src/vendor/socket.io.min.js",
+      "sha256": "b0e735814f8dcfecd6cdb8a7ce95a297a7e1e5f2727a29e6f5901801d52fa0c5",
+      "bytes": 46831
+    },
+    {
+      "file": "src/license.js",
+      "source": "https://cdn.emulatorjs.org/nightly/data/src/license.js",
+      "sha256": "c21287c9e6f229321d03f7f8a8540a1690127d7e15958c832f49e605a5e75a53",
+      "bytes": 35147
+    },
+    {
+      "file": "src/utils.js",
+      "source": "https://cdn.emulatorjs.org/nightly/data/src/utils.js",
+      "sha256": "661d8c91b9726b50237215b9392ab8be746d232cb6b430df453f898ef4318414",
+      "bytes": 1715
+    },
+    {
+      "file": "src/vendor/nipplejs.js",
+      "source": "https://cdn.emulatorjs.org/nightly/data/src/vendor/nipplejs.js",
+      "sha256": "cf745190f5dc5db942ad54f5683d56c6d6da445646f4b4fc23c049c9985a04df",
+      "bytes": 20259
+    },
+    {
+      "file": "src/setup.js",
+      "source": "https://cdn.emulatorjs.org/nightly/data/src/setup.js",
+      "sha256": "126278616a5bb4c9b0f471a9736d38ffc77e3f4437694d9801d017b114b3e17d",
+      "bytes": 3310
+    },
+    {
+      "file": "src/shaders.js",
+      "source": "https://cdn.emulatorjs.org/nightly/data/src/shaders.js",
+      "sha256": "4596d0c6098deb58b07dc0481c0cb2ecc45603e5f555282b89902295f6380ec9",
+      "bytes": 139571
+    }
+  ]
+}

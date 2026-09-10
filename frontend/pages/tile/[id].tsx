@@ -2,6 +2,7 @@ import useAssetData from "../../hooks/useAssetData";
 import AssetStatus from "../../components/AssetStatus";
 import React, { useEffect, useState } from "react";
 import Head from "next/head";
+import Link from "next/link";
 import { useRouter } from "next/router";
 
 import { fetchSingleTile } from "../../utils/api";
@@ -47,6 +48,9 @@ const Tile = () => {
             <div className="min-h-80">
               <div className="w-full max-w-2xl mx-auto nes-container bg-white p-0 relative my-6 lg:my-16">
                 <TileCard tile={tile} large />
+              </div>
+              <div className="text-center my-6">
+                <Link href={`/paint/${tile.id}`} className="nes-btn is-primary">Paint this tile in Mario Paint</Link>
               </div>
               <div className="w-full max-w-6xl mx-auto my-6 lg:my-8">
                 <TileHistory 

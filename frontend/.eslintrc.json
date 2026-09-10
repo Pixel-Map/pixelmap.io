@@ -1,6 +1,7 @@
 {
   "extends": "next/core-web-vitals",
   "ignorePatterns": [
+    "public/paint/vendor/",
     "node_modules/",
     ".next/",
     "coverage/",
