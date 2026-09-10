@@ -6,12 +6,13 @@ pixels to the game's 15-color palette. Invalid or empty artwork is reported
 instead of silently painting a substitute. Tile 123 currently has `image: "1"`;
 use `/paint/439` for a real artwork example.
 
-Local development and preview automatically load `mario.sfc` from the repository
-root. Run `pnpm --dir frontend dev` for development, or build then run
+All paint pages automatically load `/mario.sfc`, including the deployed website.
+The frontend build copies the repository-root ROM into `frontend/out/mario.sfc`.
+Run `pnpm --dir frontend dev` for development, or build then run
 `pnpm --dir frontend paint:local` for the exported preview at port 3008. Both
-servers bind to loopback and serve the personal ROM separately from `public/`;
-it is never copied into the exported site. On other hosts, or
-when the local file is absent, visitors can select their own ROM instead.
+local servers bind to loopback and serve the root ROM directly. Visitors only
+see a file picker if automatic loading fails. Start Game still requires a click
+so the browser can enable game audio.
 
 The Mario Paint (Japan, USA) ROM is checked against
 SHA-256 `e842cac1a4301be196f1e137fbd1a16866d5c913f24dbca313f4dd8bd7472f45`.
@@ -85,13 +86,13 @@ screenshot in `/tmp`, checks browser errors and closes its own browser session.
 Run the frontend normally with `mario.sfc` at the repository root, open `/paint/439`, then click
 Start Game. Allow the game to navigate and draw until it reports all 256 pixels
 painted. Check early Take over, Restart drawing, loading errors, another tile,
-and a narrow viewport. The ROM should never appear in a network upload or in
-the exported site. The conversion tests also cover compressed and malformed
+and a narrow viewport. Verify that the export includes `/mario.sfc` and that
+automatic loading works on the production domain. The conversion tests cover compressed and malformed
 artwork. A complete run usually takes a few minutes, depending on browser speed.
 
 This is an embedded game, not an autoplay video. Browsers require a start click
 for audio/game execution. Mouse or trackpad use on desktop is the primary
-experience. The local server loads the ROM automatically; other hosts use manual selection.
+experience. Both local and deployed pages load the ROM automatically.
 
 ### Verification on September 10, 2026
 

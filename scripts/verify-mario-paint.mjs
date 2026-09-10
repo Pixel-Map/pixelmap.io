@@ -1,5 +1,5 @@
-// Full browser acceptance check. ROM path is supplied locally, never copied
-// into the site. Requires the agent-browser CLI (run via npx).
+// Full browser acceptance check. Use "auto" for the hosted ROM or supply a
+// local ROM path to exercise manual selection. Requires agent-browser (via npx).
 import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';

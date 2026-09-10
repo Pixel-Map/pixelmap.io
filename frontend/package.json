@@ -5,7 +5,7 @@
 	"scripts": {
 		"dev": "node ../scripts/serve-paint-local.mjs --dev",
 		"paint:local": "node ../scripts/serve-paint-local.mjs",
-		"build": "next build",
+		"build": "next build && cp ../mario.sfc out/mario.sfc",
 		"start": "next start",
 		"lint": "eslint . --ext .js,.jsx,.ts,.tsx",
 		"test": "npx jest --no-watch",

@@ -26,7 +26,7 @@ function PaintTile({ id }: { id: string }) {
   const { data: tile, loading, error: tileError, retry } = useAssetData<PixelMapTile | undefined>(id, fetchSingleTile, undefined);
   const [rom, setRom] = useState<ArrayBuffer>();
   const [error, setError] = useState('');
-  const [reading, setReading] = useState(false);
+  const [reading, setReading] = useState(true);
   const [attempt, setAttempt] = useState(0);
   const [status, setStatus] = useState({ state: 'loading', detail: 'Loading emulator…', painted: 0 });
   const iframe = useRef<HTMLIFrameElement>(null);
@@ -41,16 +41,16 @@ function PaintTile({ id }: { id: string }) {
     return () => { selection.current = -1; };
   }, []);
   useEffect(() => {
-    if (rom || !conversion.pixels || !['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname)) return;
+    if (rom || !conversion.pixels) return;
     const controller = new AbortController();
     const request = ++selection.current;
     const timeout = window.setTimeout(() => controller.abort(), 15000);
     let active = true;
     setReading(true);
-    async function loadLocalRom() {
+    async function loadRom() {
       try {
         const response = await fetch('/mario.sfc', { signal: controller.signal, cache: 'no-store' });
-        if (!response.ok) return; // Manual selection remains available if the local ROM is missing.
+        if (!response.ok) return; // Manual selection remains available if the hosted ROM is missing.
         const file = new File([await response.blob()], 'mario.sfc');
         const bytes = await readMarioRom(file);
         if (active && request === selection.current) { setError(''); setRom(bytes); }
@@ -61,7 +61,7 @@ function PaintTile({ id }: { id: string }) {
         if (active && request === selection.current) setReading(false);
       }
     }
-    void loadLocalRom();
+    void loadRom();
     return () => { active = false; controller.abort(); window.clearTimeout(timeout); };
   }, [rom, conversion.pixels]);
   useEffect(() => {
@@ -128,11 +128,12 @@ function PaintTile({ id }: { id: string }) {
         <p>Same 16 × 16 pixels.<br />Reimagined in the game’s 15 colors.</p>
       </div>
       {!rom ? <section className={styles.setup} aria-label="Load Mario Paint">
-        <h2>Bring your Mario Paint cartridge to the browser.</h2>
-        <p>Choose your Mario Paint (Japan, USA) ROM to start. The file stays on your device and is used only in this tab.</p>
-        <label className={styles.fileLabel} htmlFor="paint-rom">Choose Mario Paint ROM</label>
-        <input id="paint-rom" type="file" accept=".sfc,.smc" onChange={selectRom} disabled={reading} />
-        {reading && <p role="status">Loading Mario Paint…</p>}
+        {reading ? <p role="status">Loading Mario Paint…</p> : <>
+          <h2>Mario Paint could not load automatically.</h2>
+          <p>Choose your Mario Paint (Japan, USA) ROM to start. The file stays on your device and is used only in this tab.</p>
+          <label className={styles.fileLabel} htmlFor="paint-rom">Choose Mario Paint ROM</label>
+          <input id="paint-rom" type="file" accept=".sfc,.smc" onChange={selectRom} />
+        </>}
         {error && <p role="alert" className={styles.error}>{error}</p>}
         <small>A mouse or trackpad on a desktop browser works best.</small>
       </section> : <section className={styles.player} aria-label="Mario Paint">

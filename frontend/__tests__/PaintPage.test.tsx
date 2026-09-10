@@ -1,3 +1,4 @@
+/** @jest-environment-options {"url":"https://pixelmap.io/paint/293"} */
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import PaintPage, { getStaticPaths, getStaticProps } from '../pages/paint/[id]';
@@ -49,7 +50,7 @@ test('lets a visitor retry a failed tile request', async () => {
   expect(fetchSingleTile).toHaveBeenCalledTimes(2);
 });
 
-test('automatically loads and validates the local ROM without file selection', async () => {
+test('automatically loads and validates the hosted ROM on the production domain', async () => {
   (fetchSingleTile as jest.Mock).mockResolvedValue({ id: 293, image: 'f00'.repeat(256) });
   (fetch as jest.Mock).mockResolvedValue({ ok: true, blob: async () => new Blob(['rom']) });
   const read = jest.spyOn(paintUtils, 'readMarioRom').mockResolvedValue(new ArrayBuffer(1048576));

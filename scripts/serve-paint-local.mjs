@@ -51,7 +51,7 @@ const server = createServer(async (req, res) => {
     res.end(error.code === 'ENOENT' ? 'Not found' : 'Unable to serve this file');
   }
 });
-// The personal ROM is served separately from public/ and never enters an export.
+// Local development serves the root ROM directly; builds also copy it into out/.
 server.listen(port, '127.0.0.1', () => console.log(`Local PixelMap: http://127.0.0.1:${port}/paint/955`));
 for (const signal of ['SIGINT', 'SIGTERM']) {
   process.on(signal, async () => { server.close(); await app?.close(); process.exit(0); });
