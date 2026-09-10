@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import Link from 'next/link';
 import { usePopperTooltip } from 'react-popper-tooltip';
 import { shortenIfHex, formatPrice, openseaLink, cleanUrl } from "../utils/misc";
 import TileCard from './TileCard';
@@ -67,6 +68,15 @@ export default function TilePopover({tile, referenceElement}) {
                 <ClockIcon className="w-5 h-5" />
                 <span className="font-bold">View Complete History</span>
               </button>
+              <div className="mt-3 text-center">
+                <Link
+                  href={`/paint/${tile.id}`}
+                  className="nes-btn inline-flex items-center gap-2 text-sm"
+                >
+                  <span aria-hidden="true">🎨</span>
+                  Paint this tile
+                </Link>
+              </div>
             </div>
           </div>
         </div>
