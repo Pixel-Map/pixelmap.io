@@ -45,6 +45,7 @@ const REFRESH_MS = 60_000;
 
 export default function Project256Vault({ isOpen, onClose }: Project256VaultProps) {
   const [status, setStatus] = useState<Project256Status | null>(null);
+  const [fetchedAt, setFetchedAt] = useState<Date | null>(null);
   const [statusError, setStatusError] = useState(false);
   const [now, setNow] = useState<Date>(() => new Date());
   const [rattling, setRattling] = useState(false);
@@ -60,6 +61,7 @@ export default function Project256Vault({ isOpen, onClose }: Project256VaultProp
         const next = await fetchProject256Status();
         if (!cancelled) {
           setStatus(next);
+          setFetchedAt(new Date());
           setStatusError(false);
         }
       } catch (error) {
@@ -106,9 +108,14 @@ export default function Project256Vault({ isOpen, onClose }: Project256VaultProp
 
   const unlockBlock = status?.unlockBlock ?? PROJECT256_UNLOCK_BLOCK;
   const currentBlock = status?.currentBlock ?? null;
+  // Anchor the estimate to the moment the block number was read (not to `now`),
+  // otherwise the remaining time would stay constant and the clock would never tick.
   const unlockDate = useMemo(
-    () => (currentBlock === null ? fallbackUnlockDate() : estimateUnlockDate(currentBlock, now, unlockBlock)),
-    [currentBlock, now, unlockBlock],
+    () =>
+      currentBlock === null || fetchedAt === null
+        ? fallbackUnlockDate()
+        : estimateUnlockDate(currentBlock, fetchedAt, unlockBlock),
+    [currentBlock, fetchedAt, unlockBlock],
   );
   const remainingMs = unlockDate.getTime() - now.getTime();
   const parts = splitDuration(remainingMs);

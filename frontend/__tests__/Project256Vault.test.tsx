@@ -43,6 +43,31 @@ describe("Project256Vault", () => {
     expect(screen.getByTestId("project256-estimate")).toHaveTextContent("Estimated unlock: April");
   });
 
+  it("ticks down every second once live data has loaded", async () => {
+    jest.useFakeTimers();
+    try {
+      fetchProject256Status.mockResolvedValue({ currentBlock: 26_006_478, unlockBlock: 51_200_000, framesMinted: 34 });
+      render(<Project256Vault isOpen={true} onClose={jest.fn()} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("project256-current-block")).toHaveTextContent("26,006,478");
+      });
+
+      const readClock = () =>
+        Number(screen.getByText("min").previousSibling?.textContent) * 60 +
+        Number(screen.getByText("sec").previousSibling?.textContent);
+      const before = readClock();
+
+      await act(async () => {
+        jest.advanceTimersByTime(5_000);
+      });
+
+      expect((before - readClock() + 3600) % 3600).toBe(5);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it("falls back to the announcement estimate when the chain is unreachable", async () => {
     fetchProject256Status.mockRejectedValue(new Error("offline"));
     render(<Project256Vault isOpen={true} onClose={jest.fn()} />);
