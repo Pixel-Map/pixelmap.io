@@ -1,27 +1,3 @@
-/* Marker painted onto tile 2400 on the main map so the vault is discoverable. */
-.mapMarker {
-  position: relative;
-  box-shadow: 0 0 0 1px #f5c400, 0 0 6px 2px rgba(245, 196, 0, 0.75);
-  animation: vaultPulse 2.4s ease-in-out infinite;
-  z-index: 1;
-
-  &::after {
-    content: "";
-    position: absolute;
-    inset: 4px;
-    border: 2px solid #f5c400;
-    border-radius: 3px 3px 1px 1px;
-    box-sizing: border-box;
-    pointer-events: none;
-    opacity: 0.9;
-  }
-}
-
-@keyframes vaultPulse {
-  0%, 100% { box-shadow: 0 0 0 1px #f5c400, 0 0 6px 2px rgba(245, 196, 0, 0.75); }
-  50% { box-shadow: 0 0 0 1px #fff3a0, 0 0 14px 5px rgba(245, 196, 0, 0.95); }
-}
-
 /* Full-screen vault. */
 .backdrop {
   position: fixed;

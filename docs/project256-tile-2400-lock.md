@@ -96,4 +96,4 @@ curl -s https://eth.blockscout.com/api/v2/transactions/0x850b99d73b9cf854d868537
 
 Clicking tile 2400 on the main map opens the Project256 vault (`frontend/components/Project256Vault.tsx`):
 a chained, padlocked tile, a live countdown to block 51,200,000, and this proof with Etherscan links.
-The tile also carries a gold marker on the map. Constants live in `frontend/constants/project256.ts`.
+Constants live in `frontend/constants/project256.ts`.

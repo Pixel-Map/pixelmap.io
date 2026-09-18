@@ -122,9 +122,6 @@ describe('MapTiles', () => {
 
     const buttons = screen.getAllByRole('button');
     expect(buttons).toHaveLength(tilesWithVault.length);
-    expect(buttons[3].className).toContain('mapMarker');
-    expect(buttons[0].className).not.toContain('mapMarker');
-    expect(buttons[3]).toHaveAttribute('title', 'Tile #2400 is locked in Project256');
 
     await act(async () => {
       fireEvent.click(buttons[3]);
@@ -144,8 +141,10 @@ describe('MapTiles', () => {
     render(<MapTiles tiles={anonymousTiles} />);
 
     const buttons = screen.getAllByRole('button');
-    expect(buttons[2400].className).toContain('mapMarker');
-    expect(buttons[2399].className).not.toContain('mapMarker');
+    await act(async () => {
+      fireEvent.click(buttons[2400]);
+    });
+    expect(screen.getByTestId('mock-project256-vault')).toBeInTheDocument();
   });
 
   it('renders nothing when tiles array is empty', () => {
