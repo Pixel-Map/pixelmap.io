@@ -15,6 +15,18 @@ jest.mock('../components/TilePopover', () => {
   };
 });
 
+// Mock the Project256 vault so the map test does not need live chain data
+jest.mock('../components/Project256Vault', () => {
+  return function MockProject256Vault({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+    if (!isOpen) return null;
+    return (
+      <div data-testid="mock-project256-vault">
+        <button type="button" onClick={onClose}>close vault</button>
+      </div>
+    );
+  };
+});
+
 describe('MapTiles', () => {
   const mockTiles = [
     {
@@ -99,6 +111,41 @@ describe('MapTiles', () => {
     expect(buttons[0].className).toContain('w-4');
     expect(buttons[0].className).toContain('h-4');
     expect(buttons[0].className).toContain('hover:ring');
+  });
+
+  it('opens the Project256 vault instead of the popover when tile 2400 is clicked', async () => {
+    const tilesWithVault = [
+      ...mockTiles,
+      { id: 2400, image: '', url: 'Project256', price: '0', owner: '0x67C9E1163EB2ea91CBE2C4907aCEf635Af9F0C5b' },
+    ] as PixelMapTile[];
+    render(<MapTiles tiles={tilesWithVault} />);
+
+    const buttons = screen.getAllByRole('button');
+    expect(buttons).toHaveLength(tilesWithVault.length);
+    expect(buttons[3].className).toContain('mapMarker');
+    expect(buttons[0].className).not.toContain('mapMarker');
+    expect(buttons[3]).toHaveAttribute('title', 'Tile #2400 is locked in Project256');
+
+    await act(async () => {
+      fireEvent.click(buttons[3]);
+    });
+
+    expect(screen.getByTestId('mock-project256-vault')).toBeInTheDocument();
+    expect(screen.queryByTestId('mock-tile-popover')).not.toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('close vault'));
+    });
+    expect(screen.queryByTestId('mock-project256-vault')).not.toBeInTheDocument();
+  });
+
+  it('treats the array index as the tile id when a tile has no id', async () => {
+    const anonymousTiles = Array.from({ length: 2401 }, () => ({ image: '', url: '', price: '0', owner: '' })) as unknown as PixelMapTile[];
+    render(<MapTiles tiles={anonymousTiles} />);
+
+    const buttons = screen.getAllByRole('button');
+    expect(buttons[2400].className).toContain('mapMarker');
+    expect(buttons[2399].className).not.toContain('mapMarker');
   });
 
   it('renders nothing when tiles array is empty', () => {

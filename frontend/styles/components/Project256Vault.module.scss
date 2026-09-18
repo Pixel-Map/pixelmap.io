@@ -1,0 +1,362 @@
+/* Marker painted onto tile 2400 on the main map so the vault is discoverable. */
+.mapMarker {
+  position: relative;
+  box-shadow: 0 0 0 1px #f5c400, 0 0 6px 2px rgba(245, 196, 0, 0.75);
+  animation: vaultPulse 2.4s ease-in-out infinite;
+  z-index: 1;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 4px;
+    border: 2px solid #f5c400;
+    border-radius: 3px 3px 1px 1px;
+    box-sizing: border-box;
+    pointer-events: none;
+    opacity: 0.9;
+  }
+}
+
+@keyframes vaultPulse {
+  0%, 100% { box-shadow: 0 0 0 1px #f5c400, 0 0 6px 2px rgba(245, 196, 0, 0.75); }
+  50% { box-shadow: 0 0 0 1px #fff3a0, 0 0 14px 5px rgba(245, 196, 0, 0.95); }
+}
+
+/* Full-screen vault. */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: radial-gradient(circle at 50% 30%, rgba(30, 90, 40, 0.85), rgba(0, 0, 0, 0.96) 70%);
+  animation: vaultFadeIn 0.35s ease-out;
+  overflow-y: auto;
+}
+
+@keyframes vaultFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.vault {
+  position: relative;
+  width: 100%;
+  max-width: 760px;
+  max-height: 100%;
+  overflow-y: auto;
+  color: #e8ffe8;
+  background: #0b1a0d;
+  border: 4px solid #2e7d32;
+  box-shadow: 0 0 0 4px #0b1a0d, 0 0 0 8px #f5c400, 0 30px 80px rgba(0, 0, 0, 0.8);
+  padding: 24px 20px 20px;
+  font-family: 'vcr_osd_monoregular', 'Press Start 2P', monospace;
+  animation: vaultDrop 0.45s cubic-bezier(0.2, 1.2, 0.4, 1);
+}
+
+@keyframes vaultDrop {
+  from { transform: translateY(-40px) scale(0.96); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: transparent;
+  border: 2px solid #4caf50;
+  color: #e8ffe8;
+  width: 32px;
+  height: 32px;
+  line-height: 28px;
+  font-size: 18px;
+  cursor: pointer;
+
+  &:hover { background: #2e7d32; }
+}
+
+.title {
+  text-align: center;
+  font-size: 22px;
+  letter-spacing: 2px;
+  color: #f5c400;
+  text-shadow: 2px 2px 0 #000;
+  margin: 0 0 4px;
+}
+
+.subtitle {
+  text-align: center;
+  font-size: 13px;
+  color: #a5d6a7;
+  margin: 0 0 20px;
+}
+
+/* Tile + chains + padlock */
+.stage {
+  position: relative;
+  width: 208px;
+  height: 208px;
+  margin: 0 auto 20px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.tileFrame {
+  position: absolute;
+  inset: 0;
+  border: 6px solid #d7a86e;
+  box-shadow: inset 0 0 0 4px #5a3a1a, 0 0 24px rgba(245, 196, 0, 0.35);
+  background: #f8bbd0;
+  overflow: hidden;
+}
+
+.tileImage {
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  display: block;
+}
+
+.chain {
+  position: absolute;
+  left: -30px;
+  right: -30px;
+  top: 50%;
+  height: 14px;
+  margin-top: -7px;
+  background:
+    repeating-linear-gradient(90deg, #d9dde2 0 14px, transparent 14px 20px);
+  border-top: 2px solid #6b7280;
+  border-bottom: 2px solid #6b7280;
+  border-radius: 7px;
+  filter: drop-shadow(0 2px 0 #000);
+  pointer-events: none;
+}
+
+.chainA { transform: rotate(-18deg); }
+.chainB { transform: rotate(18deg); }
+
+.padlock {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 54px;
+  height: 70px;
+  margin-left: -27px;
+  margin-top: -30px;
+  transform-origin: 50% 20%;
+}
+
+.shackle {
+  position: absolute;
+  left: 11px;
+  top: 0;
+  width: 32px;
+  height: 34px;
+  border: 7px solid #cfd3d8;
+  border-bottom: none;
+  border-radius: 20px 20px 0 0;
+  box-sizing: border-box;
+  box-shadow: inset 0 0 0 2px #6b7280;
+}
+
+.lockBody {
+  position: absolute;
+  left: 0;
+  top: 26px;
+  width: 54px;
+  height: 44px;
+  background: linear-gradient(180deg, #ffd54f, #f5a623);
+  border: 3px solid #5a3a1a;
+  box-sizing: border-box;
+  border-radius: 4px;
+}
+
+.keyhole {
+  position: absolute;
+  left: 50%;
+  top: 12px;
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  background: #3b2410;
+  border-radius: 50%;
+
+  &::after {
+    content: "";
+    position: absolute;
+    left: 3px;
+    top: 7px;
+    width: 4px;
+    height: 10px;
+    background: #3b2410;
+  }
+}
+
+.rattle {
+  animation: vaultRattle 0.5s ease-in-out;
+}
+
+@keyframes vaultRattle {
+  0%, 100% { transform: rotate(0deg); }
+  20% { transform: rotate(-12deg) translateX(-3px); }
+  40% { transform: rotate(10deg) translateX(3px); }
+  60% { transform: rotate(-8deg) translateX(-2px); }
+  80% { transform: rotate(6deg) translateX(2px); }
+}
+
+.taunt {
+  min-height: 20px;
+  text-align: center;
+  font-size: 13px;
+  color: #ffab91;
+  margin: -8px 0 16px;
+}
+
+/* Countdown */
+.countdown {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.unit {
+  background: #06120a;
+  border: 2px solid #2e7d32;
+  padding: 8px 4px;
+  text-align: center;
+}
+
+.unitValue {
+  display: block;
+  font-size: 26px;
+  line-height: 1;
+  color: #f5c400;
+  text-shadow: 2px 2px 0 #000;
+}
+
+.unitLabel {
+  display: block;
+  margin-top: 6px;
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: #a5d6a7;
+  text-transform: uppercase;
+}
+
+.blocks {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+
+.blockStat {
+  background: #06120a;
+  border: 2px solid #1b5e20;
+  padding: 8px;
+  text-align: center;
+}
+
+.blockValue {
+  display: block;
+  font-size: 15px;
+  color: #ffffff;
+  margin-top: 4px;
+}
+
+.progressTrack {
+  height: 12px;
+  border: 2px solid #2e7d32;
+  background: #06120a;
+  margin-bottom: 6px;
+}
+
+.progressFill {
+  height: 100%;
+  background: repeating-linear-gradient(90deg, #f5c400 0 6px, #ffe082 6px 12px);
+  transition: width 0.6s ease;
+}
+
+.estimate {
+  text-align: center;
+  font-size: 12px;
+  color: #c8e6c9;
+  margin-bottom: 18px;
+}
+
+.status {
+  font-size: 11px;
+  color: #80cbc4;
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+/* Proof */
+.proofHeading {
+  font-size: 14px;
+  color: #f5c400;
+  letter-spacing: 1px;
+  margin: 0 0 8px;
+}
+
+.proofList {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 14px;
+  font-size: 12px;
+}
+
+.proofItem {
+  border-left: 3px solid #2e7d32;
+  padding: 4px 0 4px 10px;
+  margin-bottom: 8px;
+
+  a { color: #80d8ff; text-decoration: underline; }
+}
+
+.proofMeta {
+  color: #a5d6a7;
+}
+
+.code {
+  font-size: 11px;
+  line-height: 1.5;
+  background: #06120a;
+  border: 2px solid #1b5e20;
+  color: #c8e6c9;
+  padding: 10px;
+  overflow-x: auto;
+  white-space: pre;
+  margin: 0 0 16px;
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  font-size: 12px;
+
+  a {
+    color: #0b1a0d;
+    background: #f5c400;
+    padding: 8px 12px;
+    text-decoration: none;
+    border: 2px solid #5a3a1a;
+    box-shadow: 2px 2px 0 #000;
+
+    &:hover { background: #ffe082; }
+  }
+}
+
+@media (max-width: 480px) {
+  .countdown { grid-template-columns: repeat(3, 1fr); }
+  .blocks { grid-template-columns: 1fr; }
+  .unitValue { font-size: 22px; }
+}
